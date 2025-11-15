@@ -14,6 +14,22 @@ class Produk extends Model
         'kategori',
         'harga',
         'stok',
-        'deksripsi',
+        'deskripsi', // diperbaiki ejaannya
     ];
+
+    /**
+     * Relasi ke PenjualanProduk (One-to-Many)
+     */
+    public function penjualan()
+    {
+        return $this->hasMany(PenjualanProduk::class, 'produk_id');
+    }
+
+    /**
+     * Relasi ke StokProduk (One-to-Many)
+     */
+    public function stok()
+    {
+        return $this->hasMany(StokProduk::class, 'produk_id');
+    }
 }
