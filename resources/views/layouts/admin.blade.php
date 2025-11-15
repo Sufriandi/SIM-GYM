@@ -4,13 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Admin Dashboard | BETA GYM</title>
-    
+
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Roboto:wght@400;700&family=Bebas+Neue&display=swap" rel="stylesheet">
-    
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    
+
     <style>
         /* CSS Variables */
         :root {
@@ -116,12 +116,12 @@
 </head>
 
 <body class="bg-dark-background text-text-primary font-body">
-    
+
     {{-- Navbar --}}
     @include('layouts.components.navbar')
-    
+
     {{-- Mobile Overlay --}}
-    <div id="sidebar-overlay" 
+    <div id="sidebar-overlay"
         class="fixed inset-0 bg-black/60 z-50 hidden lg:hidden">
     </div>
 
@@ -136,7 +136,7 @@
     {{-- JavaScript --}}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            
+
             // Toggle Sidebar Mobile
             const sidebar = document.querySelector('.sidebar');
             const toggleButton = document.getElementById('sidebar-toggle');
@@ -177,7 +177,7 @@
                     if (submenu) {
                         const toggle = submenu.previousElementSibling;
                         const arrow = toggle ? toggle.querySelector('.toggle-arrow') : null;
-                        
+
                         submenu.classList.add('active');
                         if (arrow) arrow.classList.add('rotated');
                         if (toggle && !toggle.classList.contains('menu-active')) {
@@ -191,10 +191,10 @@
                 toggle.addEventListener('click', function(e) {
                     e.preventDefault();
                     closeOtherSubmenus(this);
-                    
+
                     const submenu = this.nextElementSibling;
                     const arrow = this.querySelector('.toggle-arrow');
-                    
+
                     if (submenu) submenu.classList.toggle('active');
                     if (arrow) arrow.classList.toggle('rotated');
                 });
@@ -203,7 +203,147 @@
             checkActiveSubmenu();
         });
     </script>
-    
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        // Handle Success messages (Toast)
+        @if (session('success'))
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: '{{ session('success') }}',
+                showConfirmButton: false,
+                timer: 4000,
+                toast: true,
+                position: 'top-end',
+                iconColor: '#28a745',
+                background: '#1a1f32',
+                color: '#ffffff',
+                customClass: {
+                    container: 'swal2-custom-offset',
+                }
+            });
+        @endif
+
+        // 🚨 PERBAIKAN: Handle DANGER messages (Toast untuk penolakan)
+        @if (session('danger'))
+            Swal.fire({
+                icon: 'error', // Gunakan icon error/silang untuk penolakan
+                title: 'Ditolak!',
+                text: '{{ session('danger') }}',
+                showConfirmButton: false,
+                timer: 4000,
+                toast: true,
+                position: 'top-end',
+                iconColor: '#dc3545', // Merah gelap
+                background: '#1a1f32',
+                color: '#ffffff',
+                customClass: {
+                    container: 'swal2-custom-offset',
+                }
+            });
+        @endif
+
+        // Handle Error messages (Modal)
+        @if (session('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal!',
+                text: '{{ session('error') }}',
+                confirmButtonText: 'OK',
+                background: '#1a1f32',
+                color: '#ffffff',
+                position: 'top',
+            });
+        @endif
+
+        // Handle Validation Errors
+        @if ($errors->any())
+            Swal.fire({
+                icon: 'error',
+                title: 'Validasi Gagal!',
+                html: 'Terdapat beberapa kesalahan input. Silakan periksa formulir Anda.',
+                confirmButtonText: 'OK',
+                background: '#1a1f32',
+                color: '#ffffff',
+                position: 'top',
+            });
+        @endif
+    });
+</script>
+{{-- 1. Sertakan Library SweetAlert2 --}}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    {{-- 2. Skrip Penangan Notifikasi --}}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        // Handle Success messages (Toast)
+        @if (session('success'))
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: '{{ session('success') }}',
+                showConfirmButton: false,
+                timer: 4000,
+                toast: true,
+                position: 'top-end',
+                iconColor: '#28a745',
+                background: '#1a1f32',
+                color: '#ffffff',
+                customClass: {
+                    container: 'swal2-custom-offset',
+                }
+            });
+        @endif
+
+        // 🚨 PERBAIKAN: Handle DANGER messages (Toast untuk penolakan)
+        @if (session('danger'))
+            Swal.fire({
+                icon: 'error', // Gunakan icon error/silang untuk penolakan
+                title: 'Ditolak!',
+                text: '{{ session('danger') }}',
+                showConfirmButton: false,
+                timer: 4000,
+                toast: true,
+                position: 'top-end',
+                iconColor: '#dc3545', // Merah gelap
+                background: '#1a1f32',
+                color: '#ffffff',
+                customClass: {
+                    container: 'swal2-custom-offset',
+                }
+            });
+        @endif
+
+        // Handle Error messages (Modal)
+        @if (session('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal!',
+                text: '{{ session('error') }}',
+                confirmButtonText: 'OK',
+                background: '#1a1f32',
+                color: '#ffffff',
+                position: 'top',
+            });
+        @endif
+
+        // Handle Validation Errors
+        @if ($errors->any())
+            Swal.fire({
+                icon: 'error',
+                title: 'Validasi Gagal!',
+                html: 'Terdapat beberapa kesalahan input. Silakan periksa formulir Anda.',
+                confirmButtonText: 'OK',
+                background: '#1a1f32',
+                color: '#ffffff',
+                position: 'top',
+            });
+        @endif
+    });
+</script>
+
     @stack('scripts')
 </body>
 </html>

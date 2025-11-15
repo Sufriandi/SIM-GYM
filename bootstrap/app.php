@@ -16,8 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        
-        // ✅ DAFTARKAN ALIAS MIDDLEWARE DI SINI
+
+        //  DAFTARKAN ALIAS MIDDLEWARE DI SINI
         $middleware->alias([
             'admin' => AdminMiddleware::class,
             'member' => MemberMiddleware::class,

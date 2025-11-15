@@ -3,16 +3,18 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\HomeController;
+use Illuminate\Support\Facades\Auth;
 
 // Controller Admin
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
-use App\Http\Controllers\Admin\IzinLatihanController as AdminIzinLatihanController;
+use App\Http\Controllers\Admin\IzinLatihanController;
 // use App\Http\Controllers\Admin\MemberController;
 // use App\Http\Controllers\Admin\ProdukController;
 
 // Controller Member
 use App\Http\Controllers\Member\DashboardController as MemberDashboardController;
 use App\Http\Controllers\Member\IzinLatihanController as MemberIzinLatihanController;
+use App\Http\Controllers\Member\MemberProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,23 +29,19 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 |--------------------------------------------------------------------------
 | 2. PENGALIH DASHBOARD (REDIRECTOR)
 |--------------------------------------------------------------------------
-| Rute /dashboard bawaan Breeze, dimodifikasi untuk mengarahkan
-| berdasarkan 'role' setelah user login.
 */
-Route::get('/dashboard', function () {
-    if (!auth()->check()) {
-        return redirect()->route('login');
+Route::get(uri: '/dashboard', action: function () {
+    if (!Auth::check()) {
+        return redirect()->route(route: 'login');
     }
 
-    if (auth()->user()->role === 'admin') {
-        // Akan mengarah ke rute 'admin.dashboard' di Grup 4
-        return redirect()->route('admin.dashboard');
+    if (Auth::user()->role === 'admin') {
+        return redirect()->route(route: 'admin.dashboard');
     }
-    
+
     // Asumsikan default adalah member
-    // Akan mengarah ke rute 'member.dashboard' di Grup 5
-    return redirect()->route('member.dashboard');
-    
+    return redirect()->route(route: 'member.dashboard');
+
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 
@@ -51,7 +49,6 @@ Route::get('/dashboard', function () {
 |--------------------------------------------------------------------------
 | 3. RUTE PROFIL UMUM (Bawaan Breeze)
 |--------------------------------------------------------------------------
-| Dibutuhkan untuk halaman 'Edit Profil'
 */
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -64,22 +61,22 @@ Route::middleware('auth')->group(function () {
 |--------------------------------------------------------------------------
 | 4. RUTE KHUSUS ADMIN
 |--------------------------------------------------------------------------
-| Semua rute yang hanya bisa diakses oleh Admin.
 */
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
-    
+
     // Dashboard (Nama rute: admin.dashboard)
     Route::get('dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
-    // Admin: Izin Latihan
-    Route::get('izin-latihan', [AdminIzinLatihanController::class, 'index'])->name('izin_latihan.index');
-    Route::get('izin-latihan/{id}/detail', [AdminIzinLatihanController::class, 'detail'])->name('izin_latihan.detail');
-    Route::post('izin-latihan/{id}/approve', [AdminIzinLatihanController::class, 'approve'])->name('izin_latihan.approve');
-    Route::post('izin-latihan/{id}/reject', [AdminIzinLatihanController::class, 'reject'])->name('izin_latihan.reject');
-    
-    // Tambahkan Rute Admin lainnya di sini:
-    // Route::resource('members', MemberController::class);
-    // Route::resource('produk', ProdukController::class);
+    // Izin Latihan Group (IzinLatihanController)
+    Route::prefix('izin-latihan')->name('izin_latihan.')->group(function () {
+        Route::get('/', [IzinLatihanController::class, 'index'])->name('index');
+        Route::get('/riwayat', [IzinLatihanController::class, 'history'])->name('history');
+        Route::get('/{id}/detail', [IzinLatihanController::class, 'show'])->name('detail');
+        Route::get('/{izinLatihan}/setujui', [IzinLatihanController::class, 'approveForm'])->name('approve.form');
+        Route::post('/{izinLatihan}/approve', [IzinLatihanController::class, 'approveIzin'])->name('approve');
+        Route::post('/{id}/reject', [IzinLatihanController::class, 'reject'])->name('reject');
+    });
+
 });
 
 
@@ -87,17 +84,25 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 |--------------------------------------------------------------------------
 | 5. RUTE KHUSUS MEMBER
 |--------------------------------------------------------------------------
-| Semua rute yang hanya bisa diakses oleh Member.
 */
 Route::middleware(['auth', 'member'])->prefix('member')->name('member.')->group(function () {
-    
+
     // Dashboard (Nama rute: member.dashboard)
     Route::get('dashboard', [MemberDashboardController::class, 'index'])->name('dashboard');
 
-    // Member: Izin Latihan
-    Route::get('izin-latihan/form', [MemberIzinLatihanController::class, 'index'])->name('izin_latihan.index');
-    Route::get('izin-latihan/riwayat', [MemberIzinLatihanController::class, 'riwayat'])->name('izin_latihan.riwayat');
-    Route::post('izin-latihan/submit', [MemberIzinLatihanController::class, 'submit'])->name('izin_latihan.submit');
+    // Izin Latihan Group (MemberIzinLatihanController)
+    Route::prefix('izin-latihan')->name('izin_latihan.')->group(function () {
+        // 🚨 PERBAIKAN: Gunakan alias yang benar di sini
+        Route::get('/', [MemberIzinLatihanController::class, 'index'])->name('index');
+        Route::get('/riwayat', [MemberIzinLatihanController::class, 'history'])->name('history');
+        Route::get('/ajukan', [MemberIzinLatihanController::class, 'create'])->name('create');
+        Route::post('/store', [MemberIzinLatihanController::class, 'store'])->name('store');
+    });
+
+    // // Rute Pelengkapan Profil
+    // Route::get('/profile/lengkapi', [MemberProfileController::class, 'showCompletionForm'])->name('profile.complete.show');
+    // Route::post('/profile/lengkapi', [MemberProfileController::class, 'completeProfile'])->name('profile.complete.store');
+
 });
 
 

@@ -1,3 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.swal2-container.swal2-top-end {
+    margin-top: 65px !important; 
+}

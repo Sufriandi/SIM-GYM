@@ -1,23 +1,112 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $title ?? 'Member Area' }} - SIM GYM</title>
-    @vite('resources/css/app.css')
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Member Area | BETA GYM</title>
+
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Roboto:wght@400;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <style>
+        /* Font Families */
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Oswald', sans-serif;
+            text-transform: uppercase;
+        }
+        body {
+            font-family: 'Roboto', sans-serif;
+        }
+        :root {
+            --navbar-height: 90px;
+        }
+
+        .member-main-wrapper {
+        padding-top: var(--navbar-height) !important;
+    }
+    </style>
 </head>
 
-<body class="bg-gray-100 dark:bg-gray-900">
+{{-- Terapkan background utama tema Beta Gym --}}
+<body class="bg-dark-background text-text-primary font-body">
 
-    {{-- NAVBAR --}}
-    @include('layouts.components.navbar')
+    @include('layouts.components.navbar-member')
 
-    {{-- CONTENT --}}
-    <main class="max-w-7xl mx-auto px-4 py-8">
-        {{ $slot }}
+    <main class="member-main-wrapper container mx-auto p-4 md:p-8">
+        {{-- Konten (Form/Riwayat/Dashboard) akan dimuat di sini --}}
+        @yield('content')
     </main>
 
-    @include('layouts.components.footer')
+    {{-- 1. Sertakan Library SweetAlert2 --}}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+    {{-- 2. Skrip Penangan Notifikasi --}}
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        // Handle Success messages (Toast - Position top-end)
+        @if (session('success'))
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: '{{ session('success') }}',
+                showConfirmButton: false,
+                timer: 4000,
+                toast: true,
+                position: 'top-end',
+                iconColor: '#28a745',
+                background: '#1a1f32',
+                color: '#ffffff',
+                customClass: {
+                    container: 'swal2-custom-offset',
+                }
+            });
+        @endif
+
+        // Handle Error messages (Modal - Position Center)
+        @if (session('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal!',
+                text: '{{ session('error') }}',
+                confirmButtonText: 'OK',
+                background: '#1a1f32',
+                color: '#ffffff',
+                // 🚨 PERBAIKAN: Hapus 'position: "top"' agar SweetAlert2 default ke 'center'
+            });
+        @endif
+
+        // Handle Validation Errors (Modal - Position Center)
+        @if ($errors->any())
+            Swal.fire({
+                icon: 'error',
+                title: 'Validasi Gagal!',
+                html: 'Terdapat beberapa kesalahan input. Silakan periksa formulir Anda.',
+                confirmButtonText: 'OK',
+                background: '#1a1f32',
+                color: '#ffffff',
+                // 🚨 PERBAIKAN: Hapus 'position: "top"' agar SweetAlert2 default ke 'center'
+            });
+        @endif
+    });
+</script>
+    {{-- Script untuk Toggle Menu Mobile --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleButton = document.getElementById('mobile-menu-toggle');
+            const mobileMenu = document.getElementById('mobile-menu');
+
+            if (toggleButton) {
+                toggleButton.addEventListener('click', function() {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+        });
+    </script>
+
+    @stack('scripts')
 </body>
 </html>
