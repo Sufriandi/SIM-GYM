@@ -10,7 +10,8 @@
             href="{{ $izin->status == 'pending' ? route('admin.izin_latihan.index') : route('admin.izin_latihan.history') }}"
             class="inline-flex items-center text-gold-700 hover:text-gold-500 text-sm font-semibold transition-colors"
         >
-            <x-ui.icon.back class="w-4 h-4 mr-2" />
+            <i data-lucide="arrow-left" class="w-4 h-4 mr-2"></i>
+
             Kembali ke {{ $izin->status == 'pending' ? 'Permintaan Pending' : 'Riwayat Persetujuan' }}
         </a>
     </div>

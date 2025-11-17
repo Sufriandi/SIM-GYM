@@ -14,7 +14,7 @@ class Produk extends Model
         'kategori',
         'harga',
         'stok',
-        'deskripsi', // diperbaiki ejaannya
+        'deskripsi',
     ];
 
     /**
