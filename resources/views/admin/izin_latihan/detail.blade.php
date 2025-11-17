@@ -1,11 +1,20 @@
+{{-- resources/views/admin/izin_latihan/detail.blade.php --}}
+
 <x-layouts.admin
-    :title="$pageTitle . ' – BETA GYM'"
-    :page-title="$pageTitle"
-    :page-subtitle="'Lihat detail izin member: ' . ($izin->member?->nama ?? '[Member Dihapus]')"
+    pageTitle="Detail Izin Member"
+    pageSubtitle="Lihat detail lengkap pengajuan izin member."
 >
 
-    {{-- NAV BACK LINK --}}
-    <div class="mb-6">
+    {{-- Title + Back --}}
+    <div class="mb-8 space-y-3">
+
+        {{-- Judul via Component --}}
+        <x-ui.section-header
+            title="Detail Izin Member"
+            subtitle="Lihat detail pengajuan izin yang diajukan member."
+        />
+        {{-- Tombol Kembali --}}
+        <div class="mb-6">
         <a
             href="{{ $izin->status == 'pending' ? route('admin.izin_latihan.index') : route('admin.izin_latihan.history') }}"
             class="inline-flex items-center text-gold-700 hover:text-gold-500 text-sm font-semibold transition-colors"
@@ -15,7 +24,7 @@
             Kembali ke {{ $izin->status == 'pending' ? 'Permintaan Pending' : 'Riwayat Persetujuan' }}
         </a>
     </div>
-
+    <hr class="border-t border-brand-borderSoft mb-8">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {{-- ============================== --}}
