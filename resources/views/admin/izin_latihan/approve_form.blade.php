@@ -1,119 +1,168 @@
-@extends('layouts.admin')
+{{-- resources/views/admin/izin_latihan/approve_form.blade.php --}}
 
-@section('content')
-
-<header class="mb-8">
-    <h1 class="text-4xl font-heading text-gold mb-1">{{ $pageTitle }}</h1>
-    <p class="text-text-secondary text-base">Tentukan hari perpanjangan membership yang akan diberikan kepada member <span class="text-gold font-bold">{{ $izin->member?->nama ?? '[Dihapus]' }}</span>.</p>
-</header>
-
-<hr class="border-t border-dark-surface mb-8">
-
-@if ($errors->any())
-    <div class="bg-danger/20 text-danger text-sm font-semibold p-4 rounded-gym mb-6 border border-danger/30">
-        <p>Mohon periksa input Anda:</p>
-        <ul>
-            @foreach ($errors->all() as $error)
-                <li>- {{ $error }}</li>
-            @endforeach
-        </ul>
+<x-layouts.admin
+    :title="$pageTitle . ' – BETA GYM'"
+    :page-title="$pageTitle"
+    :page-subtitle="'Tentukan hari perpanjangan membership untuk ' . ($izin->member?->nama ?? '[Dihapus]')"
+>
+    {{-- LINK KEMBALI --}}
+    <div class="mb-6">
+        <a href="{{ route('admin.izin_latihan.index') }}"
+           class="inline-flex items-center text-gold-700 hover:text-gold-500 text-sm font-semibold transition-colors">
+            ← Kembali ke Daftar Pending
+        </a>
     </div>
-@endif
-@if (session('error'))
-    <div class="bg-danger/20 text-danger text-base font-semibold p-4 rounded-gym mb-6 border border-danger/30">
-        {{ session('error') }}
-    </div>
-@endif
 
-{{-- FORM UTAMA --}}
-<div class="bg-dark-card rounded-premium p-6 border-2 border-accent/50 shadow-accent max-w-4xl mx-auto">
-    
-    <h3 class="text-2xl font-heading text-accent mt-0 mb-6 border-b border-accent/30 pb-3 text-center">KONFIRMASI PERSETUJUAN IZIN</h3>
+    {{-- CARD UTAMA --}}
+    <x-ui.card
+        class="max-w-5xl mx-auto border-accent/40 shadow-card-strong bg-brand-cardSoft"
+        title="Konfirmasi Persetujuan Izin"
+        subtitle="Tentukan jumlah hari perpanjangan membership yang akan diberikan."
+    >
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {{-- KOLOM KIRI (50%): KONTEKS KEPUTUSAN INTRA-RINGKAS --}}
-        <div class="lg:col-span-1 space-y-4 p-4 bg-dark-surface rounded-gym border border-gold-800">
-            <h4 class="text-lg font-heading text-gold border-b border-gold-800/50 pb-2">KONTEKS KEPUTUSAN</h4>
-            
-            {{-- Hari Diajukan --}}
-            <div class="flex justify-between items-center border-b border-dark-surface pb-2">
-                <p class="text-sm font-semibold text-text-primary">Hari Diajukan:</p>
-                {{-- 🚨 PERBAIKAN: Mengganti text-primary menjadi text-gold untuk kontras tinggi --}}
-                <p class="text-xl text-gold font-bold">{{ $izin->jumlah_hari }} Hari</p> 
+            {{-- KOLOM KIRI: KONTEKS KEPUTUSAN --}}
+            <div class="space-y-4 p-4 rounded-xl bg-brand-surface-50 border border-brand-borderSoft">
+                <h4 class="text-sm font-semibold text-text-main uppercase tracking-wide border-b border-brand-borderSoft pb-2">
+                    Konteks Keputusan
+                </h4>
+
+                {{-- Hari diajukan --}}
+                <div class="flex justify-between items-center border-b border-brand-borderSoft pb-2">
+                    <p class="text-xs font-medium text-text-muted">Hari diajukan</p>
+                    <p class="text-xl font-semibold text-gold-700">
+                        {{ $izin->jumlah_hari }} Hari
+                    </p>
+                </div>
+
+                {{-- Akhir membership saat ini --}}
+                <div class="flex justify-between items-center border-b border-brand-borderSoft pb-2">
+                    <p class="text-xs font-medium text-text-muted">Akhir membership saat ini</p>
+                    <p class="text-sm font-semibold text-gold-700">
+                        @if($izin->member)
+                            {{ \Carbon\Carbon::parse($izin->member->tanggal_akhir)->translatedFormat('d F Y') }}
+                        @else
+                            <span class="text-danger">[Data Member Error]</span>
+                        @endif
+                    </p>
+                </div>
+
+                {{-- Periode izin --}}
+                <div class="flex justify-between items-center border-b border-brand-borderSoft pb-2">
+                    <p class="text-xs font-medium text-text-muted">Periode izin</p>
+                    <p class="text-xs md:text-sm text-text-main text-right">
+                        {{ \Carbon\Carbon::parse($izin->tanggal_mulai)->translatedFormat('d M') }}
+                        s/d
+                        {{ \Carbon\Carbon::parse($izin->tanggal_selesai)->translatedFormat('d F Y') }}
+                    </p>
+                </div>
+
+                {{-- Link ke detail lengkap --}}
+                <p class="text-center pt-2">
+                    <a href="{{ route('admin.izin_latihan.detail', $izin->id) }}"
+                       class="text-accent-500 hover:text-accent-600 text-xs font-semibold hover:underline">
+                        Lihat alasan & bukti lengkap →
+                    </a>
+                </p>
+
+                {{-- Ringkasan alasan member (scroll kecil) --}}
+                <div class="p-3 rounded-xl bg-brand-card border border-brand-borderSoft">
+                    <div class="text-[11px] font-semibold text-text-muted uppercase mb-1">
+                        Alasan pengajuan
+                    </div>
+                    <div class="text-sm text-text-main whitespace-pre-wrap max-h-28 overflow-y-auto">
+                        {{ $izin->alasan }}
+                    </div>
+                </div>
             </div>
-            
-            {{-- Akhir Membership Saat Ini --}}
-            <div class="flex justify-between items-center border-b border-dark-surface pb-2">
-                <p class="text-sm font-semibold text-text-primary">Akhir Membership Saat Ini:</p>
-                <p class="text-lg text-gold font-bold">{{ $izin->member ? \Carbon\Carbon::parse($izin->member->tanggal_akhir)->format('d F Y') : '[Data Member Error]' }}</p>
-            </div>
 
-            {{-- Periode Izin --}}
-            <div class="flex justify-between items-center border-b border-dark-surface pb-2">
-                <p class="text-sm font-semibold text-text-primary">Periode Izin:</p>
-                <p class="text-sm text-text-primary">{{ \Carbon\Carbon::parse($izin->tanggal_mulai)->format('d M') }} s/d {{ \Carbon\Carbon::parse($izin->tanggal_selesai)->format('d F Y') }}</p>
-            </div>
+            {{-- KOLOM KANAN: FORM PERSETUJUAN --}}
+            <div class="space-y-5">
+                {{-- ERROR VALIDASI (LIST) --}}
+                @if ($errors->any())
+                    <div class="rounded-xl border border-danger/40 bg-danger-soft/40 px-4 py-3 text-xs text-danger">
+                        <div class="font-semibold mb-1">Mohon periksa input Anda:</div>
+                        <ul class="list-disc list-inside space-y-0.5">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
 
-            <p class="text-center pt-2">
-                {{-- Tombol Referensi ke Detail Lengkap --}}
-                <a href="{{ route('admin.izin_latihan.detail', $izin->id) }}" class="text-accent hover:underline text-sm font-semibold">
-                    Lihat Alasan & Bukti Lengkap →
+                @if (session('error'))
+                    <div class="rounded-xl border border-danger/40 bg-danger-soft/40 px-4 py-3 text-xs text-danger font-semibold">
+                        {{ session('error') }}
+                    </div>
+                @endif
+
+                <form method="POST"
+                      action="{{ route('admin.izin_latihan.approve', $izin) }}"
+                      class="space-y-5">
+                    @csrf
+
+                    <h4 class="text-sm font-semibold text-text-main uppercase tracking-wide border-b border-brand-borderSoft pb-2">
+                        Proses Persetujuan
+                    </h4>
+
+                    {{-- INPUT HARI DISETUJUI --}}
+                    <div>
+                        <label for="approved_days"
+                               class="block text-xs font-semibold text-text-main mb-1">
+                            Jumlah hari perpanjangan disetujui
+                        </label>
+                        <input
+                            type="number"
+                            name="approved_days"
+                            id="approved_days"
+                            class="w-full rounded-xl border bg-brand-card text-2xl font-semibold text-text-main px-4 py-3
+                                   border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
+                                   @error('approved_days') border-danger focus:ring-danger @enderror"
+                            required
+                            min="0"
+                            max="{{ $izin->jumlah_hari }}"
+                            value="{{ old('approved_days', $izin->jumlah_hari) }}"
+                        >
+                        <p class="text-[11px] text-text-muted mt-1">
+                            Masukkan hari yang disetujui (0 – {{ $izin->jumlah_hari }} hari).
+                            Nilai 0 artinya izin disetujui tanpa perpanjangan membership.
+                        </p>
+                        @error('approved_days')
+                            <p class="text-[11px] text-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- CATATAN ADMIN --}}
+                    <div>
+                        <label for="keterangan_admin"
+                               class="block text-xs font-semibold text-text-main mb-1">
+                            Catatan Admin (opsional)
+                        </label>
+                        <textarea
+                            name="keterangan_admin"
+                            id="keterangan_admin"
+                            rows="4"
+                            class="w-full rounded-xl border bg-brand-card text-sm text-text-main px-3 py-2
+                                   border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
+                        >{{ old('keterangan_admin') }}</textarea>
+                        <p class="text-[11px] text-text-muted mt-1">
+                            Catatan ini akan tersimpan sebagai riwayat dan dapat dilihat di detail izin.
+                        </p>
+                    </div>
+
+                    {{-- TOMBOL SUBMIT --}}
+                    <x-ui.button-primary type="submit" class="w-full justify-center text-xs md:text-sm py-3">
+                        Proses Persetujuan & Perpanjang Membership
+                    </x-ui.button-primary>
+                </form>
+
+                {{-- TOMBOL KEMBALI --}}
+                <a href="{{ route('admin.izin_latihan.index') }}">
+                    <x-ui.button-secondary class="w-full justify-center text-xs md:text-sm py-3">
+                        Kembali ke Daftar Pending
+                    </x-ui.button-secondary>
                 </a>
-            </p>
-            
-            {{-- ALASAN PENGAJUAN MEMBER (Diperkecil) --}}
-            <div class="p-2 bg-dark-card rounded-gym border border-dark-surface">
-                <dt class="text-xs font-heading text-gold uppercase mb-1">Alasan Pengajuan</dt>
-                <dd class="text-sm text-text-secondary whitespace-pre-wrap max-h-20 overflow-y-auto">
-                    {{ $izin->alasan }}
-                </dd>
             </div>
         </div>
-
-        {{-- KOLOM KANAN (50%): FORMULIR AKSI (FOKUS UTAMA) --}}
-        <div class="lg:col-span-1 space-y-5">
-            
-            {{-- FORMULIR AKSI --}}
-            <form method="POST" action="{{ route('admin.izin_latihan.approve', $izin) }}" class="space-y-5">
-                @csrf
-                
-                <h4 class="text-lg font-heading text-gold border-b border-gold-800/50 pb-2">PROSES PERSETUJUAN</h4>
-
-                {{-- INPUT HARI YANG DISETUJUI --}}
-                <div>
-                    <label for="approved_days" class="block text-sm font-semibold text-text-primary mb-1">Jumlah Hari Perpanjangan Disetujui</label>
-                    <input type="number" name="approved_days" id="approved_days" 
-                           class="w-full bg-dark-card text-text-primary border border-gold-800 rounded-gym p-3 text-2xl focus:ring-gold focus:border-gold @error('approved_days') border-danger @enderror" 
-                           required min="0" max="{{ $izin->jumlah_hari }}" 
-                           value="{{ old('approved_days', $izin->jumlah_hari) }}">
-                    <p class="text-xs text-text-secondary mt-1">Masukkan hari yang disetujui (0 - {{ $izin->jumlah_hari }} hari).</p>
-                    @error('approved_days')
-                        <p class="text-danger text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                
-                {{-- CATATAN ADMIN --}}
-                <div>
-                    <label for="keterangan_admin" class="block text-sm font-semibold text-text-primary mb-1">Catatan Admin (Opsional)</label>
-                    <textarea name="keterangan_admin" id="keterangan_admin" rows="3" class="w-full bg-dark-card text-text-primary border border-gold-800 rounded-gym p-3">{{ old('keterangan_admin') }}</textarea>
-                </div>
-
-                <button type="submit" 
-                        class="w-full px-6 py-3 bg-success text-white font-bold uppercase rounded-gym hover:bg-success-600 border-2 border-success hover:border-success-400 transition duration-300 transform hover:scale-105">
-                    PROSES PERSETUJUAN & PERPANJANG MEMBERSHIP
-                </button>
-            </form>
-            
-            <hr class="border-t border-dark-surface my-4">
-
-            {{-- Tombol Kembali --}}
-            <a href="{{ route('admin.izin_latihan.index') }}" 
-                class="w-full block text-center px-6 py-3 bg-danger text-white font-bold uppercase rounded-gym hover:bg-danger-600 border-2 border-danger hover:border-danger-400 transition duration-300">
-                KEMBALI KE DAFTAR PENDING
-            </a>
-        </div>
-    </div>
-</div>
-
-@endsection
+    </x-ui.card>
+</x-layouts.admin>

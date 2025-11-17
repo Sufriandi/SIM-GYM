@@ -1,97 +1,149 @@
-@extends('layouts.admin')
+{{-- resources/views/admin/izin_latihan/history.blade.php --}}
 
-@section('content')
+<x-layouts.admin
+    :title="($pageTitle ?? 'Riwayat Pengajuan Izin Lengkap') . ' – BETA GYM'"
+    :page-title="$pageTitle ?? 'Riwayat Pengajuan Izin Lengkap'"
+    page-subtitle="Daftar izin yang telah disetujui atau ditolak."
+>
+    {{-- HEADER UTAMA --}}
+    <x-ui.section-header
+        :title="$pageTitle ?? 'Riwayat Pengajuan Izin Lengkap'"
+        subtitle="Daftar izin yang telah disetujui atau ditolak."
+    >
+        <a href="{{ route('admin.izin_latihan.index') }}">
+            <x-ui.button-secondary>
+                ← Kembali ke Permintaan Pending
+            </x-ui.button-secondary>
+        </a>
+    </x-ui.section-header>
 
-<header class="mb-8 md:flex justify-between items-center">
-    <div>
-        <h1 class="text-4xl font-heading text-gold mb-1">{{ $pageTitle ?? 'Riwayat Pengajuan Izin Lengkap' }}</h1>
-        <p class="text-text-secondary text-base">Daftar izin yang telah disetujui atau ditolak.</p>
-    </div>
-    <a href="{{ route('admin.izin_latihan.index') }}" class="px-4 py-2 bg-dark-surface text-gold font-bold uppercase rounded-gym border border-gold-800 hover:bg-gold-800 hover:text-primary transition duration-300">
-        ← Kembali ke Permintaan Pending
-    </a>
-</header>
-
-<hr class="border-t border-dark-surface mb-8">
-
-{{-- 🚨 PERBAIKAN: Hapus blok notifikasi HTML lama agar SweetAlert2 yang global berfungsi. --}}
-{{-- Blok @if (session('danger') || session('error')) sudah dihapus di sini --}}
-
-@if (session('success'))
-    {{-- Notifikasi success ini juga harusnya dihapus jika sudah ada di layout utama --}}
-    {{-- Tapi kita biarkan kosong di sini untuk saat ini --}}
-@endif
-
-<section>
-    <div class="bg-dark-card rounded-premium p-6 border-2 border-dark-surface shadow-dark hover:border-gold-800 transition duration-300">
-
+    {{-- CARD: RIWAYAT IZIN --}}
+    <x-ui.card
+        title="Riwayat Persetujuan & Penolakan"
+        subtitle="Semua izin latihan yang sudah diproses oleh Admin."
+        class="border-brand-borderSoft"
+    >
         <div class="overflow-x-auto custom-scrollbar">
-            <table class="w-full border-collapse">
+            <table class="w-full border-collapse min-w-[900px] text-sm">
                 <thead>
-                    <tr class="border-b-2 border-gold-800">
-                        <th class="px-2 py-3 text-left text-gold font-heading font-normal uppercase text-sm">Member</th>
-                        <th class="px-2 py-3 text-center text-gold font-heading font-normal uppercase text-sm">Diajukan (H)</th>
-                        <th class="px-2 py-3 text-center text-gold font-heading font-normal uppercase text-sm">Disetujui (H)</th>
-                        <th class="px-2 py-3 text-center text-gold font-heading font-normal uppercase text-sm">Status</th>
-                        <th class="px-2 py-3 text-left text-gold font-heading font-normal uppercase text-sm">Ket. Admin</th>
-                        <th class="px-2 py-3 text-center text-gold font-heading font-normal uppercase text-sm">Detail</th>
+                    <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
+                        <th class="px-2 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                            Member
+                        </th>
+                        <th class="px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                            Diajukan (H)
+                        </th>
+                        <th class="px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                            Disetujui (H)
+                        </th>
+                        <th class="px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                            Status
+                        </th>
+                        <th class="px-2 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                            Ket. Admin
+                        </th>
+                        <th class="px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                            Detail
+                        </th>
                     </tr>
                 </thead>
-                <tbody>
+
+                <tbody class="divide-y divide-brand-borderSoft/80">
                     @forelse ($riwayat_izin as $izin)
-                    <tr class="border-b border-dark-surface hover:bg-dark-surface/50 transition duration-150">
+                        <tr class="hover:bg-brand-surface-50 transition-colors duration-150">
+                            {{-- Member --}}
+                            <td class="px-2 py-3 text-left align-top">
+                                <div class="text-sm {{ $izin->member ? 'text-text-main' : 'text-danger italic' }}">
+                                    {{ $izin->member?->nama ?? '[Member Dihapus]' }}
+                                </div>
+                                @if ($izin->member)
+                                    <div class="text-[11px] text-text-muted">
+                                        ID Member: {{ $izin->member->kode_member ?? '-' }}
+                                    </div>
+                                @endif
+                            </td>
 
-                        <td class="px-2 py-3 text-left text-base {{ $izin->member ? 'text-text-primary' : 'text-danger italic' }}">
-                            {{ $izin->member?->nama ?? '[Member Dihapus]' }}
-                        </td>
+                            {{-- Diajukan (H) --}}
+                            <td class="px-2 py-3 text-center align-top">
+                                <span class="text-sm text-text-muted">
+                                    {{ $izin->jumlah_hari }} Hari
+                                </span>
+                            </td>
 
-                        <td class="px-2 py-3 text-center text-sm text-text-secondary">{{ $izin->jumlah_hari }} Hari</td>
+                            {{-- Disetujui (H) --}}
+                            <td class="px-2 py-3 text-center align-top">
+                                @if($izin->status === 'disetujui')
+                                    <span class="text-sm font-semibold text-success">
+                                        {{ $izin->durasi_izin_disetujui ?? 0 }} Hari
+                                    </span>
+                                @else
+                                    <span class="text-sm font-semibold text-danger">
+                                        0 Hari
+                                    </span>
+                                @endif
+                            </td>
 
-                        <td class="px-2 py-3 text-center text-base font-bold">
-                            @if($izin->status == 'disetujui')
-                                <span class="text-success">{{ $izin->durasi_izin_disetujui ?? 0 }} Hari</span>
-                            @else
-                                <span class="text-danger">0 Hari</span>
-                            @endif
-                        </td>
+                            {{-- Status --}}
+                            <td class="px-2 py-3 text-center align-top">
+                                @if($izin->status === 'disetujui')
+                                    <x-ui.badge variant="success">DISETUJUI</x-ui.badge>
+                                @else
+                                    <x-ui.badge variant="danger">DITOLAK</x-ui.badge>
+                                @endif
+                            </td>
 
-                        <td class="px-2 py-3 text-center text-sm">
-                            @if($izin->status == 'disetujui')
-                                <span class="bg-success/20 text-success font-semibold px-2 py-1 rounded-full text-xs uppercase">Disetujui</span>
-                            @else
-                                <span class="bg-danger/20 text-danger font-semibold px-2 py-1 rounded-full text-xs uppercase">Ditolak</span>
-                            @endif
-                        </td>
+                            {{-- Ket. Admin --}}
+                            <td class="px-2 py-3 align-top">
+                                <span class="text-sm text-text-muted">
+                                    @if ($izin->status !== 'pending')
+                                        {{ \Illuminate\Support\Str::limit($izin->keterangan_admin ?? 'Tidak ada keterangan.', 50) }}
+                                    @else
+                                        Menunggu diproses
+                                    @endif
+                                </span>
+                            </td>
 
-                        <td class="px-2 py-3 text-sm text-text-secondary">
-                            @if ($izin->status != 'pending')
-                                {{ Str::limit($izin->keterangan_admin ?? 'Tidak ada keterangan.', 30) }}
-                            @else
-                                Menunggu diproses
-                            @endif
-                        </td>
-
-                        <td class="px-2 py-3 text-center text-sm">
-                            <a href="{{ route('admin.izin_latihan.detail', $izin->id) }}" class="text-gold hover:underline">
-                                Lihat Detail →
-                            </a>
-                        </td>
-                    </tr>
+                            {{-- Detail --}}
+                            <td class="px-2 py-3 text-center align-top">
+                                <a href="{{ route('admin.izin_latihan.detail', $izin->id) }}"
+                                   class="text-gold-700 hover:text-gold-500 text-xs md:text-sm font-semibold hover:underline transition-colors">
+                                    Lihat Detail →
+                                </a>
+                            </td>
+                        </tr>
                     @empty
-                    <tr>
-                        <td colspan="6" class="p-6 text-center text-text-secondary italic">
-                            Belum ada riwayat persetujuan atau penolakan izin.
-                        </td>
-                    </tr>
+                        <tr>
+                            <td colspan="6" class="p-6 text-center text-text-muted italic">
+                                Belum ada riwayat persetujuan atau penolakan izin.
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
 
+        {{-- PAGINATION --}}
         <div class="mt-6">
             {{ $riwayat_izin->links() }}
         </div>
-    </div>
-</section>
+    </x-ui.card>
 
-@endsection
+    {{-- CUSTOM SCROLLBAR (konsisten dengan halaman index) --}}
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #F5E6D6; /* brand.shell */
+            border-radius: 999px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #D4A757; /* gold-500 */
+            border-radius: 999px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #A67C39; /* gold-700 */
+        }
+    </style>
+</x-layouts.admin>

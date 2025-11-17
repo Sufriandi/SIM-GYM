@@ -1,0 +1,211 @@
+{{-- resources/views/components/admin/sidebar.blade.php --}}
+@php
+    $current = request()->route()?->getName() ?? '';
+    $active = fn($prefix) => str($current)->startsWith($prefix);
+
+    // Menu states
+    $dashboardActive = $active('admin.dashboard');
+    $memberActive    = $active('admin.members');
+    $produkActive    = $active('admin.products');
+    $izinActive      = $active('admin.izin_latihan');
+    $absensiActive   = $active('admin.absensi');
+    $laporanActive   = $active('admin.reports');
+
+    // Submenu states
+    $kehadiranOpen   = $izinActive || $absensiActive;
+
+    // Notification counts (dapat diisi dari controller)
+    $izinPending = $izinPending ?? 0;
+@endphp
+
+<aside
+    class="hidden md:flex md:flex-col fixed inset-y-0 left-0 w-64 bg-brand-black text-brand-white shadow-2xl z-40"
+    x-data="{ openKehadiran: {{ $kehadiranOpen ? 'true' : 'false' }} }"
+    role="navigation"
+    aria-label="Admin Navigation">
+
+    {{-- Logo Section --}}
+    <div class="h-16 flex items-center gap-3 px-6 border-b border-brand-borderSoft/40 bg-gradient-to-r from-brand-gunmetal to-brand-black">
+        <img
+            src="{{ asset('images/Logo.png') }}"
+            alt="BETA GYM Logo"
+            class="h-11 w-11 object-contain rounded-2xl shadow-gold-glow"
+            loading="lazy">
+        <div class="leading-tight">
+            <div class="text-[11px] tracking-[0.25em] uppercase text-gold-300 font-semibold">BETA GYM</div>
+            <div class="text-[11px] text-brand-silver">Admin Panel</div>
+        </div>
+    </div>
+
+    {{-- Navigation Menu --}}
+    <nav class="flex-1 overflow-y-auto px-4 py-6 space-y-8 custom-scrollbar">
+
+        {{-- Dashboard --}}
+        <a
+            href="{{ route('admin.dashboard') }}"
+            class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
+                   {{ $dashboardActive
+                      ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20'
+                      : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
+            aria-current="{{ $dashboardActive ? 'page' : 'false' }}">
+            <i
+                data-lucide="layout-dashboard"
+                class="w-5 h-5 transition-transform duration-300 {{ $dashboardActive ? 'text-gold-300' : 'group-hover:scale-110' }}"></i>
+            <span>Dashboard</span>
+            @if($dashboardActive)
+                <div class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full animate-pulse"></div>
+            @endif
+        </a>
+
+        {{-- Manajemen Section --}}
+        <div class="space-y-2">
+            <div class="px-4 text-[11px] font-bold tracking-wider uppercase text-brand-silver/70 mb-3">
+                Manajemen
+            </div>
+
+            {{-- Manajemen Member --}}
+            <a
+                href="#"
+                class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
+                       {{ $memberActive
+                          ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20'
+                          : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
+                aria-current="{{ $memberActive ? 'page' : 'false' }}">
+                <i
+                    data-lucide="users"
+                    class="w-5 h-5 transition-transform duration-300 {{ $memberActive ? 'text-gold-300' : 'group-hover:scale-110' }}"></i>
+                <span>Manajemen Member</span>
+                @if($memberActive)
+                    <div class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full animate-pulse"></div>
+                @endif
+            </a>
+
+            {{-- Manajemen Produk --}}
+            <a
+                href="#"
+                class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
+                       {{ $produkActive
+                          ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20'
+                          : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
+                aria-current="{{ $produkActive ? 'page' : 'false' }}">
+                <i
+                    data-lucide="boxes"
+                    class="w-5 h-5 transition-transform duration-300 {{ $produkActive ? 'text-gold-300' : 'group-hover:scale-110' }}"></i>
+                <span>Manajemen Produk</span>
+                @if($produkActive)
+                    <div class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full animate-pulse"></div>
+                @endif
+            </a>
+        </div>
+
+        {{-- Kehadiran Section (Collapsible) --}}
+        <div class="space-y-2">
+            <div class="px-4 text-[11px] font-bold tracking-wider uppercase text-brand-silver/70 mb-3">
+                Kehadiran
+            </div>
+
+            {{-- Parent Menu Button --}}
+            <button
+                @click="openKehadiran = !openKehadiran"
+                type="button"
+                class="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
+                       {{ ($izinActive || $absensiActive)
+                          ? 'text-gold-300 bg-brand-gunmetal/40'
+                          : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/40' }}"
+                aria-expanded="openKehadiran"
+                aria-controls="kehadiran-submenu">
+                <i data-lucide="calendar-clock" class="w-5 h-5"></i>
+                <span>Kehadiran</span>
+                @if($izinPending > 0)
+                    <span
+                        class="ml-auto px-2 py-0.5 text-[10px] bg-accent-500 text-white rounded-full font-semibold"
+                        aria-label="{{ $izinPending }} izin pending">
+                        {{ $izinPending }}
+                    </span>
+                @endif
+                <i
+                    data-lucide="chevron-down"
+                    class="w-4 h-4 transition-transform duration-300 {{ $izinPending > 0 ? '' : 'ml-auto' }}"
+                    :class="{ 'rotate-180': openKehadiran }"></i>
+            </button>
+
+            {{-- Submenu --}}
+            <div
+                x-show="openKehadiran"
+                x-collapse
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 -translate-y-1"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                id="kehadiran-submenu"
+                class="space-y-1 mt-1"
+                role="menu">
+
+                {{-- Daftar Izin --}}
+                <a
+                    href="{{ route('admin.izin_latihan.index') }}"
+                    class="group flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all duration-200
+                           {{ $izinActive
+                              ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
+                              : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
+                    role="menuitem"
+                    aria-current="{{ $izinActive ? 'page' : 'false' }}">
+                    <i data-lucide="file-text" class="w-4 h-4 {{ $izinActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
+                    <span>Daftar Izin</span>
+                    @if($izinPending > 0)
+                        <span class="ml-auto text-[10px] text-accent-400 font-semibold">
+                            {{ $izinPending }}
+                        </span>
+                    @endif
+                </a>
+
+                {{-- Data Absensi --}}
+                <a
+                    href="#"
+                    class="group flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all duration-200
+                           {{ $absensiActive
+                              ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
+                              : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
+                    role="menuitem"
+                    aria-current="{{ $absensiActive ? 'page' : 'false' }}">
+                    <i data-lucide="check-square" class="w-4 h-4 {{ $absensiActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
+                    <span>Data Absensi</span>
+                </a>
+            </div>
+        </div>
+
+        {{-- Analitik Section --}}
+        <div class="space-y-2">
+            <div class="px-4 text-[11px] font-bold tracking-wider uppercase text-brand-silver/70 mb-3">
+                Analitik
+            </div>
+
+            {{-- Laporan & Statistik --}}
+            <a
+                href="#"
+                class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
+                       {{ $laporanActive
+                          ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20'
+                          : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
+                aria-current="{{ $laporanActive ? 'page' : 'false' }}">
+                <i
+                    data-lucide="bar-chart-3"
+                    class="w-5 h-5 transition-transform duration-300 {{ $laporanActive ? 'text-gold-300' : 'group-hover:scale-110' }}"></i>
+                <span>Laporan & Statistik</span>
+                @if($laporanActive)
+                    <div class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full animate-pulse"></div>
+                @endif
+            </a>
+        </div>
+    </nav>
+
+</aside>
+
+{{-- Alpine.js Load (jika belum ada di layout) --}}
+@once
+    @push('scripts')
+        <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    @endpush
+@endonce

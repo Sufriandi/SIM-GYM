@@ -193,7 +193,7 @@
         border-radius: 10px;
     }
 </style>
-// Skrip Dropdown Notifikasi
+
 <script>
     // Logika JS sederhana untuk toggle dropdown (Anda bisa ganti ini dengan Alpine.js atau Tailwind/Flowbite JS)
     document.getElementById('notification-toggle').addEventListener('click', function() {

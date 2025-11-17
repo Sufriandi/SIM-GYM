@@ -119,10 +119,8 @@ class IzinLatihanController extends Controller
                     'tanggal_akhir' => $newEndDate,
                 ]);
 
-                // 🚨 PERBAIKAN PESAN 1: Pesan Paling Singkat (Tanpa kutip dan tanpa tanggal)
                 $message = "Membership {$member->nama} diperpanjang {$approvedDays} hari.";
             } else {
-                // 🚨 PERBAIKAN PESAN 2: Pesan jika disetujui tapi 0 hari
                 $message = "Izin {$member->nama} disetujui. Tanpa perpanjangan membership (0 hari).";
             }
 
@@ -154,9 +152,8 @@ class IzinLatihanController extends Controller
             $izin->tanggal_persetujuan = now();
             $izin->save();
 
-            // 🚨 PERBAIKAN: Mengarahkan kembali ke halaman Index (Daftar Pending)
             return redirect()->route('admin.izin_latihan.index')
-                             ->with('danger', 'Izin member ' . ($izin->member?->nama ?? '') . ' telah DITOLAK.');
+                             ->with('error', 'Izin member ' . ($izin->member?->nama ?? '') . ' telah DITOLAK.');
         }
 
         // Jika statusnya bukan pending, tetap di index

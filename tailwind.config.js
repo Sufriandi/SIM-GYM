@@ -1,150 +1,329 @@
 // tailwind.config.js
 
-// ✅ PERBAIKAN KRITIS: Gunakan 'import' untuk mengimpor plugin. 
+import defaultTheme from "tailwindcss/defaultTheme";
+
+import aspectRatio from "@tailwindcss/aspect-ratio";
+import containerQueries from "@tailwindcss/container-queries";
 import forms from "@tailwindcss/forms";
+import typography from "@tailwindcss/typography";
+import animate from "tailwindcss-animate";
 
 /** @type {import('tailwindcss').Config} */
-// ✅ PERBAIKAN KRITIS: Gunakan 'export default'
-export default { 
-    // 1. CONTENT
+export default {
+    darkMode: "class",
+
     content: [
-        './resources/views/**/*.blade.php', 
-        './resources/js/**/*.js',
-        './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
+        "./resources/views/**/*.blade.php",
+        "./resources/js/**/*.js",
+        "./resources/js/**/*.vue",
+        "./resources/js/**/*.jsx",
+        "./resources/js/**/*.tsx",
+        "./vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php",
     ],
-    
-    // 2. THEME - BETA GYM COLOR SCHEME
+
     theme: {
+        container: {
+            center: true,
+            padding: "1.25rem",
+            screens: {
+                sm: "640px",
+                md: "768px",
+                lg: "1120px",
+                xl: "1280px",
+                "2xl": "1440px",
+            },
+        },
+
         extend: {
-            // A. WARNA TEMA - BOLD & POWERFUL
-            colors: {
-                // Primary Colors (Navy Dark)
-                'primary': {
-                    DEFAULT: '#16213e',
-                    50: '#e8eaf0',
-                    100: '#d1d5e1',
-                    200: '#a3abc3',
-                    300: '#7581a5',
-                    400: '#475787',
-                    500: '#16213e',
-                    600: '#121a32',
-                    700: '#0e1425',
-                    800: '#0a0e19',
-                    900: '#06070c',
-                },
-                
-                // Secondary Colors (Antique Gold)
-                'gold': {
-                    DEFAULT: '#c8a870',
-                    50: '#faf8f3',
-                    100: '#f5f1e7',
-                    200: '#ebe3cf',
-                    300: '#e0d5b7',
-                    400: '#d6c79f',
-                    500: '#c8a870',
-                    600: '#b8945a',
-                    700: '#9a7a4a',
-                    800: '#7c603a',
-                    900: '#5e462a',
-                },
-                
-                // Accent Colors (Red Vibrant)
-                'accent': {
-                    DEFAULT: '#e63946',
-                    50: '#fef2f2',
-                    100: '#fee2e2',
-                    200: '#fecaca',
-                    300: '#fca5a5',
-                    400: '#f87171',
-                    500: '#e63946',
-                    600: '#dc2626',
-                    700: '#b91c1c',
-                    800: '#991b1b',
-                    900: '#7f1d1d',
-                },
-                
-                // Background Colors
-                'dark-background': '#0a0e27',      // Main dark background
-                'dark-card': '#16213e',            // Card/Section background
-                'dark-surface': '#1a2847',         // Elevated surfaces
-                'light-background': '#f8f9fa',     // Light mode background
-                
-                // Text Colors
-                'text-primary': '#ecf0f1',         // Light text on dark
-                'text-secondary': '#a8b2d1',       // Muted text
-                'text-dark': '#1a1d29',            // Dark text on light
-                
-                // Status Colors
-                'success': '#2ecc71',              // Progress/Success
-                'warning': '#f39c12',              // Warning states
-                'danger': '#e63946',               // Error/Delete
-                'info': '#3498db',                 // Information
-            },
-
-            // B. TYPOGRAPHY
+            /* =======================================
+             *  FONT SYSTEM
+             * ======================================= */
             fontFamily: {
-                'heading': ['Oswald', 'Impact', 'sans-serif'],          // Bold headings
-                'body': ['Roboto', 'Helvetica Neue', 'sans-serif'],     // Body text
-                'display': ['Bebas Neue', 'Oswald', 'sans-serif'],      // Large display text
-            },
-            
-            fontSize: {
-                'display': ['3.5rem', { lineHeight: '1', fontWeight: '900' }],
-                'hero': ['2.5rem', { lineHeight: '1.1', fontWeight: '800' }],
+                sans: ["Roboto", ...defaultTheme.fontFamily.sans],
+                heading: ["Oswald", "Impact", "system-ui", "sans-serif"],
+                display: ["Bebas Neue", "Oswald", "system-ui", "sans-serif"],
             },
 
-            // C. SHADOWS
-            boxShadow: {
-                'premium': '0 0 20px rgba(200, 168, 112, 0.3)',        // Gold glow
-                'gold': '0 4px 20px rgba(200, 168, 112, 0.4)',         // Strong gold
-                'gold-lg': '0 10px 40px rgba(200, 168, 112, 0.5)',     // Extra gold
-                'accent': '0 4px 20px rgba(230, 57, 70, 0.3)',         // Red glow
-                'dark': '0 4px 20px rgba(0, 0, 0, 0.5)',               // Dark depth
-                'inner-gold': 'inset 0 2px 10px rgba(200, 168, 112, 0.2)', // Inner glow
+            fontSize: {
+                display: ["3.5rem", { lineHeight: "1", fontWeight: "900" }],
+                hero: ["2.5rem", { lineHeight: "1.1", fontWeight: "800" }],
             },
-            
-            // D. BORDER RADIUS
-            borderRadius: {
-                'gym': '0.5rem',                   // Standard gym elements
-                'premium': '1rem',                 // Premium cards
-            },
-            
-            // E. GRADIENTS
-            backgroundImage: {
-                'gold-gradient': 'linear-gradient(135deg, #c8a870 0%, #9a7a4a 100%)',
-                'dark-gradient': 'linear-gradient(180deg, #0a0e27 0%, #16213e 100%)',
-                'hero-gradient': 'linear-gradient(135deg, #16213e 0%, #0a0e27 50%, #16213e 100%)',
-                'accent-gradient': 'linear-gradient(135deg, #e63946 0%, #b91c1c 100%)',
-                'progress-gradient': 'linear-gradient(90deg, #c8a870 0%, #e63946 100%)',
-            },
-            
-            // F. SPACING (untuk consistent spacing)
-            spacing: {
-                '18': '4.5rem',
-                '88': '22rem',
-                '128': '32rem',
-            },
-            
-            // G. ANIMATIONS
-            keyframes: {
-                'pulse-gold': {
-                    '0%, 100%': { opacity: '1' },
-                    '50%': { opacity: '0.7' },
+
+            /* =======================================
+             *  COLOR SYSTEM – BETA GYM
+             * ======================================= */
+            colors: {
+                /* --- Brand Gold / Bronze --- */
+                gold: {
+                    50: "#FFF8E7",
+                    100: "#FBEECF",
+                    200: "#F3D79C",
+                    300: "#EAC176",
+                    400: "#E1AA5F",
+                    500: "#D4A757", // Main gold
+                    600: "#BE8C3E",
+                    700: "#A67C39", // Dark bronze
+                    800: "#88602E",
+                    900: "#6B4B24",
+                    DEFAULT: "#D4A757",
                 },
-                'glow': {
-                    '0%, 100%': { boxShadow: '0 0 10px rgba(200, 168, 112, 0.3)' },
-                    '50%': { boxShadow: '0 0 20px rgba(200, 168, 112, 0.6)' },
+
+                /* --- Brand Neutrals (warm) --- */
+                brand: {
+                    // background halaman (lebih hangat, tapi tetap lembut)
+                    bg: "#FCFCFA", // hampir putih tapi warm
+                    // lapisan “shell” umum (section besar, panel besar)
+                    shell: "#F5E6D6",
+                    // nav/footer/area kontras
+                    nav: "#21160F", // untuk navbar / top bar gelap
+                    sidebar: "#261810", // untuk sidebar gelap
+                    footer: "#1B130D",
+
+                    // card / panel
+                    card: "#F8F2E7",
+                    cardSoft: "#FBF7EE",
+
+                    // surface netral (bisa untuk hover / striping tabel)
+                    surface: {
+                        50: "#FDFBF7",
+                        100: "#F6EFE0",
+                        200: "#ECE0C7",
+                    },
+
+                    // border
+                    borderSoft: "#E3D5C5",
+                    borderStrong: "#A67C39",
+
+                    // text
+                    text: "#201911",
+                    textSoft: "#6C5A46",
+
+                    // utilitas
+                    white: "#FFFFFF",
+                    black: "#0C0C0C",
+                    gunmetal: "#2C2C2C",
+                    steel: "#4B4B4B",
+                    silver: "#C8C8C8",
+                },
+
+                /* --- Accent Red (CTA, status penting) --- */
+                accent: {
+                    50: "#FFF5F5",
+                    100: "#FEE4E4",
+                    200: "#FECDCD",
+                    300: "#FDA4A4",
+                    400: "#F97373",
+                    500: "#C73527", // Main accent red
+                    600: "#A92A20",
+                    700: "#8E261D",
+                    800: "#6E1C16",
+                    900: "#4C1510",
+                    DEFAULT: "#C73527",
+                },
+
+                /* --- Semantik & utilitas --- */
+                primary: {
+                    DEFAULT: "#D4A757", // gold
+                    dark: "#A67C39",
+                    soft: "#F8F2E7",
+                },
+                secondary: {
+                    DEFAULT: "#2C2C2C", // gunmetal
+                },
+                success: {
+                    DEFAULT: "#22C55E",
+                    soft: "#DCFCE7",
+                },
+                warning: {
+                    DEFAULT: "#EAB308",
+                    soft: "#FEF9C3",
+                },
+                danger: {
+                    DEFAULT: "#C73527",
+                    soft: "#FEE2E2",
+                },
+                info: {
+                    DEFAULT: "#0EA5E9",
+                    soft: "#E0F2FE",
+                },
+
+                /* --- Netral umum (kalau butuh) --- */
+                neutral: {
+                    50: "#F9FAFB",
+                    100: "#F3F4F6",
+                    200: "#E5E7EB",
+                    300: "#D1D5DB",
+                    400: "#9CA3AF",
+                    500: "#6B7280",
+                    600: "#4B5563",
+                    700: "#374151",
+                    800: "#1F2933",
+                    900: "#111827",
+                },
+
+                /* --- Text helper alias --- */
+                "text-main": "#201911",
+                "text-muted": "#6C5A46",
+            },
+
+            /* =======================================
+             *  SHADOW, RADIUS, BORDERS
+             * ======================================= */
+            boxShadow: {
+                // untuk navbar / header
+                header: "0 4px 18px rgba(0,0,0,0.06)",
+
+                // card biasa
+                card: "0 10px 30px rgba(0,0,0,0.06)",
+
+                // card penting / highlight (contoh paket membership utama)
+                "card-strong": "0 18px 45px rgba(0,0,0,0.12)",
+
+                // sidebar / flyout
+                sidebar: "0 0 40px rgba(0,0,0,0.35)",
+
+                // tombol utama
+                "btn-primary": "0 10px 25px rgba(199,53,39,0.35)",
+                "btn-primary-hover": "0 16px 40px rgba(199,53,39,0.55)",
+
+                // tombol sekunder
+                "btn-soft": "0 8px 20px rgba(0,0,0,0.12)",
+
+                // efek glow gold (untuk fokus atau highlight)
+                "gold-glow": "0 0 25px rgba(212,167,87,0.45)",
+            },
+
+            borderRadius: {
+                lg: "0.75rem",
+                xl: "1rem",
+                "2xl": "1.3rem",
+                "3xl": "1.8rem",
+                pill: "999px",
+            },
+
+            borderWidth: {
+                3: "3px",
+            },
+
+            ringColor: {
+                primary: "#D4A757",
+                accent: "#C73527",
+                danger: "#C73527",
+            },
+
+            /* =======================================
+             *  BACKGROUND & GRADIENT VARIANTS
+             * ======================================= */
+            backgroundImage: {
+                // gradasi emas utama (untuk badge / hero text)
+                "brand-gold":
+                    "linear-gradient(135deg, #A67C39 0%, #D4A757 40%, #F3D79C 100%)",
+
+                // gradasi emas soft (untuk card premium / strip hero)
+                "brand-gold-soft":
+                    "linear-gradient(145deg, #FBF7EE 0%, #F3D79C 45%, #FBEECF 100%)",
+
+                // gradasi gelap ber-emas (cocok untuk footer / header hero)
+                "brand-dark":
+                    "linear-gradient(145deg, #000000 0%, #0C0C0C 45%, #2C2C2C 100%)",
+
+                // radial shell di atas background (bisa dipakai di <section>)
+                "brand-shell":
+                    "radial-gradient(circle at top, rgba(212,167,87,0.18), transparent 60%)",
+
+                // gradasi “ember” merah+gold (untuk CTA besar / strip promo)
+                "brand-ember":
+                    "linear-gradient(135deg, #8E261D 0%, #C73527 35%, #D4A757 100%)",
+
+                // gradasi clean untuk hero visitor (beige lembut → putih)
+                "brand-sand":
+                    "linear-gradient(135deg, #F8F2E7 0%, #FCFCFA 40%, #FFFFFF 100%)",
+
+                // gradasi diagonal halus (bisa untuk card / background kecil)
+                "brand-diagonal-light":
+                    "linear-gradient(120deg, #FBF7EE 0%, #F4E6D4 45%, #FBF7EE 100%)",
+
+                // gradasi overlay gelap untuk banner foto / gambar
+                "brand-overlay-dark":
+                    "linear-gradient(180deg, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)",
+
+                // radial spotlight (bisa untuk animasi hover card)
+                "brand-radial-spot":
+                    "radial-gradient(circle at 20% 0%, rgba(212,167,87,0.32), transparent 55%)",
+
+                // gradasi accent merah (untuk tombol / badge)
+                "accent-gradient":
+                    "linear-gradient(135deg, #C73527 0%, #8E261D 100%)",
+
+                // gradasi accent “fire” (untuk warn animasi background)
+                "accent-fire":
+                    "linear-gradient(120deg, #6E1C16 0%, #C73527 40%, #F97373 100%)",
+            },
+
+            /* =======================================
+             *  TRANSITIONS & HOVER FEEL
+             * ======================================= */
+            transitionDuration: {
+                fast: "150ms",
+                normal: "220ms",
+                slow: "350ms",
+            },
+            transitionTimingFunction: {
+                smooth: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+            },
+
+            scale: {
+                98: "0.98",
+                101: "1.01",
+                102: "1.02",
+            },
+
+            opacity: {
+                15: "0.15",
+                35: "0.35",
+            },
+
+            /* =======================================
+             *  ANIMATIONS (plus animate plugin)
+             * ======================================= */
+            keyframes: {
+                "pulse-gold": {
+                    "0%, 100%": { opacity: "1", transform: "translateY(0)" },
+                    "50%": { opacity: "0.85", transform: "translateY(-1px)" },
+                },
+                "soft-pop": {
+                    "0%": {
+                        transform: "scale(0.96)",
+                        opacity: "0",
+                    },
+                    "100%": {
+                        transform: "scale(1)",
+                        opacity: "1",
+                    },
+                },
+                // bisa dipakai untuk card yang “hidup” pelan
+                "gradient-move": {
+                    "0%": { backgroundPosition: "0% 50%" },
+                    "50%": { backgroundPosition: "100% 50%" },
+                    "100%": { backgroundPosition: "0% 50%" },
                 },
             },
             animation: {
-                'pulse-gold': 'pulse-gold 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                'glow': 'glow 2s ease-in-out infinite',
+                "pulse-gold": "pulse-gold 1.8s smooth infinite",
+                "soft-pop": "soft-pop 200ms ease-out",
+                "gradient-move": "gradient-move 6s ease-in-out infinite",
             },
         },
     },
-    
-    // 3. PLUGINS
+
+    /* =======================================
+     *  PLUGINS
+     * ======================================= */
     plugins: [
-        forms,
+        forms, // styling form
+        typography, // prose / konten teks panjang
+        aspectRatio, // rasio gambar/video
+        containerQueries, // responsive by container
+        animate, // util animasi tambahan
     ],
 };
