@@ -3,5 +3,44 @@
 @tailwind utilities;
 
 .swal2-container.swal2-top-end {
-    margin-top: 65px !important; 
+    margin-top: 65px !important;
+}
+
+/* === BETA GYM GOLD SCROLLBAR (GLOBAL) === */
+
+/* Firefox */
+* {
+    scrollbar-width: thin; /* atau 'auto' kalau mau agak besar */
+    scrollbar-color: #d4a757 #111111;
+}
+
+/* Chrome, Edge, Safari */
+*::-webkit-scrollbar {
+    width: 12px;        /* 💡 perbesar dari 8px jadi 12px */
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: #111111;    /* sama seperti sidebar hitam */
+}
+
+*::-webkit-scrollbar-thumb {
+    background: #d4a757;
+    border-radius: 999px;
+    border: 2px solid #111111;   /* bikin thumb sedikit lebih “tebal” */
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: #c08f3e;
+}
+
+/* Optional: kalau kamu pakai class custom-scrollbar di Blade,
+   kita samakan saja dengan global supaya tidak beda-beda */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 12px;
+    height: 10px;
+}
+
+[x-cloak] {
+    display: none !important;
 }

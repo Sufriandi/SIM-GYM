@@ -1,4 +1,3 @@
-{{-- resources/views/components/admin/sidebar.blade.php --}}
 @php
     $current = request()->route()?->getName() ?? '';
     $active = fn($prefix) => str($current)->startsWith($prefix);
@@ -6,13 +5,26 @@
     // Menu states
     $dashboardActive = $active('admin.dashboard');
     $memberActive    = $active('admin.members');
+    
+    $penjualanActive    = $active('admin.penjualan_produk'); 
+    $produkMasterActive = $active('admin.produk'); 
+    $stokActive         = $active('admin.stok_produk');
+    
     $produkActive    = $active('admin.products');
+    
+    $coachActive     = $active('admin.coaches');
+    
     $izinActive      = $active('admin.izin_latihan');
     $absensiActive   = $active('admin.absensi');
     $laporanActive   = $active('admin.reports');
 
+
     // Submenu states
-    $kehadiranOpen   = $izinActive || $absensiActive;
+    $kehadiranOpen      = $izinActive || $absensiActive;
+    
+    // --- STATE COLLAPSIBLE UNTUK PRODUK ---
+    $produkManagementOpen = $penjualanActive || $produkMasterActive || $stokActive;
+    // --------------------------------------
 
     // Notification counts (dapat diisi dari controller)
     $izinPending = $izinPending ?? 0;
@@ -20,7 +32,11 @@
 
 <aside
     class="hidden md:flex md:flex-col fixed inset-y-0 left-0 w-64 bg-brand-black text-brand-white shadow-2xl z-40"
-    x-data="{ openKehadiran: {{ $kehadiranOpen ? 'true' : 'false' }} }"
+    x-data="{ 
+        openKehadiran: {{ $kehadiranOpen ? 'true' : 'false' }},
+        // VARIABEL UNTUK MENGONTROL MENU PRODUK
+        openProduk: {{ $produkManagementOpen ? 'true' : 'false' }} 
+    }" 
     role="navigation"
     aria-label="Admin Navigation">
 
@@ -44,7 +60,7 @@
         <a
             href="{{ route('admin.dashboard') }}"
             class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
-                   {{ $dashboardActive
+                    {{ $dashboardActive
                       ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20'
                       : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
             aria-current="{{ $dashboardActive ? 'page' : 'false' }}">
@@ -65,37 +81,113 @@
 
             {{-- Manajemen Member --}}
             <a
-                href="#"
+                href="#" 
                 class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
-                       {{ $memberActive
+                        {{ $memberActive
                           ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20'
                           : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
                 aria-current="{{ $memberActive ? 'page' : 'false' }}">
                 <i
                     data-lucide="users"
                     class="w-5 h-5 transition-transform duration-300 {{ $memberActive ? 'text-gold-300' : 'group-hover:scale-110' }}"></i>
-                <span>Manajemen Member</span>
+                <span>Kelola Member</span>
                 @if($memberActive)
                     <div class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full animate-pulse"></div>
                 @endif
             </a>
 
-            {{-- Manajemen Produk --}}
-            <a
-                href="#"
-                class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
-                       {{ $produkActive
-                          ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20'
-                          : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
-                aria-current="{{ $produkActive ? 'page' : 'false' }}">
+            {{-- Manajemen Produk (Parent Menu Collapsible, FIX TATA LETAK) --}}
+            <button
+                @click="openProduk = !openProduk"
+                type="button"
+                class="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
+                        {{ ($produkManagementOpen) 
+                          ? 'text-gold-300 bg-brand-gunmetal/40' 
+                          : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/40' }}"
+                aria-expanded="openProduk"
+                aria-controls="produk-submenu">
+                <i data-lucide="boxes" class="w-5 h-5"></i>
+                <span>Kelola Produk</span>
                 <i
-                    data-lucide="boxes"
-                    class="w-5 h-5 transition-transform duration-300 {{ $produkActive ? 'text-gold-300' : 'group-hover:scale-110' }}"></i>
-                <span>Manajemen Produk</span>
-                @if($produkActive)
+                    data-lucide="chevron-down"
+                    class="w-4 h-4 ml-auto transition-transform duration-300"
+                    :class="{ 'rotate-180': openProduk }"></i>
+            </button>
+            
+            {{-- Submenu Produk --}}
+            <div
+                x-show="openProduk"
+                x-collapse
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 -translate-y-1"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                id="produk-submenu"
+                class="space-y-1 mt-1 pl-4"
+                role="menu">
+                
+                {{-- Penjualan Produk (Sinkron ke admin.penjualan_produk.index) --}}
+                <a
+                    href="{{ route('admin.penjualan_produk.index') }}"
+                    class="group flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
+                            {{ $penjualanActive
+                              ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
+                              : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
+                    role="menuitem"
+                    aria-current="{{ $penjualanActive ? 'page' : 'false' }}">
+                    <i data-lucide="shopping-cart" class="w-4 h-4 {{ $penjualanActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
+                    <span>Penjualan Produk</span>
+                </a>
+
+                {{-- Produk (Sinkron ke admin.produk.index) --}}
+                <a
+                    href="{{ route('admin.produk.index') }}" 
+                    class="group flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
+                            {{ $produkMasterActive
+                              ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
+                              : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
+                    role="menuitem"
+                    aria-current="{{ $produkMasterActive ? 'page' : 'false' }}">
+                    <i data-lucide="package" class="w-4 h-4 {{ $produkMasterActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
+                    <span>Produk</span>
+                </a>
+                
+                {{-- Stok Produk (Placeholder) --}}
+                <a
+                    href="#" {{-- Ganti dengan route('admin.stok_produk.index') ketika Controller sudah dibuat --}}
+                    class="group flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
+                            {{ $stokActive
+                              ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
+                              : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
+                    role="menuitem"
+                    aria-current="{{ $stokActive ? 'page' : 'false' }}">
+                    <i data-lucide="box" class="w-4 h-4 {{ $stokActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
+                    <span>Stok Produk</span>
+                </a>
+            </div>
+            {{-- End Submenu Produk --}}
+                    
+            {{-- Manajemen Coach --}}
+                {{-- Manajemen Coach --}}
+            <a
+                href="{{ route('admin.coaches.index') }}"
+                class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
+                    {{ $coachActive
+                        ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20'
+                        : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
+                aria-current="{{ $coachActive ? 'page' : 'false' }}">
+                <i
+                    data-lucide="user-check"
+                    class="w-5 h-5 transition-transform duration-300 {{ $coachActive ? 'text-gold-300' : 'group-hover:scale-110' }}"></i>
+                <span>Manajemen Coach</span>
+                <span>Kelola Coach</span>
+                @if($coachActive)
                     <div class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full animate-pulse"></div>
                 @endif
             </a>
+
         </div>
 
         {{-- Kehadiran Section (Collapsible) --}}
@@ -104,12 +196,12 @@
                 Kehadiran
             </div>
 
-            {{-- Parent Menu Button --}}
+            {{-- Parent Menu Button (Referensi Anda) --}}
             <button
                 @click="openKehadiran = !openKehadiran"
                 type="button"
                 class="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
-                       {{ ($izinActive || $absensiActive)
+                        {{ ($izinActive || $absensiActive)
                           ? 'text-gold-300 bg-brand-gunmetal/40'
                           : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/40' }}"
                 aria-expanded="openKehadiran"
@@ -129,7 +221,7 @@
                     :class="{ 'rotate-180': openKehadiran }"></i>
             </button>
 
-            {{-- Submenu --}}
+            {{-- Submenu Kehadiran --}}
             <div
                 x-show="openKehadiran"
                 x-collapse
@@ -147,7 +239,7 @@
                 <a
                     href="{{ route('admin.izin_latihan.index') }}"
                     class="group flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all duration-200
-                           {{ $izinActive
+                            {{ $izinActive
                               ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
                               : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
                     role="menuitem"
@@ -165,7 +257,7 @@
                 <a
                     href="#"
                     class="group flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all duration-200
-                           {{ $absensiActive
+                            {{ $absensiActive
                               ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
                               : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
                     role="menuitem"
@@ -186,7 +278,7 @@
             <a
                 href="#"
                 class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
-                       {{ $laporanActive
+                        {{ $laporanActive
                           ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20'
                           : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
                 aria-current="{{ $laporanActive ? 'page' : 'false' }}">
