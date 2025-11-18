@@ -1,97 +1,143 @@
-@extends('layouts.member')
+{{-- resources/views/member/izin_latihan/create.blade.php --}}
 
-@section('content')
+<x-layouts.member
+    pageTitle="Ajukan Izin Latihan"
+    pageSubtitle="Ajukan izin latihan jika Anda berhalangan hadir."
+>
+    <div class="space-y-6">
 
-<div class="max-w-4xl mx-auto">
-    <header class="mb-8">
-        <h1 class="text-4xl font-heading text-gold mb-1">{{ $pageTitle ?? 'Formulir Izin Latihan' }}</h1>
-        <p class="text-text-secondary text-base">Ajukan izin jika Anda tidak dapat berlatih. (Pastikan jujur!)</p>
+        {{-- HEADER + BACK --}}
+        <x-ui.section-header
+            title="Ajukan Izin Latihan"
+            subtitle="Isi form berikut dengan jujur dan lengkap."
+        />
 
-        <div class="mt-4">
-             <a href="{{ route('member.izin_latihan.index') }}"
-               class="inline-flex items-center text-gold hover:text-gold-400 transition duration-200 font-semibold">
-                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                     <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-                 </svg>
-                 Kembali ke Riwayat Izin
-             </a>
+        <div class="mb-4">
+            <x-ui.back-button
+                href="{{ route('member.izin_latihan.index') }}"
+                text="Kembali ke Daftar Izin"
+            />
         </div>
-    </header>
 
-    <hr class="border-t border-dark-surface mb-8">
+        {{-- ERROR SUMMARY --}}
+        @if($errors->any())
+            <x-ui.toast type="danger" class="mb-4">
+                <div class="text-sm font-semibold mb-1">Mohon periksa kembali input Anda.</div>
+                <ul class="text-xs list-disc list-inside space-y-0.5">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </x-ui.toast>
+        @endif
 
-    {{-- Tampilkan Error Validasi --}}
-    @if ($errors->any())
-        <div class="bg-danger/20 text-danger text-base font-semibold p-4 rounded-gym mb-6 border border-danger/30">
-            <ul class="list-disc pl-5">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
+        {{-- FORM CARD --}}
+        <x-ui.card title="Formulir Pengajuan Izin" subtitle="Tanggal, durasi, dan alasan izin akan digunakan sebagai dasar penilaian Admin.">
+            <form method="POST"
+                  action="{{ route('member.izin_latihan.store') }}"
+                  enctype="multipart/form-data"
+                  class="space-y-5">
+                @csrf
 
-    <div class="bg-dark-card rounded-premium p-6 lg:p-8 border-2 border-dark-surface shadow-dark">
+                {{-- Periode Tanggal --}}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <x-ui.label for="tanggal_mulai">Tanggal Mulai Izin</x-ui.label>
+                        <input
+                            type="date"
+                            id="tanggal_mulai"
+                            name="tanggal_mulai"
+                            value="{{ old('tanggal_mulai') }}"
+                            class="mt-1 w-full rounded-xl border border-brand-borderSoft bg-brand-card text-sm text-text-main px-3 py-2.5 focus:ring-2 focus:ring-gold-500/60 focus:border-gold-500"
+                            required
+                        >
+                        @error('tanggal_mulai')
+                            <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
 
-        <form method="POST" action="{{ route('member.izin_latihan.store') }}" enctype="multipart/form-data">
-            @csrf
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {{-- Tanggal Mulai --}}
-                <div>
-                    <label for="tanggal_mulai" class="block font-heading text-gold uppercase text-sm mb-2">Tanggal Mulai Izin</label>
-                    <input type="date"
-                           id="tanggal_mulai"
-                           name="tanggal_mulai"
-                           value="{{ old('tanggal_mulai') }}"
-                           class="w-full bg-dark-surface border border-gold-900 rounded-gym px-4 py-3 text-text-primary placeholder-text-secondary focus:outline-none focus:border-gold transition duration-200">
+                    <div>
+                        <x-ui.label for="tanggal_selesai">Tanggal Selesai Izin</x-ui.label>
+                        <input
+                            type="date"
+                            id="tanggal_selesai"
+                            name="tanggal_selesai"
+                            value="{{ old('tanggal_selesai') }}"
+                            class="mt-1 w-full rounded-xl border border-brand-borderSoft bg-brand-card text-sm text-text-main px-3 py-2.5 focus:ring-2 focus:ring-gold-500/60 focus:border-gold-500"
+                            required
+                        >
+                        @error('tanggal_selesai')
+                            <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
 
-                {{-- Tanggal Selesai --}}
+                {{-- Durasi Otomatis (opsional, bisa diisi via controller juga) --}}
                 <div>
-                    <label for="tanggal_selesai" class="block font-heading text-gold uppercase text-sm mb-2">Tanggal Selesai Izin</label>
-                    <input type="date"
-                           id="tanggal_selesai"
-                           name="tanggal_selesai"
-                           value="{{ old('tanggal_selesai') }}"
-                           class="w-full bg-dark-surface border border-gold-900 rounded-gym px-4 py-3 text-text-primary placeholder-text-secondary focus:outline-none focus:border-gold transition duration-200">
+                    <x-ui.label for="jumlah_hari">Durasi Izin (Hari)</x-ui.label>
+                    <input
+                        type="number"
+                        id="jumlah_hari"
+                        name="jumlah_hari"
+                        min="1"
+                        value="{{ old('jumlah_hari') }}"
+                        class="mt-1 w-full rounded-xl border border-brand-borderSoft bg-brand-card text-sm text-text-main px-3 py-2.5 focus:ring-2 focus:ring-gold-500/60 focus:border-gold-500"
+                        placeholder="Contoh: 3"
+                        required
+                    >
+                    <p class="text-[11px] text-text-muted mt-1">
+                        Opsional bisa dihitung otomatis oleh sistem di controller; untuk sekarang, isi sesuai jumlah hari izin.
+                    </p>
+                    @error('jumlah_hari')
+                        <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
-            </div>
 
-            {{-- Alasan --}}
-            <div class="mt-6">
-                <label for="alasan" class="block font-heading text-gold uppercase text-sm mb-2">Alasan Izin</label>
-                <textarea id="alasan"
-                          name="alasan"
-                          rows="5"
-                          placeholder="Tuliskan alasan lengkap Anda (Contoh: Sakit, Tugas Luar Kota, dll...)"
-                          class="w-full bg-dark-surface border border-gold-900 rounded-gym px-4 py-3 text-text-primary placeholder-text-secondary focus:outline-none focus:border-gold transition duration-200">{{ old('alasan') }}</textarea>
-            </div>
+                {{-- Alasan --}}
+                <div>
+                    <x-ui.label for="alasan">Alasan Pengajuan Izin</x-ui.label>
+                    <textarea
+                        id="alasan"
+                        name="alasan"
+                        rows="4"
+                        class="mt-1 w-full rounded-xl border border-brand-borderSoft bg-brand-card text-sm text-text-main px-3 py-2.5 focus:ring-2 focus:ring-gold-500/60 focus:border-gold-500"
+                        placeholder="Tuliskan alasan Anda tidak dapat mengikuti latihan pada periode tersebut."
+                        required
+                    >{{ old('alasan') }}</textarea>
+                    @error('alasan')
+                        <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
 
-            {{-- Upload Bukti --}}
-            <div class="mt-6">
-                <label for="bukti_alasan" class="block font-heading text-gold uppercase text-sm mb-2">Lampirkan Bukti (Opsional)</label>
-                <p class="text-text-secondary text-xs mb-2">Lampirkan bukti seperti surat dokter atau tiket. (Format: jpg, png, pdf. Maks: 2MB)</p>
-                <input type="file"
-                       id="bukti_alasan"
-                       name="bukti_alasan"
-                       class="w-full bg-dark-surface border border-gold-900 rounded-gym px-4 py-3 text-text-secondary
-                               file:mr-4 file:py-2 file:px-4
-                               file:rounded-gym file:border-0
-                               file:bg-gold file:text-primary-900 file:font-semibold
-                               hover:file:bg-gold-600 transition duration-200">
-            </div>
+                {{-- Bukti (opsional) --}}
+                <div>
+                    <x-ui.label for="bukti_alasan">Lampiran Bukti (opsional)</x-ui.label>
+                    <input
+                        type="file"
+                        id="bukti_alasan"
+                        name="bukti_alasan"
+                        accept="image/*"
+                        class="mt-1 block w-full text-sm text-text-main file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-gold-500/90 file:text-brand-black hover:file:bg-gold-500/80"
+                    >
+                    <p class="text-[11px] text-text-muted mt-1">
+                        Contoh: surat keterangan dokter, tiket perjalanan, atau bukti lain (format gambar, maksimal sesuai aturan server).
+                    </p>
+                    @error('bukti_alasan')
+                        <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
 
-            {{-- Tombol Submit --}}
-            <div class="mt-8 text-right">
-                <button type="submit"
-                        class="px-8 py-3 bg-accent text-white font-bold uppercase rounded-gym hover:bg-accent-600 border-2 border-accent hover:border-accent-400 transition duration-300 transform hover:scale-105 shadow-accent">
-                    Kirim Pengajuan Izin
-                </button>
-            </div>
+                <div class="pt-3 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                    <p class="text-[11px] text-text-muted max-w-md">
+                        Dengan mengajukan izin, Anda menyatakan bahwa data yang Anda kirimkan adalah benar dan dapat dipertanggungjawabkan.
+                    </p>
 
-        </form>
+                    <x-ui.button-primary type="submit" class="justify-center sm:w-auto w-full">
+                        Kirim Pengajuan
+                        <i data-lucide="send" class="w-4 h-4 ml-2"></i>
+                    </x-ui.button-primary>
+                </div>
+            </form>
+        </x-ui.card>
     </div>
-</div>
-
-@endsection
+</x-layouts.member>

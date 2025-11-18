@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\IzinLatihanController;
 use App\Http\Controllers\Admin\PenjualanProdukController; 
 use App\Http\Controllers\Admin\ProdukController;
+use App\Http\Controllers\Admin\CoachController;
 // use App\Http\Controllers\Admin\MemberController;
 
 // Controller Member
@@ -90,6 +91,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Rute lain untuk manajemen Stok Produk akan ditambahkan di sini
     // Route::resource('stok-produk', StokProdukController::class);
+  
+    // =========================================================
+    // RUTE MANAJEMEN COACH
+    // =========================================================
+    Route::resource('coaches',CoachController::class);
 
 });
 
