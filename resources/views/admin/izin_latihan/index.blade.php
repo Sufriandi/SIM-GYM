@@ -5,17 +5,23 @@
     :page-title="$pageTitle"
     page-subtitle="Permintaan izin yang belum diproses."
 >
-    {{-- HEADER UTAMA HALAMAN --}}
+    {{-- HEADER UTAMA HALAMAN: hanya title + subtitle --}}
     <x-ui.section-header
         :title="$pageTitle"
         subtitle="Permintaan izin yang belum diproses."
-    >
+    />
+
+    {{-- GARIS PEMBATAS DI BAWAH SUBTITLE --}}
+    <hr class="border-t border-brand-borderSoft mb-4">
+
+    {{-- TOMBOL DI BAWAH GARIS --}}
+    <div class="mb-8 flex justify-end">
         <a href="{{ route('admin.izin_latihan.history') }}">
             <x-ui.button-secondary>
                 Riwayat Persetujuan
             </x-ui.button-secondary>
         </a>
-    </x-ui.section-header>
+    </div>
 
     {{-- CARD UTAMA: TABEL PERMINTAAN IZIN PENDING --}}
     <x-ui.card
@@ -24,7 +30,7 @@
         class="border-brand-borderSoft"
     >
         <div class="overflow-x-auto custom-scrollbar">
-            <table class="w-full border-collapse min-w-[900px] text-sm">
+            <table class="w-full border-collapse text-xs md:text-sm md:min-w-[900px]">
                 <thead>
                     <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
                         <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
@@ -172,22 +178,5 @@
         }
     </script>
 
-    {{-- CUSTOM SCROLLBAR (DISAMAKAN DENGAN PALET BARU) --}}
-    <style>
-        .custom-scrollbar::-webkit-scrollbar {
-            height: 6px;
-            width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #F5E6D6; /* brand.shell */
-            border-radius: 999px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #D4A757; /* gold-500 */
-            border-radius: 999px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #A67C39; /* gold-700 */
-        }
-    </style>
+    
 </x-layouts.admin>

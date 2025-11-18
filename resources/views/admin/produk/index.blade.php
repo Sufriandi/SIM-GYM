@@ -3,6 +3,7 @@
     :page-title="$pageTitle"
     page-subtitle="Kelola data dasar produk yang dijual."
 >
+
     {{-- HEADER UTAMA HALAMAN --}}
     <x-ui.section-header
         :title="$pageTitle"
@@ -50,7 +51,8 @@
         class="border-brand-borderSoft"
     >
         <div class="overflow-x-auto custom-scrollbar">
-            <table class="w-full border-collapse min-w-[1000px] text-sm">
+            {{-- Wajib Pakai md:min-w-[900px] --}}
+            <table class="w-full border-collapse text-xs md:text-sm md:min-w-[900px]">
                 <thead>
                     <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
                         <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[30%]">
@@ -100,7 +102,7 @@
                                     Rp {{ number_format($produk->harga, 0, ',', '.') }}
                                 </span>
                             </td>
-                            
+
                             {{-- Stok --}}
                             <td class="p-3 text-center align-top">
                                 <span class="text-sm font-bold text-text-main">
@@ -173,7 +175,7 @@
             {{ $produks->links() }}
         </div>
     </x-ui.card>
-
+</div>
     {{-- SCRIPT KONFIRMASI SWEETALERT2 UNTUK TOMBOL HAPUS --}}
     <script>
         function confirmDelete(produkId, produkName) {
@@ -182,12 +184,12 @@
                 text: `Anda yakin ingin menghapus produk ${produkName}? Aksi ini tidak dapat dibatalkan.`,
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#C73527', 
-                cancelButtonColor: '#6C5A46', 
+                confirmButtonColor: '#C73527',
+                cancelButtonColor: '#6C5A46',
                 confirmButtonText: 'Ya, Hapus!',
                 cancelButtonText: 'Batal',
-                background: '#21160F', 
-                color: '#F8F2E7', 
+                background: '#21160F',
+                color: '#F8F2E7',
             }).then((result) => {
                 if (result.isConfirmed) {
                     document.getElementById('delete-form-' + produkId).submit();
