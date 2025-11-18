@@ -8,8 +8,10 @@ use Illuminate\Support\Facades\Auth;
 // Controller Admin
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\IzinLatihanController;
+use App\Http\Controllers\Admin\PenjualanProdukController; 
+use App\Http\Controllers\Admin\ProdukController;
+use App\Http\Controllers\Admin\CoachController;
 // use App\Http\Controllers\Admin\MemberController;
-// use App\Http\Controllers\Admin\ProdukController;
 
 // Controller Member
 use App\Http\Controllers\Member\DashboardController as MemberDashboardController;
@@ -76,6 +78,24 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::post('/{izinLatihan}/approve', [IzinLatihanController::class, 'approveIzin'])->name('approve');
         Route::post('/{id}/reject', [IzinLatihanController::class, 'reject'])->name('reject');
     });
+
+    // =========================================================
+    // RUTE MANAJEMEN PRODUK
+    // =========================================================
+    
+    Route::resource('penjualan_produk', PenjualanProdukController::class)
+        ->only(['index', 'create', 'store', 'show', 'destroy']);
+    
+    // 2. RUTE Master Data Produk (CRUD Penuh)
+    Route::resource('produk', ProdukController::class);
+
+    // Rute lain untuk manajemen Stok Produk akan ditambahkan di sini
+    // Route::resource('stok-produk', StokProdukController::class);
+  
+    // =========================================================
+    // RUTE MANAJEMEN COACH
+    // =========================================================
+    Route::resource('coaches',CoachController::class);
 
 });
 
