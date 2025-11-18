@@ -29,7 +29,7 @@
         <x-admin.navbar :page-title="$pageTitle" :page-subtitle="$pageSubtitle" />
 
         {{-- CONTENT (SCROLLABLE) --}}
-        <main class="flex-1 mt-20 px-4 lg:px-8 pb-8 overflow-y-auto">
+        <main class="flex-1 mt-20 px-4 lg:px-8 pb-8 overflow-y-auto custom-scrollbar">
             {{ $slot }}
         </main>
     </div>
@@ -46,6 +46,21 @@
         }
     });
 </script>
+@push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('sidebarNav', (defaultOpen) => ({
+                openKehadiran: JSON.parse(localStorage.getItem('sidebar-openKehadiran') ?? (defaultOpen ? 'true' : 'false')),
+
+                toggleKehadiran() {
+                    this.openKehadiran = !this.openKehadiran;
+                    localStorage.setItem('sidebar-openKehadiran', JSON.stringify(this.openKehadiran));
+                },
+            }));
+        });
+    </script>
+@endpush
 </body>
 </html>

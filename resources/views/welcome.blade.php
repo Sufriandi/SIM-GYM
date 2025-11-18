@@ -15,7 +15,7 @@
     <header class="bg-brand-nav text-brand-white shadow-header border-b border-brand-borderStrong">
         <div class="container flex items-center justify-between py-4">
             <div class="flex items-center gap-3">
-                <img src="/logo.png" alt="BETA GYM" class="w-12 h-12">
+                <img src="images/Logo.png" alt="BETA GYM" class="w-12 h-12">
                 <div class="font-display text-2xl uppercase tracking-wide">BETA <span class="text-gold-500">GYM</span></div>
             </div>
 
@@ -26,7 +26,7 @@
             </nav>
 
             <div class="flex items-center gap-4">
-                <a href="#" class="text-sm hover:text-gold-500 transition-all">Masuk</a>
+                <a href="{{ route('login') }}" class="text-sm hover:text-gold-500 transition-all">Masuk</a>
 
                 <button
                     class="px-5 py-2.5 rounded-pill text-sm font-semibold
@@ -35,7 +35,8 @@
                            hover:bg-accent-600 hover:shadow-btn-primary-hover hover:-translate-y-0.5
                            active:scale-98 focus-visible:outline-none focus-visible:ring-2
                            focus-visible:ring-accent">
-                    Daftar Member
+                    
+                    <a href= "{{ route('register') }}">Daftar Member</a>
                 </button>
             </div>
         </div>
