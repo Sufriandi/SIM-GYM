@@ -1,212 +1,168 @@
-@extends('layouts.guest')
+{{-- resources/views/auth/login.blade.php --}}
 
-@section('content')
+<x-layouts.auth :title="'Login | BETA GYM'">
 
-{{-- CONTAINER SPLIT SCREEN --}}
-<div class="bg-dark-card rounded-premium overflow-hidden border-2 border-gold-900 flex max-w-5xl mx-auto my-8">
+    <div
+        class="w-full max-w-5xl bg-brand-card rounded-3xl overflow-hidden border border-brand-borderSoft shadow-card flex flex-col lg:flex-row">
 
-    {{-- KOLOM KIRI: GAMBAR GYM (50% Lebar) --}}
-    <div class="w-1/2 hidden lg:block relative overflow-hidden">
-        <img 
-            src="{{ asset('images/gym-bg.jpg') }}" 
-            alt="BETA GYM Background" 
-            class="object-cover w-full h-full transform hover:scale-105 transition duration-700"
-        >
-        {{-- Gradient Overlay --}}
-        <div class="absolute inset-0 bg-gradient-to-br from-primary/80 via-primary/60 to-transparent"></div>
-        
-        {{-- Content Overlay --}}
-        <div class="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
-            {{-- Logo --}}
-            <div class="mb-6">
-                <img src="{{ asset('images/logo.png') }}" 
-                     alt="BETA GYM Logo" 
-                     class="h-24 w-auto mx-auto"
-                     style="filter: drop-shadow(0 0 20px rgba(200, 168, 112, 0.8));">
-            </div>
-            
-            {{-- Title --}}
-            <h1 class="text-6xl font-heading text-gold mb-4 tracking-wider animate-pulse-gold">
-                BETA
-            </h1>
-            <h2 class="text-5xl font-heading text-accent mb-6 tracking-wider">
-                GYM
-            </h2>
-            
-            {{-- Tagline --}}
-            <div class="w-24 h-1 bg-gold mb-6"></div>
-            <p class="text-text-primary text-lg font-semibold uppercase tracking-widest">
-                Transform Your Body
-            </p>
-            <p class="text-text-secondary text-sm mt-2 max-w-sm">
-                Join the elite community of champions. Your fitness journey starts here.
-            </p>
-            
-            {{-- Stats --}}
-            <div class="grid grid-cols-3 gap-6 mt-8 w-full max-w-md">
-                <div class="text-center">
-                    <div class="text-3xl font-heading text-gold">500+</div>
-                    <div class="text-xs text-text-secondary uppercase">Members</div>
+        {{-- KIRI: HERO / BRAND --}}
+        <div class="hidden lg:block lg:w-1/2 relative overflow-hidden">
+            <img
+                src="{{ asset('images/gym-bg.jpg') }}"
+                alt="BETA GYM Background"
+                class="absolute inset-0 w-full h-full object-cover scale-105"
+            >
+            <div class="absolute inset-0 bg-brand-shell/80 mix-blend-multiply"></div>
+
+            <div class="relative h-full flex flex-col items-center justify-center px-10 py-8 text-center text-brand-black">
+                <div class="mb-6">
+                    <img
+                        src="{{ asset('images/Logo.png') }}"
+                        alt="BETA GYM Logo"
+                        class="h-20 w-auto mx-auto drop-shadow-[0_0_25px_rgba(212,167,87,0.8)]"
+                    >
                 </div>
-                <div class="text-center border-x border-gold-800">
-                    <div class="text-3xl font-heading text-gold">50+</div>
-                    <div class="text-xs text-text-secondary uppercase">Trainers</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-3xl font-heading text-gold">24/7</div>
-                    <div class="text-xs text-text-secondary uppercase">Access</div>
+
+                <p class="text-xs tracking-[0.25em] uppercase text-brand-steel mb-2">
+                    Build a Better You
+                </p>
+
+                <h1 class="text-4xl font-heading tracking-tight text-text-main">
+                    BETA <span class="text-gold-600">GYM</span>
+                </h1>
+
+                <p class="mt-3 text-sm text-text-muted max-w-sm">
+                    Akses premium untuk melacak progres, izin latihan, dan membership dalam satu aplikasi.
+                </p>
+
+                <div class="mt-8 grid grid-cols-3 gap-6 text-left text-sm text-brand-gunmetal w-full max-w-md">
+                    <div>
+                        <div class="text-2xl font-heading text-gold-600 leading-none">500+</div>
+                        <div class="text-[11px] text-brand-steel uppercase mt-1">Member aktif</div>
+                    </div>
+                    <div class="border-x border-brand-borderSoft px-4">
+                        <div class="text-2xl font-heading text-gold-600 leading-none">20+</div>
+                        <div class="text-[11px] text-brand-steel uppercase mt-1">Kelas / minggu</div>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-heading text-gold-600 leading-none">06–23</div>
+                        <div class="text-[11px] text-brand-steel uppercase mt-1">Jam operasional</div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    {{-- KOLOM KANAN: FORM LOGIN (50% Lebar) --}}
-    <div class="w-full lg:w-1/2 p-12 bg-gradient-to-br from-dark-card to-dark-surface">
-
-        {{-- Header --}}
-        <div class="text-center mb-8">
-            {{-- Logo Mobile --}}
-            <div class="lg:hidden mb-4">
-                <img src="{{ asset('images/logo.png') }}" 
-                     alt="BETA GYM Logo" 
-                     class="h-16 w-auto mx-auto"
-                     style="filter: drop-shadow(0 0 15px rgba(200, 168, 112, 0.6));">
+        {{-- KANAN: FORM LOGIN --}}
+        <div class="w-full lg:w-1/2 bg-brand-bg px-8 py-10 lg:px-10 flex flex-col justify-center">
+            <div class="lg:hidden flex justify-center mb-6">
+                <img
+                    src="{{ asset('images/Logo.png') }}"
+                    alt="BETA GYM Logo"
+                    class="h-16 w-auto drop-shadow-[0_0_20px_rgba(212,167,87,0.6)]"
+                >
             </div>
-            
-            <h2 class="text-3xl font-heading text-gold mb-2 tracking-wide">
-                SELAMAT DATANG
-            </h2>
-            <div class="w-16 h-1 bg-accent mx-auto mb-3"></div>
-            <p class="text-text-secondary text-sm">Masuk ke akun Anda untuk melanjutkan</p>
-        </div>
 
-        {{-- Form Login --}}
-        <form method="POST" action="{{ route('login') }}" class="space-y-6">
-            @csrf
+            <div class="mb-6 text-center lg:text-left">
+                <h2 class="text-2xl font-heading text-text-main tracking-tight">
+                    Selamat Datang Kembali
+                </h2>
+                <p class="mt-1 text-sm text-text-muted">
+                    Masuk ke akun BETA GYM untuk mengelola membership dan latihanmu.
+                </p>
+            </div>
 
-            {{-- Email Input --}}
-            <div>
-                <label for="email" class="block font-semibold text-sm text-gold mb-2 uppercase tracking-wide">
-                    Email Address
-                </label>
-                <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gold-700" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                            <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                        </svg>
+            @if (session('status'))
+                <x-ui.toast type="success" class="mb-4">
+                    {{ session('status') }}
+                </x-ui.toast>
+            @endif
+
+            <form method="POST" action="{{ route('login') }}" class="space-y-5">
+                @csrf
+
+                {{-- Email --}}
+                <div>
+                    <x-ui.label for="email">Email</x-ui.label>
+                    <div class="relative mt-1">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i data-lucide="mail" class="w-4 h-4 text-text-muted"></i>
+                        </span>
+                        <input
+                            id="email"
+                            name="email"
+                            type="email"
+                            autocomplete="username"
+                            required
+                            value="{{ old('email') }}"
+                            class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-brand-borderSoft bg-brand-card text-sm text-text-main placeholder:text-text-muted/70 focus:outline-none focus:ring-2 focus:ring-gold-500/60 focus:border-gold-500 transition-shadow"
+                            placeholder="nama@email.com"
+                        >
                     </div>
-                    <input id="email" 
-                           class="w-full pl-10 pr-4 py-3 rounded-gym bg-dark-background border-2 border-gold-900 text-text-primary placeholder-text-secondary focus:border-gold focus:ring-2 focus:ring-gold/50 transition duration-200" 
-                           type="email" 
-                           name="email" 
-                           value="{{ old('email') }}" 
-                           required 
-                           autofocus 
-                           autocomplete="username" 
-                           placeholder="nama@email.com" />
+                    @error('email')
+                        <p class="mt-1 text-xs text-danger">{{ $message }}</p>
+                    @enderror
                 </div>
-                @error('email')
-                    <p class="mt-2 text-xs text-accent">{{ $message }}</p>
-                @enderror
-            </div>
 
-            {{-- Password Input --}}
-            <div>
-                <label for="password" class="block font-semibold text-sm text-gold mb-2 uppercase tracking-wide">
-                    Password
-                </label>
-                <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gold-700" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
-                        </svg>
+                {{-- Password --}}
+                <div>
+                    <x-ui.label for="password">Password</x-ui.label>
+                    <div class="relative mt-1">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i data-lucide="lock" class="w-4 h-4 text-text-muted"></i>
+                        </span>
+                        <input
+                            id="password"
+                            name="password"
+                            type="password"
+                            autocomplete="current-password"
+                            required
+                            class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-brand-borderSoft bg-brand-card text-sm text-text-main placeholder:text-text-muted/70 focus:outline-none focus:ring-2 focus:ring-gold-500/60 focus:border-gold-500 transition-shadow"
+                            placeholder="••••••••"
+                        >
                     </div>
-                    <input id="password" 
-                           class="w-full pl-10 pr-4 py-3 rounded-gym bg-dark-background border-2 border-gold-900 text-text-primary placeholder-text-secondary focus:border-gold focus:ring-2 focus:ring-gold/50 transition duration-200" 
-                           type="password" 
-                           name="password" 
-                           required 
-                           autocomplete="current-password"
-                           placeholder="••••••••" />
+                    @error('password')
+                        <p class="mt-1 text-xs text-danger">{{ $message }}</p>
+                    @enderror
                 </div>
-                @error('password')
-                    <p class="mt-2 text-xs text-accent">{{ $message }}</p>
-                @enderror
-            </div>
 
-            {{-- Remember & Forgot --}}
-            <div class="flex justify-between items-center">
-                <label for="remember_me" class="flex items-center group cursor-pointer">
-                    <input id="remember_me" 
-                           type="checkbox" 
-                           class="rounded border-gold-800 text-gold focus:ring-gold focus:ring-offset-dark-background bg-dark-background" 
-                           name="remember">
-                    <span class="ml-2 text-sm text-text-secondary group-hover:text-gold transition duration-200">
-                        Ingat Saya
-                    </span>
-                </label>
-                
-                @if (Route::has('password.request'))
-                    <a class="text-sm text-gold-700 hover:text-gold transition duration-200" 
-                       href="{{ route('password.request') }}">
-                        Lupa Password?
+                {{-- Remember + Forgot --}}
+                <div class="flex items-center justify-between gap-3 text-xs">
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                        <input
+                            id="remember_me"
+                            type="checkbox"
+                            name="remember"
+                            class="rounded border-brand-borderSoft text-gold-600 focus:ring-gold-500 focus:ring-offset-transparent bg-brand-card"
+                        >
+                        <span class="text-text-muted hover:text-text-main transition-colors">
+                            Ingat saya
+                        </span>
+                    </label>
+
+                    @if (Route::has('password.request'))
+                        <a
+                            href="{{ route('password.request') }}"
+                            class="text-gold-700 hover:text-gold-500 font-medium">
+                            Lupa password?
+                        </a>
+                    @endif
+                </div>
+
+                {{-- Tombol login --}}
+                <x-ui.button-primary type="submit" class="w-full justify-center mt-2">
+                    <span>Masuk</span>
+                    <i data-lucide="log-in" class="w-4 h-4 ml-2"></i>
+                </x-ui.button-primary>
+
+                {{-- Link register --}}
+                <p class="text-xs text-center text-text-muted mt-4">
+                    Belum punya akun?
+                    <a href="{{ route('register') }}" class="text-gold-700 hover:text-gold-500 font-semibold">
+                        Daftar sekarang
                     </a>
-                @endif
-            </div>
-
-            {{-- Submit Button --}}
-            <button type="submit" 
-                    class="w-full bg-gold hover:bg-gold-600 text-primary-900 font-bold py-4 rounded-gym uppercase transition duration-300 shadow-lg border-2 border-gold hover:border-gold-400 tracking-widest transform hover:scale-[1.02] flex items-center justify-center group">
-                <span>Masuk</span>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2 transform group-hover:translate-x-1 transition duration-200" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
-                </svg>
-            </button>
-
-            {{-- Divider --}}
-            <div class="relative">
-                <div class="absolute inset-0 flex items-center">
-                    <div class="w-full border-t border-gold-900"></div>
-                </div>
-                <div class="relative flex justify-center text-sm">
-                    <span class="px-4 bg-dark-card text-text-secondary uppercase tracking-wider">Atau</span>
-                </div>
-            </div>
-
-            {{-- Social Login (Optional) --}}
-            <div class="grid grid-cols-2 gap-3">
-                <button type="button" class="flex items-center justify-center px-4 py-3 border-2 border-gold-900 rounded-gym text-text-secondary hover:border-gold hover:text-gold transition duration-200">
-                    <svg class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                    </svg>
-                    <span class="text-sm font-semibold">Google</span>
-                </button>
-                
-                <button type="button" class="flex items-center justify-center px-4 py-3 border-2 border-gold-900 rounded-gym text-text-secondary hover:border-gold hover:text-gold transition duration-200">
-                    <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                    </svg>
-                    <span class="text-sm font-semibold">Facebook</span>
-                </button>
-            </div>
-        </form>
-
-        {{-- Register Link --}}
-        <div class="text-center mt-8 pt-6 border-t border-gold-900">
-            <p class="text-sm text-text-secondary">
-                Belum punya akun? 
-                <a href="{{ route('register') }}" 
-                   class="text-gold hover:text-gold-400 font-semibold underline transition duration-200">
-                    Daftar Sekarang
-                </a>
-            </p>
+                </p>
+            </form>
         </div>
     </div>
-    
-</div>
 
-@endsection
+</x-layouts.auth>

@@ -33,22 +33,26 @@
             </button>
 
             {{-- Breadcrumb --}}
-            <div class="min-w-0">
-                <nav class="flex items-center text-[11px] text-text-muted" aria-label="Breadcrumb">
-                    <a href="{{ route('admin.dashboard') }}"
-                       class="inline-flex items-center gap-1 hover:text-gold-400 transition-colors">
-                        <i data-lucide="home" class="w-3.5 h-3.5"></i>
-                        <span class="hidden sm:inline">Dashboard</span>
-                    </a>
+<div class="min-w-0">
+    <nav class="flex items-center text-sm font-bold text-text-muted" aria-label="Breadcrumb">
+        <a href="{{ route('admin.dashboard') }}"
+            class="inline-flex items-center gap-1 hover:text-gold-400 transition-colors">
+            {{-- ICON UKURAN BESAR DAN KETEBALAN GARIS DITINGKATKAN (stroke-width="3") --}}
+            <i data-lucide="home" class="w-4 h-4" stroke-width="3"></i>
+            {{-- TEXT DIBOLD dan UKURAN DIBESARKAN --}}
+            <span class="hidden sm:inline">Dashboard</span>
+        </a>
 
-                    @if($pageTitle)
-                        <i data-lucide="chevron-right" class="w-3 h-3 mx-1.5 text-text-muted"></i>
-                        <span class="text-text-main font-medium truncate max-w-[200px] md:max-w-[260px]">
-                            {{ $pageTitle }}
-                        </span>
-                    @endif
-                </nav>
-            </div>
+        @if($pageTitle)
+            {{-- ICON PEMISAH UKURAN BESAR DAN KETEBALAN GARIS DITINGKATKAN (stroke-width="3") --}}
+            <i data-lucide="chevron-right" class="w-4 h-4 mx-1.5 text-text-muted" stroke-width="3"></i>
+            <span class="text-text-main font-bold truncate max-w-[200px] md:max-w-[260px]">
+                {{-- TEXT DIBOLD dan UKURAN DIBESARKAN --}}
+                {{ $pageTitle }}
+            </span>
+        @endif
+    </nav>
+</div>
         </div>
 
         {{-- KANAN: search + notif + profile --}}
