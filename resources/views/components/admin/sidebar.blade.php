@@ -182,6 +182,7 @@
                     data-lucide="user-check"
                     class="w-5 h-5 transition-transform duration-300 {{ $coachActive ? 'text-gold-300' : 'group-hover:scale-110' }}"></i>
                 <span>Manajemen Coach</span>
+                <span>Kelola Coach</span>
                 @if($coachActive)
                     <div class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full animate-pulse"></div>
                 @endif

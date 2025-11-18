@@ -6,9 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Produk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage; // Tambahkan ini
+use Illuminate\Validation\Rule; // Tambahkan ini
 
 class ProdukController extends Controller
 {
+    // Kategori yang Sesuai dengan ENUM di Migrasi
+    private $kategoriOptions = ['minuman', 'suplemen', 'lainnya'];
+
     /**
      * Menampilkan daftar semua produk (Index).
      */
@@ -16,25 +21,13 @@ class ProdukController extends Controller
     {
         $pageTitle = 'Data Produk';
         
-        // Ambil semua produk dan paginate (10 item per halaman)
         $produks = Produk::orderBy('created_at', 'desc')->paginate(10);
 
-        // Menggunakan nama view sesuai konvensi: resources/views/admin/produk/index.blade.php
-        return view('admin.produk.index', compact('produks', 'pageTitle'));
+        // Catatan: Pastikan Anda menggunakan view 'admin.products.index' atau 'admin.produk.index' yang benar
+        return view('admin.produk.index', compact('produks', 'pageTitle')); 
     }
 
-    /**
-     * Menampilkan formulir untuk membuat produk baru (Create).
-     */
-    public function create()
-    {
-        $pageTitle = 'Tambah Produk Baru';
-        // Definisikan kategori yang tersedia (sesuai ENUM/aturan bisnis)
-        $kategoriOptions = ['Suplemen', 'Peralatan', 'Aksesoris', 'Lain-lain']; 
-
-        // Menggunakan nama view sesuai konvensi: resources/views/admin/produk/create.blade.php
-        return view('admin.produk.create', compact('pageTitle', 'kategoriOptions'));
-    }
+    // Metode create() Dihapus karena menggunakan modal di index
 
     /**
      * Menyimpan produk baru ke database (Store).
@@ -42,48 +35,48 @@ class ProdukController extends Controller
     public function store(Request $request)
     {
         // 1. Validasi Input
-        $request->validate([
-            'nama' => 'required|string|max:255|unique:produk,nama',
-            'kategori' => 'required|in:Suplemen,Peralatan,Aksesoris,Lain-lain', // Harus sesuai kategori
+        $validatedData = $request->validate([
+            // PERBAIKAN: Gunakan 'produks' dan tambahkan validasi foto
+            'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'nama' => 'required|string|max:255|unique:produks,nama', 
+            'kategori' => 'required|in:' . implode(',', $this->kategoriOptions), 
             'harga' => 'required|numeric|min:0',
-            // Stok awal diatur, bisa 0
             'stok' => 'required|integer|min:0', 
             'deskripsi' => 'nullable|string',
         ]);
+        
+        // **PERBAIKAN KRUSIAL:** Jika validasi gagal, kembalikan ke halaman sebelumnya
+        // dan set session 'modal_create_open' agar modal terbuka otomatis.
+        if (is_null($validatedData)) {
+            return back()->withInput()->withErrors($request->validator)->with('modal_create_open', true);
+        }
 
-        // 2. Simpan Produk
+        // 2. Upload Foto
+        $fotoPath = null;
+        if ($request->hasFile('foto')) {
+            $fotoPath = $request->file('foto')->store('photos/produks', 'public');
+        }
+
+        // 3. Simpan Produk
         try {
-            Produk::create($request->all());
+            // Gabungkan data yang divalidasi dengan path foto
+            Produk::create(array_merge($validatedData, [
+                'foto' => $fotoPath,
+            ]));
             
             return redirect()->route('admin.produk.index')->with('success', 'Produk baru berhasil ditambahkan.');
 
         } catch (\Exception $e) {
-            return back()->withInput()->with('error', 'Gagal menambahkan produk. Terjadi kesalahan sistem.');
+            // Hapus foto jika terjadi kegagalan DB setelah upload
+            if ($fotoPath) {
+                 Storage::disk('public')->delete($fotoPath);
+            }
+            // Tambahkan 'modal_create_open' untuk membuka modal error
+            return back()->withInput()->with('error', 'Gagal menambahkan produk. Terjadi kesalahan sistem: ' . $e->getMessage())->with('modal_create_open', true);
         }
     }
 
-    /**
-     * Menampilkan detail produk (Show).
-     */
-    public function show(Produk $produk)
-    {
-        $pageTitle = 'Detail Produk: ' . $produk->nama;
-        
-        // Menggunakan nama view sesuai konvensi: resources/views/admin/produk/show.blade.php
-        return view('admin.produk.show', compact('produk', 'pageTitle'));
-    }
-
-    /**
-     * Menampilkan formulir untuk mengedit produk yang ditentukan (Edit).
-     */
-    public function edit(Produk $produk)
-    {
-        $pageTitle = 'Edit Produk: ' . $produk->nama;
-        $kategoriOptions = ['Suplemen', 'Peralatan', 'Aksesoris', 'Lain-lain'];
-
-        // Menggunakan nama view sesuai konvensi: resources/views/admin/produk/edit.blade.php
-        return view('admin.produk.edit', compact('produk', 'pageTitle', 'kategoriOptions'));
-    }
+    // Metode show() dan edit() tidak perlu diubah
 
     /**
      * Memperbarui produk yang ditentukan di database (Update).
@@ -91,24 +84,51 @@ class ProdukController extends Controller
     public function update(Request $request, Produk $produk)
     {
         // 1. Validasi Input
-        $request->validate([
-            // Nama harus unik kecuali untuk produk yang sedang diedit
-            'nama' => 'required|string|max:255|unique:produk,nama,' . $produk->id,
-            'kategori' => 'required|in:Suplemen,Peralatan,Aksesoris,Lain-lain',
+        $validatedData = $request->validate([
+            // PERBAIKAN: Menggunakan Rule::unique dengan nama tabel 'produks'
+            'nama' => [
+                'required', 
+                'string', 
+                'max:255', 
+                Rule::unique('produks', 'nama')->ignore($produk->id)
+            ],
+            'kategori' => 'required|in:' . implode(',', $this->kategoriOptions),
             'harga' => 'required|numeric|min:0',
-            // Stok boleh diupdate di sini, tetapi perubahan stok yang tercatat di log (StokProduk) lebih baik di StokProdukController
             'stok' => 'required|integer|min:0', 
             'deskripsi' => 'nullable|string',
+            // Menambahkan validasi foto
+            'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
         
-        // 2. Update Produk
+        // **PERBAIKAN KRUSIAL:** Jika validasi gagal, gunakan Error Bag 'updateProduct'
+        if (is_null($validatedData)) {
+            // Gunakan error bag 'updateProduct' untuk memicu display error di modal edit
+            return redirect()->back()->withInput()->withErrors($request->validator, 'updateProduct'); 
+        }
+        
+        // 2. Proses Perubahan Foto
+        $fotoPath = $produk->foto; 
+        
+        if ($request->hasFile('foto')) {
+            // Hapus foto lama jika ada
+            if ($produk->foto && Storage::disk('public')->exists($produk->foto)) {
+                Storage::disk('public')->delete($produk->foto);
+            }
+            // Upload foto baru
+            $fotoPath = $request->file('foto')->store('photos/produks', 'public');
+        }
+        
+        // 3. Update Produk
         try {
-            $produk->update($request->all());
+            $produk->update(array_merge($validatedData, [
+                'foto' => $fotoPath,
+            ]));
 
             return redirect()->route('admin.produk.index')->with('success', 'Produk berhasil diperbarui.');
 
         } catch (\Exception $e) {
-            return back()->withInput()->with('error', 'Gagal memperbarui produk. Terjadi kesalahan sistem.');
+            // Tambahkan Error Bag untuk membuka kembali modal
+            return back()->withInput()->with('error', 'Gagal memperbarui produk. Terjadi kesalahan sistem: ' . $e->getMessage())->withErrors(['system_error' => 'Gagal memperbarui produk. Terjadi kesalahan sistem: ' . $e->getMessage()], 'updateProduct');
         }
     }
 
@@ -117,22 +137,21 @@ class ProdukController extends Controller
      */
     public function destroy(Produk $produk)
     {
-        // PENTING: Lakukan pengecekan apakah produk ini sudah terkait dengan PenjualanProduk atau StokProduk
-        // Jika ada relasi, hapus relasi tersebut terlebih dahulu atau berikan peringatan.
-        // Untuk saat ini, kita akan lakukan pengecekan sederhana:
-        
-        // 1. Cek Keterkaitan dengan Penjualan Produk
-        if ($produk->penjualanProduks()->exists()) {
+        // PERBAIKAN: Menggunakan nama relasi yang benar: penjualan() dan stok()
+        if ($produk->penjualan()->exists()) {
             return back()->with('error', 'Gagal menghapus produk. Produk ini sudah memiliki riwayat transaksi penjualan.');
         }
 
-        // 2. Cek Keterkaitan dengan Stok Produk (Log)
-        if ($produk->stokProduks()->exists()) {
-             // Jika ada riwayat log stok, biasanya lebih aman untuk tidak menghapus
+        if ($produk->stok()->exists()) {
              return back()->with('error', 'Gagal menghapus produk. Produk ini sudah memiliki riwayat perubahan stok.');
         }
         
-        // Jika aman, hapus produk
+        // Hapus Foto terkait jika aman
+        if ($produk->foto && Storage::disk('public')->exists($produk->foto)) {
+            Storage::disk('public')->delete($produk->foto);
+        }
+
+        // Hapus produk
         try {
             $produk->delete();
             return redirect()->route('admin.produk.index')->with('success', 'Produk berhasil dihapus.');

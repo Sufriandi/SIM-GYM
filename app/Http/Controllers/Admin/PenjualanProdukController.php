@@ -14,6 +14,11 @@ use Carbon\Carbon;
 class PenjualanProdukController extends Controller
 {
     /**
+     * Metode Pembayaran yang sesuai dengan ENUM di migrasi.
+     */
+    private $metodePembayaran = ['Cash', 'Transfer', 'QRIS'];
+
+    /**
      * Menampilkan daftar riwayat semua transaksi penjualan produk (READ/Index).
      */
     public function index()
@@ -24,6 +29,7 @@ class PenjualanProdukController extends Controller
             ->orderBy('tanggal_transaksi', 'desc')
             ->paginate(15);
 
+        // Catatan: Pastikan view ini ada: resources/views/admin/penjualan_produk/index.blade.php
         return view('admin.penjualan_produk.index', compact('daftar_penjualan', 'pageTitle'));
     }
 
@@ -33,9 +39,11 @@ class PenjualanProdukController extends Controller
     public function create()
     {
         $pageTitle = 'Catat Penjualan Baru';
-        $produks = Produk::where('stok', '>', 0)->get(); 
-        $metodePembayaran = ['Cash', 'Debit', 'Transfer', 'QRIS'];
+        // Hanya ambil produk yang memiliki stok lebih dari 0
+        $produks = Produk::where('stok', '>', 0)->orderBy('nama')->get(); 
+        $metodePembayaran = $this->metodePembayaran;
 
+        // Catatan: Pastikan view ini ada: resources/views/admin/penjualan_produk/create.blade.php
         return view('admin.penjualan_produk.create', compact('pageTitle', 'produks', 'metodePembayaran'));
     }
 
@@ -45,15 +53,18 @@ class PenjualanProdukController extends Controller
     public function store(Request $request)
     {
         // 1. Validasi Input
-        $request->validate([
-            'produk_id' => 'required|exists:produk,id',
+        $validatedData = $request->validate([
+            // PERBAIKAN: Pastikan nama tabel di exists:produk,id adalah benar ('produk')
+            'produk_id' => 'required|exists:produk,id', 
             'jumlah' => 'required|integer|min:1',
-            'metode_pembayaran' => 'required|in:Cash,Transfer,QRIS', // Sesuaikan dengan ENUM
+            // PERBAIKAN: Sinkronkan opsi metode pembayaran dengan properti Controller
+            'metode_pembayaran' => 'required|in:' . implode(',', $this->metodePembayaran), 
             'keterangan' => 'nullable|string|max:1000',
+            // 'tanggal_transaksi' tidak divalidasi karena menggunakan now()
         ]);
 
-        $produk = Produk::findOrFail($request->produk_id);
-        $jumlahBeli = (int) $request->jumlah;
+        $produk = Produk::findOrFail($validatedData['produk_id']);
+        $jumlahBeli = (int) $validatedData['jumlah'];
 
         // 2. Cek Ketersediaan Stok
         if ($jumlahBeli > $produk->stok) {
@@ -71,15 +82,15 @@ class PenjualanProdukController extends Controller
                 'produk_id' => $produk->id,
                 'jumlah' => $jumlahBeli,
                 'total_harga' => $totalHarga,
-                'metode_pembayaran' => $request->metode_pembayaran,
-                'keterangan' => $request->keterangan,
-                'tanggal_transaksi' => now(),
+                'metode_pembayaran' => $validatedData['metode_pembayaran'],
+                'keterangan' => $validatedData['keterangan'],
+                'tanggal_transaksi' => now(), // Menggunakan helper Laravel/Carbon
             ]);
 
-            // 5. Kurangi Stok pada Tabel Produk (Kolom 'stok' di tabel 'produk')
+            // 5. Kurangi Stok pada Tabel Produk
             $produk->decrement('stok', $jumlahBeli);
 
-            // 6. Catat perubahan ini ke Tabel StokProduk (sebagai LOG Penjualan OUT)
+            // 6. Catat perubahan ini ke Tabel StokProduk (Log OUT)
             StokProduk::create([
                 'produk_id' => $produk->id,
                 'jumlah' => -$jumlahBeli, // Nilai negatif menandakan pengurangan
@@ -93,8 +104,8 @@ class PenjualanProdukController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            return back()->withInput()->with('error', 'Gagal mencatat penjualan. Terjadi kesalahan sistem.');
+            // Tampilkan pesan error yang lebih detail di lingkungan development jika perlu
+            return back()->withInput()->with('error', 'Gagal mencatat penjualan. Terjadi kesalahan sistem: ' . $e->getMessage());
         }
     }
 
@@ -104,55 +115,31 @@ class PenjualanProdukController extends Controller
     public function show(PenjualanProduk $penjualanProduk)
     {
         $pageTitle = 'Detail Transaksi Penjualan';
-        
-        // Muat relasi produk
         $penjualanProduk->load('produk');
 
-        // Menggunakan nama view sesuai konvensi: resources/views/admin/penjualan_produk/detail.blade.php
         return view('admin.penjualan_produk.show', compact('penjualanProduk', 'pageTitle'));
     }
 
     /**
-     * Show the form for editing the specified resource.
-     * * CATATAN: Mengedit Riwayat Penjualan sangat tidak disarankan karena melanggar prinsip 
-     * akuntansi/keuangan. Jika tetap dibutuhkan, pertimbangkan untuk membuat Transaksi Balik (Reverse Transaction).
+     * Edit dan Update TIDAK diizinkan demi integritas data keuangan/stok.
      */
     public function edit(PenjualanProduk $penjualanProduk)
     {
-        // Untuk tujuan keamanan dan integritas, Admin biasanya tidak diizinkan
-        // untuk mengedit transaksi penjualan yang sudah terjadi.
         return redirect()->route('admin.penjualan_produk.index')
                          ->with('info', 'Edit transaksi penjualan tidak diizinkan.');
-
-        // JIKA Anda harus mengizinkan edit, kodenya akan seperti ini:
-        /*
-        $pageTitle = 'Edit Penjualan';
-        $produks = Produk::all(); 
-        $metodePembayaran = ['Cash', 'Debit', 'Transfer', 'QRIS'];
-        return view('admin.penjualan_produk.edit', compact('penjualanProduk', 'pageTitle', 'produks', 'metodePembayaran'));
-        */
     }
 
-    /**
-     * Update the specified resource in storage.
-     * * CATATAN: Melakukan update di sini akan memerlukan logika yang sangat kompleks 
-     * untuk mengembalikan stok lama, memproses stok baru, dan mengupdate log StokProduk.
-     */
     public function update(Request $request, PenjualanProduk $penjualanProduk)
     {
-        // Update transaksi penjualan tidak disarankan.
         return redirect()->route('admin.penjualan_produk.show', $penjualanProduk)
                          ->with('error', 'Update transaksi penjualan tidak diimplementasikan demi integritas data.');
     }
 
     /**
-     * Remove the specified resource from storage.
-     * * CATATAN: Menghapus penjualan akan memerlukan pengembalian stok ke produk
-     * dan mencatat log pengembalian stok di StokProduk.
+     * Menghapus transaksi penjualan (DESTROY/Pembatalan).
      */
     public function destroy(PenjualanProduk $penjualanProduk)
     {
-        // Memulai Transaksi untuk mengembalikan stok
         DB::beginTransaction();
 
         try {
@@ -160,12 +147,12 @@ class PenjualanProdukController extends Controller
             $produk = $penjualanProduk->produk;
             $produk->increment('stok', $penjualanProduk->jumlah);
 
-            // 2. Catat penambahan stok (sebagai LOG Pembatalan/Retur)
+            // 2. Catat penambahan stok (Log Retur)
             StokProduk::create([
                 'produk_id' => $penjualanProduk->produk_id,
                 'jumlah' => $penjualanProduk->jumlah, // Nilai positif untuk pengembalian stok
                 'tanggal' => now(),
-                'keterangan' => 'Pembatalan transaksi penjualan.',
+                'keterangan' => 'Pembatalan transaksi penjualan (Stok dikembalikan).',
             ]);
 
             // 3. Hapus transaksi penjualan
@@ -176,7 +163,7 @@ class PenjualanProdukController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal membatalkan transaksi. Terjadi kesalahan sistem.');
+            return back()->with('error', 'Gagal membatalkan transaksi. Terjadi kesalahan sistem: ' . $e->getMessage());
         }
     }
 }

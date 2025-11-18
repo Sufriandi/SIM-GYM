@@ -83,6 +83,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // RUTE MANAJEMEN PRODUK
     // =========================================================
     
+    // 1. Rute Penjualan Produk (Hanya index, create, store, show, destroy)
     Route::resource('penjualan_produk', PenjualanProdukController::class)
         ->only(['index', 'create', 'store', 'show', 'destroy']);
     
