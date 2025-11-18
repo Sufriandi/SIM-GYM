@@ -3,5 +3,23 @@
 @tailwind utilities;
 
 .swal2-container.swal2-top-end {
-    margin-top: 65px !important; 
+    margin-top: 65px !important;
+}
+/* === BETA GYM GOLD SCROLLBAR === */
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+    background: #111;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: #d4a757;
+    border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: #c08f3e;
 }
