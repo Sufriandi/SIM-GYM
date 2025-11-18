@@ -7,9 +7,11 @@
     $dashboardActive = $active('admin.dashboard');
     $memberActive    = $active('admin.members');
     $produkActive    = $active('admin.products');
+    $coachActive     = $active('admin.coaches');
     $izinActive      = $active('admin.izin_latihan');
     $absensiActive   = $active('admin.absensi');
     $laporanActive   = $active('admin.reports');
+
 
     // Submenu states
     $kehadiranOpen   = $izinActive || $absensiActive;
@@ -96,6 +98,25 @@
                     <div class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full animate-pulse"></div>
                 @endif
             </a>
+
+            {{-- Manajemen Coach --}}
+                {{-- Manajemen Coach --}}
+            <a
+                href="{{ route('admin.coaches.index') }}"
+                class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
+                    {{ $coachActive
+                        ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20'
+                        : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
+                aria-current="{{ $coachActive ? 'page' : 'false' }}">
+                <i
+                    data-lucide="user-check"
+                    class="w-5 h-5 transition-transform duration-300 {{ $coachActive ? 'text-gold-300' : 'group-hover:scale-110' }}"></i>
+                <span>Manajemen Coach</span>
+                @if($coachActive)
+                    <div class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full animate-pulse"></div>
+                @endif
+            </a>
+
         </div>
 
         {{-- Kehadiran Section (Collapsible) --}}

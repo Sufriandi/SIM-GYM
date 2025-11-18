@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 // Controller Admin
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\IzinLatihanController;
+use App\Http\Controllers\Admin\CoachController;
 // use App\Http\Controllers\Admin\MemberController;
 // use App\Http\Controllers\Admin\ProdukController;
 
@@ -76,6 +77,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::post('/{izinLatihan}/approve', [IzinLatihanController::class, 'approveIzin'])->name('approve');
         Route::post('/{id}/reject', [IzinLatihanController::class, 'reject'])->name('reject');
     });
+
+     /**
+     * Route untuk Coach
+     */
+    Route::resource('coaches',CoachController::class);
 
 });
 
