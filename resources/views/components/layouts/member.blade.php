@@ -15,39 +15,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $pageTitle }} • BETA GYM Member</title>
 
-    {{-- CSS & JS utama (Tailwind + JS global) --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     @stack('head')
 </head>
-<body class="min-h-screen bg-brand-bg text-text-main">
+<body class="h-full bg-brand-bg text-text-main antialiased">
 
-<div class="min-h-screen flex flex-col">
+<div class="h-screen flex flex-col bg-brand-bg">
 
-    {{-- NAVBAR MEMBER (komponen terpisah) --}}
+    {{-- NAVBAR MEMBER (fixed di atas) --}}
     <x-member.navbar
         :pageTitle="$pageTitle"
         :pageSubtitle="$pageSubtitle"
         :user="$user"
     />
 
-    {{-- MAIN CONTENT – scroll pakai custom scrollbar emas --}}
-    <main class="flex-1 mt-6 px-4 lg:px-8 pb-8 overflow-y-auto custom-scrollbar">
-        <div class="max-w-6xl mx-auto">
-            {{ $slot }}
-        </div>
-    </main>
+    {{-- WRAPPER KONTEN + FOOTER (scroll di sini, mulai di bawah navbar) --}}
+    <div class="flex-1 mt-16 overflow-y-auto custom-scrollbar">
+        <div class="px-4 lg:px-8 pb-8">
+            <div class="max-w-6xl mx-auto mt-6 space-y-4">
+                {{ $slot }}
+            </div>
 
-    {{-- FOOTER MEMBER (komponen terpisah) --}}
-    <x-member.footer />
+            {{-- FOOTER scroll bareng konten, bukan fix --}}
+            <x-member.footer />
+        </div>
+    </div>
 </div>
 
 {{-- ============== JS GLOBAL ============== --}}
 
-{{-- Alpine.js untuk interaksi kecil --}}
 <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
-{{-- Lucide Icons (dipakai di navbar / halaman member) --}}
 <script src="https://unpkg.com/lucide@latest"></script>
 <script>
     function renderLucide() {
@@ -55,16 +54,12 @@
             window.lucide.createIcons();
         }
     }
-
     document.addEventListener('DOMContentLoaded', renderLucide);
-    // Kalau nanti kamu pakai Turbo/Inertia, event ini tetap aman:
     document.addEventListener('turbo:load', renderLucide);
 </script>
 
-{{-- SweetAlert2 (flash toast dll) --}}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-{{-- FLASH MESSAGE -> TOAST --}}
 @if (session('success') || session('error') || session('warning') || session('info') || session('danger'))
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -92,6 +87,20 @@
         });
     </script>
 @endif
+
+{{-- Shadow kecil saat scroll (opsional) --}}
+<script>
+    document.addEventListener("scroll", () => {
+        const header = document.querySelector("header");
+        if (!header) return;
+
+        if (window.scrollY > 8) {
+            header.classList.add("shadow-header");
+        } else {
+            header.classList.remove("shadow-header");
+        }
+    });
+</script>
 
 @stack('scripts')
 
