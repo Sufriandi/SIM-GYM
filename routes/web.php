@@ -9,7 +9,7 @@ use App\Http\Controllers\HomeController;
 // Controller Admin
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\IzinLatihanController;
-use App\Http\Controllers\InventarisAlatController;
+use App\Http\Controllers\Admin\InventarisAlatController;
 use App\Http\Controllers\Admin\PenjualanProdukController; 
 use App\Http\Controllers\Admin\ProdukController;
 use App\Http\Controllers\Admin\CoachController;
