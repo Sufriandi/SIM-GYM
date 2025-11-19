@@ -1,15 +1,15 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\HomeController;
-use Illuminate\Support\Facades\Auth;
 
 // Controller Admin
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\IzinLatihanController;
-// use App\Http\Controllers\Admin\MemberController;
-// use App\Http\Controllers\Admin\ProdukController;
+use App\Http\Controllers\InventarisAlatController;
 
 // Controller Member
 use App\Http\Controllers\Member\DashboardController as MemberDashboardController;
@@ -30,17 +30,17 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 | 2. PENGALIH DASHBOARD (REDIRECTOR)
 |--------------------------------------------------------------------------
 */
-Route::get(uri: '/dashboard', action: function () {
+Route::get('/dashboard', function () {
     if (!Auth::check()) {
-        return redirect()->route(route: 'login');
+        return redirect()->route('login');
     }
 
     if (Auth::user()->role === 'admin') {
-        return redirect()->route(route: 'admin.dashboard');
+        return redirect()->route('admin.dashboard');
     }
 
     // Asumsikan default adalah member
-    return redirect()->route(route: 'member.dashboard');
+    return redirect()->route('member.dashboard');
 
 })->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -62,22 +62,32 @@ Route::middleware('auth')->group(function () {
 | 4. RUTE KHUSUS ADMIN
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'admin'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
 
-    // Dashboard (Nama rute: admin.dashboard)
-    Route::get('dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+        // Dashboard (Nama rute: admin.dashboard)
+        Route::get('dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
-    // Izin Latihan Group (IzinLatihanController)
-    Route::prefix('izin-latihan')->name('izin_latihan.')->group(function () {
-        Route::get('/', [IzinLatihanController::class, 'index'])->name('index');
-        Route::get('/riwayat', [IzinLatihanController::class, 'history'])->name('history');
-        Route::get('/{id}/detail', [IzinLatihanController::class, 'show'])->name('detail');
-        Route::get('/{izinLatihan}/setujui', [IzinLatihanController::class, 'approveForm'])->name('approve.form');
-        Route::post('/{izinLatihan}/approve', [IzinLatihanController::class, 'approveIzin'])->name('approve');
-        Route::post('/{id}/reject', [IzinLatihanController::class, 'reject'])->name('reject');
+        // ================== INVENTARIS ALAT ==================
+        // Paksa nama parameter jadi {inventaris} supaya konsisten
+        Route::resource('inventaris', InventarisAlatController::class)
+            ->parameters([
+                'inventaris' => 'inventaris',
+            ]);
+
+        // ================== IZIN LATIHAN ====================
+        Route::prefix('izin-latihan')->name('izin_latihan.')->group(function () {
+            Route::get('/', [IzinLatihanController::class, 'index'])->name('index');
+            Route::get('/riwayat', [IzinLatihanController::class, 'history'])->name('history');
+            Route::get('/{id}/detail', [IzinLatihanController::class, 'show'])->name('detail');
+            Route::get('/{izinLatihan}/setujui', [IzinLatihanController::class, 'approveForm'])->name('approve.form');
+            Route::post('/{izinLatihan}/approve', [IzinLatihanController::class, 'approveIzin'])->name('approve');
+            Route::post('/{id}/reject', [IzinLatihanController::class, 'reject'])->name('reject');
+        });
+
     });
-
-});
 
 
 /*
@@ -85,25 +95,27 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 | 5. RUTE KHUSUS MEMBER
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'member'])->prefix('member')->name('member.')->group(function () {
+Route::middleware(['auth', 'member'])
+    ->prefix('member')
+    ->name('member.')
+    ->group(function () {
 
-    // Dashboard (Nama rute: member.dashboard)
-    Route::get('dashboard', [MemberDashboardController::class, 'index'])->name('dashboard');
+        // Dashboard (Nama rute: member.dashboard)
+        Route::get('dashboard', [MemberDashboardController::class, 'index'])->name('dashboard');
 
-    // Izin Latihan Group (MemberIzinLatihanController)
-    Route::prefix('izin-latihan')->name('izin_latihan.')->group(function () {
-        // 🚨 PERBAIKAN: Gunakan alias yang benar di sini
-        Route::get('/', [MemberIzinLatihanController::class, 'index'])->name('index');
-        Route::get('/riwayat', [MemberIzinLatihanController::class, 'history'])->name('history');
-        Route::get('/ajukan', [MemberIzinLatihanController::class, 'create'])->name('create');
-        Route::post('/store', [MemberIzinLatihanController::class, 'store'])->name('store');
+        // Izin Latihan Group (MemberIzinLatihanController)
+        Route::prefix('izin-latihan')->name('izin_latihan.')->group(function () {
+            Route::get('/', [MemberIzinLatihanController::class, 'index'])->name('index');
+            Route::get('/riwayat', [MemberIzinLatihanController::class, 'history'])->name('history');
+            Route::get('/ajukan', [MemberIzinLatihanController::class, 'create'])->name('create');
+            Route::post('/store', [MemberIzinLatihanController::class, 'store'])->name('store');
+        });
+
+        // // Rute Pelengkapan Profil (jika diperlukan)
+        // Route::get('/profile/lengkapi', [MemberProfileController::class, 'showCompletionForm'])->name('profile.complete.show');
+        // Route::post('/profile/lengkapi', [MemberProfileController::class, 'completeProfile'])->name('profile.complete.store');
+
     });
-
-    // // Rute Pelengkapan Profil
-    // Route::get('/profile/lengkapi', [MemberProfileController::class, 'showCompletionForm'])->name('profile.complete.show');
-    // Route::post('/profile/lengkapi', [MemberProfileController::class, 'completeProfile'])->name('profile.complete.store');
-
-});
 
 
 /*
