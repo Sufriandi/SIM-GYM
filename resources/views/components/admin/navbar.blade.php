@@ -16,53 +16,59 @@
     @click.away="showNotifications = false; showProfile = false"
     role="banner"
 >
-    <div class="w-full px-4 lg:px-8 flex items-center justify-between gap-4">
+    <div
+        class="w-full px-4 lg:px-8 flex items-center justify-between gap-3 md:gap-4
+               flex-wrap" {{-- supaya di layar kecil boleh turun ke baris kedua tanpa bikin scroll horizontal --}}
+    >
 
         {{-- KIRI: tombol mobile + breadcrumb --}}
         <div class="flex items-center gap-3 min-w-0 flex-1">
 
             {{-- Toggle sidebar mobile --}}
             <button
-                @click="$dispatch('toggle-mobile-menu')"
+                @click="window.dispatchEvent(new CustomEvent('toggle-mobile-menu'))"
                 class="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-xl
-                       bg-brand-card border border-brand-borderSoft shadow-light
-                       hover:bg-brand-gunmetal/40 hover:text-brand-white transition-colors duration-200"
+                    bg-brand-card border border-brand-borderSoft shadow-light
+                    hover:bg-brand-gunmetal/40 hover:text-brand-white transition-colors duration-200"
                 aria-label="Toggle mobile menu"
             >
                 <i data-lucide="menu" class="w-5 h-5 text-text-main"></i>
             </button>
 
             {{-- Breadcrumb --}}
-<div class="min-w-0">
-    <nav class="flex items-center text-sm font-bold text-text-muted" aria-label="Breadcrumb">
-        <a href="{{ route('admin.dashboard') }}"
-            class="inline-flex items-center gap-1 hover:text-gold-400 transition-colors">
-            {{-- ICON UKURAN BESAR DAN KETEBALAN GARIS DITINGKATKAN (stroke-width="3") --}}
-            <i data-lucide="home" class="w-4 h-4" stroke-width="3"></i>
-            {{-- TEXT DIBOLD dan UKURAN DIBESARKAN --}}
-            <span class="hidden sm:inline">Dashboard</span>
-        </a>
+            <div class="min-w-0">
+                <nav class="flex items-center text-xs sm:text-sm font-bold text-text-muted"
+                     aria-label="Breadcrumb">
+                    <a href="{{ route('admin.dashboard') }}"
+                       class="inline-flex items-center gap-1 hover:text-gold-400 transition-colors min-w-0">
+                        <i data-lucide="home" class="w-4 h-4" stroke-width="3"></i>
+                        <span class="hidden sm:inline">Dashboard</span>
+                    </a>
 
-        @if($pageTitle)
-            {{-- ICON PEMISAH UKURAN BESAR DAN KETEBALAN GARIS DITINGKATKAN (stroke-width="3") --}}
-            <i data-lucide="chevron-right" class="w-4 h-4 mx-1.5 text-text-muted" stroke-width="3"></i>
-            <span class="text-text-main font-bold truncate max-w-[200px] md:max-w-[260px]">
-                {{-- TEXT DIBOLD dan UKURAN DIBESARKAN --}}
-                {{ $pageTitle }}
-            </span>
-        @endif
-    </nav>
-</div>
+                    @if($pageTitle)
+                        <i data-lucide="chevron-right"
+                           class="w-4 h-4 mx-1.5 text-text-muted flex-shrink-0"
+                           stroke-width="3"></i>
+
+                        <span
+                            class="text-text-main font-bold truncate
+                                   max-w-[140px] sm:max-w-[200px] md:max-w-[260px]"
+                        >
+                            {{ $pageTitle }}
+                        </span>
+                    @endif
+                </nav>
+            </div>
         </div>
 
         {{-- KANAN: search + notif + profile --}}
-        <div class="flex items-center gap-2 lg:gap-3">
+        <div class="flex items-center gap-2 lg:gap-3 flex-shrink-0">
 
             {{-- Search desktop --}}
             <div
                 class="hidden lg:flex items-center bg-brand-card rounded-full px-4 py-2
                        border border-brand-borderSoft shadow-light
-                       min-w-[240px] xl:min-w-[280px]
+                       min-w-[220px] xl:min-w-[260px]
                        hover:border-gold-500/40 hover:shadow-gold-glow/60
                        transition-all duration-200 group"
             >
@@ -84,7 +90,7 @@
                 </kbd>
             </div>
 
-            {{-- Search mobile --}}
+            {{-- Search mobile (ikon saja) --}}
             <button
                 class="lg:hidden inline-flex items-center justify-center w-9 h-9 rounded-full
                        bg-brand-card border border-brand-borderSoft shadow-light
@@ -103,7 +109,7 @@
                            hover:bg-brand-gunmetal/40 transition-all duration-200"
                     :class="{ 'ring-2 ring-gold-500/30': showNotifications }"
                     aria-label="Notifications"
-                    aria-expanded="showNotifications"
+                    :aria-expanded="showNotifications"
                 >
                     <i data-lucide="bell" class="w-4 h-4 text-text-main"></i>
                     @if($notificationCount > 0)
@@ -120,6 +126,7 @@
                 {{-- Dropdown notifikasi --}}
                 <div
                     x-show="showNotifications"
+                    x-cloak
                     x-transition:enter="transition ease-out duration-200"
                     x-transition:enter-start="opacity-0 scale-95 -translate-y-2"
                     x-transition:enter-end="opacity-100 scale-100 translate-y-0"
@@ -186,7 +193,7 @@
                            shadow-light hover:bg-brand-gunmetal/40 transition-all duration-200 group"
                     :class="{ 'ring-2 ring-gold-500/30': showProfile }"
                     aria-label="User menu"
-                    aria-expanded="showProfile"
+                    :aria-expanded="showProfile"
                 >
                     <div
                         class="w-8 h-8 rounded-full bg-gradient-to-br from-gold-400 to-gold-600
@@ -215,6 +222,7 @@
                 {{-- Dropdown profil --}}
                 <div
                     x-show="showProfile"
+                    x-cloak
                     x-transition:enter="transition ease-out duration-200"
                     x-transition:enter-start="opacity-0 scale-95 -translate-y-2"
                     x-transition:enter-end="opacity-100 scale-100 translate-y-0"

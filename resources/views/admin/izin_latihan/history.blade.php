@@ -1,25 +1,28 @@
 {{-- resources/views/admin/izin_latihan/history.blade.php --}}
 
 <x-layouts.admin
-    pageTitle="Riwayat Persetujuan Izin"
-    pageSubtitle="Daftar izin yang telah disetujui atau ditolak."
+    :title="$pageTitle . ' – BETA GYM'"
+    :page-title="$pageTitle"
+    page-subtitle="Daftar izin latihan yang sudah diproses oleh Admin."
 >
-    {{-- HEADER + BACK --}}
-    <div class="mb-8 space-y-3">
-        <x-ui.section-header
-            title="Riwayat Persetujuan Izin"
-            subtitle="Daftar izin latihan yang sudah diproses oleh Admin."
-        />
+    {{-- JUDUL + SUBTITLE --}}
+    <x-ui.section-header
+        :title="$pageTitle"
+        subtitle="Daftar izin latihan yang sudah diproses oleh Admin."
+    />
 
+    {{-- TOMBOL KEMBALI DI BAWAH SUBTITLE --}}
+    <div class="mt-2">
         <x-ui.back-button
             href="{{ route('admin.izin_latihan.index') }}"
             text="Kembali ke Permintaan Pending"
         />
     </div>
 
-    <hr class="border-t border-brand-borderSoft mb-8">
+    {{-- GARIS PEMBATAS DI BAWAH TOMBOL --}}
+    <hr class="border-t border-brand-borderSoft mb-6 mt-2">
 
-    {{-- CARD UTAMA (dibatasi supaya tidak terlalu melebar) --}}
+    {{-- CARD UTAMA  --}}
     <div class="max-w-6xl mx-auto">
         <x-ui.card>
             {{-- Header card --}}

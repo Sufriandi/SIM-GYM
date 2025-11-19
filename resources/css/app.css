@@ -15,22 +15,23 @@
 }
 
 /* Chrome, Edge, Safari */
-*::-webkit-scrollbar {
-    width: 12px;        /* 💡 perbesar dari 8px jadi 12px */
-    height: 10px;
+/* === BETA GYM GOLD SCROLLBAR (HANYA UNTUK .custom-scrollbar) === */
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
 }
 
-*::-webkit-scrollbar-track {
-    background: #111111;    /* sama seperti sidebar hitam */
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #111;          /* boleh kamu ganti sesuai tema dashboard */
 }
 
-*::-webkit-scrollbar-thumb {
+.custom-scrollbar::-webkit-scrollbar-thumb {
     background: #d4a757;
     border-radius: 999px;
-    border: 2px solid #111111;   /* bikin thumb sedikit lebih “tebal” */
 }
 
-*::-webkit-scrollbar-thumb:hover {
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #c08f3e;
 }
 

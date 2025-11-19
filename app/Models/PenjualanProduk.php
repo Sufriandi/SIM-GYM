@@ -21,6 +21,7 @@ class PenjualanProduk extends Model
     // Relasi ke Produk (Many-to-One)
     public function produk()
     {
+        // Model Produk
         return $this->belongsTo(Produk::class, 'produk_id');
     }
 }

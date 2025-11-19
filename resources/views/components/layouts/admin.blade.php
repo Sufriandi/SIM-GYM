@@ -17,36 +17,36 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="h-full bg-brand-bg text-text-main antialiased">
+<body class="h-full bg-brand-bg text-text-main antialiased overflow-hidden">
+    <div class="h-screen flex bg-brand-bg">
+        {{-- SIDEBAR (FIXED) --}}
+        <x-admin.sidebar />
 
-<div class="h-screen flex bg-brand-bg overflow-hidden">
-    {{-- SIDEBAR (FIXED) --}}
-    <x-admin.sidebar />
+        {{-- WRAPPER KANAN (NAVBAR + CONTENT) --}}
+        <div class="flex-1 flex flex-col md:pl-64">
+            {{-- NAVBAR (FIXED) --}}
+            <x-admin.navbar :page-title="$pageTitle" :page-subtitle="$pageSubtitle" />
 
-    {{-- WRAPPER KANAN (NAVBAR + CONTENT) --}}
-    <div class="flex-1 flex flex-col md:pl-64">
-        {{-- NAVBAR (FIXED) --}}
-        <x-admin.navbar :page-title="$pageTitle" :page-subtitle="$pageSubtitle" />
-
-        {{-- CONTENT (SCROLLABLE) --}}
-        <main class="flex-1 mt-20 px-4 lg:px-8 pb-8 overflow-y-auto custom-scrollbar">
-            {{ $slot }}
-        </main>
+            {{-- CONTENT (SCROLLABLE) --}}
+            <main class="flex-1 mt-20 px-4 lg:px-8 pb-8 overflow-y-auto custom-scrollbar">
+                {{ $slot }}
+            </main>
+        </div>
     </div>
-</div>
 
-{{-- TOAST GLOBAL --}}
-<x-ui.toast />
+    {{-- TOAST GLOBAL --}}
+    <x-ui.toast />
 
-{{-- Init Lucide (supaya semua data-lucide jadi icon) --}}
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        if (window.lucide) {
-            window.lucide.createIcons();
-        }
-    });
-</script>
-@push('scripts')
+    {{-- Init Lucide --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        });
+    </script>
+
+    {{-- ALPINE.JS GLOBAL UNTUK ADMIN --}}
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
     <script>
@@ -61,6 +61,7 @@
             }));
         });
     </script>
-@endpush
+
+    @stack('scripts')
 </body>
 </html>
