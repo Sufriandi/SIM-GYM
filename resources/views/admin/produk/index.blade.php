@@ -5,7 +5,7 @@
     $pageTitle = $pageTitle ?? 'Manajemen Produk';
     // Kategori berdasarkan ENUM di migrasi
     $kategoriOptions = ['minuman', 'suplemen', 'lainnya'];
-    
+
     // Logika untuk membuka modal CREATE secara otomatis jika ada error validasi
     $openCreateOnLoad = ($errors->any() && old('_method') !== 'PUT') ? 'true' : 'false';
 @endphp
@@ -15,7 +15,21 @@
     :page-title="$pageTitle"
     page-subtitle="Kelola data produk yang tersedia di BETA GYM berdasarkan skema database."
 >
-    {{-- TAMPILKAN PESAN FLASH (SUCCESS/ERROR) --}}
+
+    {{-- HEADER UTAMA HALAMAN --}}
+    <x-ui.section-header
+        :title="$pageTitle"
+        subtitle="Kelola data dasar produk yang dijual."
+    >
+        {{-- Tombol Tambah Produk Baru --}}
+        <a href="{{ route('admin.produk.create') }}">
+            <x-ui.button-primary>
+                <i data-lucide="plus" class="w-5 h-5 mr-1"></i> Tambah Produk Baru
+            </x-ui.button-primary>
+        </a>
+    </x-ui.section-header>
+
+    {{-- FLASH MESSAGES (SWEETALERT2) --}}
     @if (session('success'))
         <div class="bg-primary-soft border border-primary text-primary-dark px-4 py-3 rounded relative mb-4">
             <span class="block sm:inline">{{ session('success') }}</span>
@@ -26,19 +40,41 @@
             <span class="block sm:inline">{{ session('error') }}</span>
         </div>
     @endif
-    
-    {{-- STATE UTAMA UNTUK MODAL CREATE --}}
-    <div x-data="{ openCreate: {{ $openCreateOnLoad }} }"> 
 
-        {{-- HEADER HALAMAN --}}
-        <x-ui.section-header
-            :title="$pageTitle"
-            subtitle="Daftar produk aktif dan pengelolaan datanya."
-        >
-            <x-ui.button-primary @click="openCreate = true">
-                + Tambah Produk
-            </x-ui.button-primary>
-        </x-ui.section-header>
+    {{-- STATE UTAMA UNTUK MODAL CREATE --}}
+    <div x-data="{ openCreate: {{ $openCreateOnLoad }} }">
+
+    {{-- CARD UTAMA: TABEL PRODUK --}}
+    <x-ui.card
+        title="Daftar Produk"
+        subtitle="Semua produk yang tersedia untuk penjualan dan manajemen stok."
+        class="border-brand-borderSoft"
+    >
+        <div class="overflow-x-auto custom-scrollbar">
+            {{-- Wajib Pakai md:min-w-[900px] --}}
+            <table class="w-full border-collapse text-xs md:text-sm md:min-w-[900px]">
+                <thead>
+                    <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
+                        <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[30%]">
+                            Nama Produk
+                        </th>
+                        <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[15%]">
+                            Kategori
+                        </th>
+                        <th class="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[15%]">
+                            Harga Jual
+                        </th>
+                        <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[10%]">
+                            Stok
+                        </th>
+                        <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[10%]">
+                            Status
+                        </th>
+                        <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[20%]">
+                            Aksi
+                        </th>
+                    </tr>
+                </thead>
 
         {{-- CARD TABEL PRODUK --}}
         <x-ui.card
@@ -47,7 +83,7 @@
             class="border-brand-borderSoft"
         >
             <div class="overflow-x-auto custom-scrollbar">
-                <table class="w-full border-collapse min-w-[1100px] text-sm"> 
+                <table class="w-full border-collapse min-w-[1100px] text-sm">
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
                             <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
@@ -79,10 +115,10 @@
                             @php
                                 $currentFotoPath = $produk->foto ?? null;
                                 $currentFotoUrl = $currentFotoPath ? Storage::url($currentFotoPath) : 'https://placehold.co/100x100/3A2D2A/F5E6D6?text=No+Foto';
-                                
+
                                 $openEditOnLoad = ($errors->any() && old('produk_id') == $produk->id && old('_method') === 'PUT') ? 'true' : 'false';
                             @endphp
-                            
+
                             {{-- State AlpineJS untuk modal edit dan preview foto --}}
                             <tr
                                 class="hover:bg-brand-surface-50 transition-colors duration-150"
@@ -136,9 +172,9 @@
                                 {{-- AKSI (Menggunakan align-middle dan Ikon) --}}
                                 <td class="p-3 align-middle">
                                     <div class="flex items-center justify-center gap-1.5">
-                                        
+
                                         {{-- EDIT ICON --}}
-                                        <button 
+                                        <button
                                             type="button"
                                             @click="openEdit = true"
                                             title="Edit Produk"
@@ -204,7 +240,7 @@
                                                     @method('PUT')
                                                     {{-- Input hidden untuk identifikasi produk pada saat validasi gagal --}}
                                                     <input type="hidden" name="produk_id" value="{{ $produk->id }}">
-                                                    
+
                                                     {{-- TAMPILAN ERROR VALIDASI UPDATE --}}
                                                     @if ($errors->any() && old('produk_id') == $produk->id && old('_method') === 'PUT')
                                                          <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
@@ -319,7 +355,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="p-6 text-center text-text-muted italic"> 
+                                <td colspan="7" class="p-6 text-center text-text-muted italic">
                                     Belum ada data produk yang tersimpan.
                                 </td>
                             </tr>
@@ -364,7 +400,7 @@
                         class="space-y-5"
                     >
                         @csrf
-                        
+
                         {{-- MENAMPILKAN ERROR VALIDASI UNTUK CREATE --}}
                         @if ($errors->any() && old('_method') !== 'PUT')
                              <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
@@ -417,7 +453,7 @@
                                             @error('kategori')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
                                         </div>
                                     </div>
-                                    
+
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {{-- HARGA --}}
                                         <div>
