@@ -38,7 +38,7 @@ class ProdukController extends Controller
         $validatedData = $request->validate([
             // PERBAIKAN: Gunakan 'produks' dan tambahkan validasi foto
             'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'nama' => 'required|string|max:255|unique:produks,nama', 
+            'nama' => 'required|string|max:255', 
             'kategori' => 'required|in:' . implode(',', $this->kategoriOptions), 
             'harga' => 'required|numeric|min:0',
             'stok' => 'required|integer|min:0', 

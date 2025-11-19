@@ -199,7 +199,7 @@
                     <i
                         data-lucide="user-check"
                         class="w-5 h-5 transition-transform duration-300 {{ $coachActive ? 'text-gold-300' : 'group-hover:scale-110' }}"></i>
-                    <span>Manajemen Coach</span>
+                    <span>Kelola Coach</span>
                     @if($coachActive)
                         <div class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full animate-pulse"></div>
                     @endif
@@ -223,7 +223,7 @@
                     aria-expanded="openKehadiran"
                     aria-controls="kehadiran-submenu">
                     <i data-lucide="calendar-clock" class="w-5 h-5"></i>
-                    <span>Kehadiran</span>
+                    <span>Kelola Kehadiran</span>
                     @if($izinPending > 0)
                         <span
                             class="ml-auto px-2 py-0.5 text-[10px] bg-accent-500 text-white rounded-full font-semibold"
