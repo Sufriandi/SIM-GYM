@@ -1,11 +1,14 @@
 {{-- resources/views/admin/products/index.blade.php --}}
 
 @php
+    use Illuminate\Support\Str; 
+    use Illuminate\Support\Facades\Storage; 
+
     // Variabel pageTitle dari Controller (ProdukController)
     $pageTitle = $pageTitle ?? 'Manajemen Produk';
     // Kategori berdasarkan ENUM di migrasi
     $kategoriOptions = ['minuman', 'suplemen', 'lainnya'];
-
+    
     // Logika untuk membuka modal CREATE secara otomatis jika ada error validasi
     $openCreateOnLoad = ($errors->any() && old('_method') !== 'PUT') ? 'true' : 'false';
 @endphp
@@ -15,21 +18,7 @@
     :page-title="$pageTitle"
     page-subtitle="Kelola data produk yang tersedia di BETA GYM berdasarkan skema database."
 >
-
-    {{-- HEADER UTAMA HALAMAN --}}
-    <x-ui.section-header
-        :title="$pageTitle"
-        subtitle="Kelola data dasar produk yang dijual."
-    >
-        {{-- Tombol Tambah Produk Baru --}}
-        <a href="{{ route('admin.produk.create') }}">
-            <x-ui.button-primary>
-                <i data-lucide="plus" class="w-5 h-5 mr-1"></i> Tambah Produk Baru
-            </x-ui.button-primary>
-        </a>
-    </x-ui.section-header>
-
-    {{-- FLASH MESSAGES (SWEETALERT2) --}}
+    {{-- TAMPILKAN PESAN FLASH (SUCCESS/ERROR) --}}
     @if (session('success'))
         <div class="bg-primary-soft border border-primary text-primary-dark px-4 py-3 rounded relative mb-4">
             <span class="block sm:inline">{{ session('success') }}</span>
@@ -40,41 +29,20 @@
             <span class="block sm:inline">{{ session('error') }}</span>
         </div>
     @endif
-
+    
     {{-- STATE UTAMA UNTUK MODAL CREATE --}}
-    <div x-data="{ openCreate: {{ $openCreateOnLoad }} }">
+    <div x-data="{ openCreate: {{ $openCreateOnLoad }} }"> 
 
-    {{-- CARD UTAMA: TABEL PRODUK --}}
-    <x-ui.card
-        title="Daftar Produk"
-        subtitle="Semua produk yang tersedia untuk penjualan dan manajemen stok."
-        class="border-brand-borderSoft"
-    >
-        <div class="overflow-x-auto custom-scrollbar">
-            {{-- Wajib Pakai md:min-w-[900px] --}}
-            <table class="w-full border-collapse text-xs md:text-sm md:min-w-[900px]">
-                <thead>
-                    <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
-                        <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[30%]">
-                            Nama Produk
-                        </th>
-                        <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[15%]">
-                            Kategori
-                        </th>
-                        <th class="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[15%]">
-                            Harga Jual
-                        </th>
-                        <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[10%]">
-                            Stok
-                        </th>
-                        <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[10%]">
-                            Status
-                        </th>
-                        <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[20%]">
-                            Aksi
-                        </th>
-                    </tr>
-                </thead>
+        {{-- HEADER HALAMAN --}}
+        <x-ui.section-header
+            :title="$pageTitle"
+            subtitle="Daftar produk aktif dan pengelolaan datanya."
+        >
+            {{-- PERBAIKAN TOMBOL TAMBAH: Memindahkan @click ke x-ui.button-primary --}}
+            <x-ui.button-primary type="button" @click="openCreate = true">
+                <i data-lucide="plus" class="w-5 h-5 mr-1"></i> Tambah Produk Baru
+            </x-ui.button-primary>
+        </x-ui.section-header>
 
         {{-- CARD TABEL PRODUK --}}
         <x-ui.card
@@ -83,30 +51,19 @@
             class="border-brand-borderSoft"
         >
             <div class="overflow-x-auto custom-scrollbar">
-                <table class="w-full border-collapse min-w-[1100px] text-sm">
+                {{-- PERBAIKAN UTAMA: Menggunakan min-w-[900px] agar konsisten dengan Coach --}}
+                <table class="w-full border-collapse min-w-[900px] text-sm"> 
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
-                            <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
-                                Foto
-                            </th>
-                            <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
-                                Nama Produk
-                            </th>
-                            <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
-                                Kategori
-                            </th>
-                            <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
-                                Harga
-                            </th>
-                            <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
-                                Stok
-                            </th>
-                            <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
-                                Deskripsi
-                            </th>
-                            <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
-                                Aksi
-                            </th>
+                            {{-- LEBAR KOLOM (Total 100%) --}}
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[5%] min-w-[50px]">Foto</th>
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[18%] min-w-[150px]">Nama Produk</th>
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[12%] min-w-[100px]">Kategori</th>
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[12%] min-w-[100px]">Harga</th>
+                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%] min-w-[80px]">Stok</th>
+                            {{-- Porsi Deskripsi DIBATASI agar tidak melebih-lebihi --}}
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[33%] min-w-[300px]">Deskripsi</th>
+                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%] min-w-[120px]">Aksi</th>
                         </tr>
                     </thead>
 
@@ -115,17 +72,17 @@
                             @php
                                 $currentFotoPath = $produk->foto ?? null;
                                 $currentFotoUrl = $currentFotoPath ? Storage::url($currentFotoPath) : 'https://placehold.co/100x100/3A2D2A/F5E6D6?text=No+Foto';
-
+                                
                                 $openEditOnLoad = ($errors->any() && old('produk_id') == $produk->id && old('_method') === 'PUT') ? 'true' : 'false';
                             @endphp
-
+                            
                             {{-- State AlpineJS untuk modal edit dan preview foto --}}
                             <tr
                                 class="hover:bg-brand-surface-50 transition-colors duration-150"
                                 x-data="{ openEdit: {{ $openEditOnLoad }}, imageUrl: '{{ $currentFotoUrl }}' }"
                             >
-                                {{-- FOTO (Menggunakan align-middle) --}}
-                                <td class="p-3 align-middle">
+                                {{-- FOTO --}}
+                                <td class="p-3 align-middle w-[5%] min-w-[80px]">
                                     <img
                                         src="{{ $currentFotoUrl }}"
                                         alt="Foto {{ $produk->nama }}"
@@ -134,47 +91,47 @@
                                     >
                                 </td>
 
-                                {{-- NAMA (Menggunakan align-middle) --}}
-                                <td class="p-3 align-middle">
+                                {{-- NAMA --}}
+                                <td class="p-3 align-middle w-[18%] min-w-[150px]">
                                     <div class="text-sm font-semibold text-text-main">
                                         {{ $produk->nama }}
                                     </div>
                                 </td>
 
-                                {{-- KATEGORI (Menggunakan align-middle) --}}
-                                <td class="p-3 align-middle">
+                                {{-- KATEGORI --}}
+                                <td class="p-3 align-middle w-[12%] min-w-[100px]">
                                     <div class="text-xs font-medium text-primary-dark">
                                         {{ ucwords($produk->kategori) }}
                                     </div>
                                 </td>
 
-                                {{-- HARGA (Menggunakan align-middle) --}}
-                                <td class="p-3 align-middle">
+                                {{-- HARGA --}}
+                                <td class="p-3 align-middle w-[12%] min-w-[100px]">
                                     <div class="text-sm text-text-main">
                                         {{ 'Rp ' . number_format($produk->harga, 0, ',', '.') }}
                                     </div>
                                 </td>
 
-                                {{-- STOK (Menggunakan align-middle) --}}
-                                <td class="p-3 align-middle">
+                                {{-- STOK --}}
+                                <td class="p-3 align-middle text-center w-[10%] min-w-[80px]">
                                     <div class="text-sm text-text-main">
                                         {{ $produk->stok }}
                                     </div>
                                 </td>
 
-                                {{-- DESKRIPSI (Menggunakan align-middle) --}}
-                                <td class="p-3 align-middle">
-                                    <div class="text-xs text-text-muted max-w-xs">
-                                        {{ $produk->deskripsi ? \Illuminate\Support\Str::limit($produk->deskripsi, 80) : '-' }}
+                                {{-- DESKRIPSI (Menggunakan max-w-full agar tidak over-expand) --}}
+                                <td class="p-3 align-middle w-[33%] min-w-[300px]">
+                                    <div class="text-xs text-text-muted max-w-full">
+                                        {{ $produk->deskripsi ? Str::limit($produk->deskripsi, 80) : '-' }}
                                     </div>
                                 </td>
 
-                                {{-- AKSI (Menggunakan align-middle dan Ikon) --}}
-                                <td class="p-3 align-middle">
+                                {{-- AKSI --}}
+                                <td class="p-3 align-middle w-[10%] min-w-[120px]">
                                     <div class="flex items-center justify-center gap-1.5">
-
+                                        
                                         {{-- EDIT ICON --}}
-                                        <button
+                                        <button 
                                             type="button"
                                             @click="openEdit = true"
                                             title="Edit Produk"
@@ -205,7 +162,7 @@
 
                                     {{-- ======================= --}}
                                     {{-- MODAL EDIT DATA PRODUK  --}}
-                                    {{-- ... (Sisanya modal edit) ... --}}
+                                    {{-- ... (KODE MODAL EDIT LENGKAP) ... --}}
                                     {{-- ======================= --}}
                                     <div
                                         x-show="openEdit"
@@ -240,7 +197,7 @@
                                                     @method('PUT')
                                                     {{-- Input hidden untuk identifikasi produk pada saat validasi gagal --}}
                                                     <input type="hidden" name="produk_id" value="{{ $produk->id }}">
-
+                                                    
                                                     {{-- TAMPILAN ERROR VALIDASI UPDATE --}}
                                                     @if ($errors->any() && old('produk_id') == $produk->id && old('_method') === 'PUT')
                                                          <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
@@ -337,7 +294,7 @@
                                                                             }
                                                                         ">
                                                                     @error('foto')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
-                                                                    <p class="text-[11px] text-text-muted">Maksimal 2MB. Jika diisi, foto lama akan diganti.</p>
+                                                                    <p class="text-[11px] text-text-muted">Maksimal 2MB. Format yang didukung: JPG, PNG, dll.</p>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -355,7 +312,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="p-6 text-center text-text-muted italic">
+                                <td colspan="7" class="p-6 text-center text-text-muted italic"> 
                                     Belum ada data produk yang tersimpan.
                                 </td>
                             </tr>
@@ -370,7 +327,7 @@
             </div>
         </x-ui.card>
 
-        {{-- MODAL TAMBAH PRODUK (Tidak ada perubahan di sini) --}}
+        {{-- MODAL TAMBAH PRODUK (CREATE) --}}
         <div
             x-show="openCreate"
             x-cloak
