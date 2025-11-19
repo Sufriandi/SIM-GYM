@@ -1,4 +1,3 @@
-{{-- resources/views/admin/products/index.blade.php --}}
 
 @php
     // Variabel pageTitle dari Controller (ProdukController)
