@@ -2,6 +2,8 @@
     use Carbon\Carbon;
     use Illuminate\Support\Str;
     use Illuminate\Support\Js; 
+    use App\Models\User; 
+    use Illuminate\Support\Facades\Session;
 
     $pageTitle = $pageTitle ?? 'Riwayat Penjualan Produk';
     
@@ -9,12 +11,16 @@
     $openCreateOnLoad = ($errors->any() && (old('_method') !== 'PUT')) ? 'true' : 'false';
 
     // LOGIKA UNTUK MEMBUKA MODAL EDIT JIKA ADA VALIDASI ERROR DARI UPDATE
-    $openEditOnLoad = ($errors->any() && old('_method') === 'PUT' && old('id')) ? 'true' : 'false';
+    $errorsEdit = Session::get('errors') ? Session::get('errors')->getBag('updatePenjualan') : null;
+    $openEditOnLoad = ($errorsEdit && old('_method') === 'PUT' && old('id')) ? 'true' : 'false';
     $oldEditId = old('_method') === 'PUT' ? (old('id') ?? 'null') : 'null';
     
     // Data untuk AlpineJS
     $produks = $produks ?? collect();
     $metodePembayaran = $metodePembayaran ?? [];
+
+    // Filter Member: Hanya ambil user dengan role 'member'
+    $members = User::where('role', 'member')->get(['id', 'name']);
 @endphp
 
 <x-layouts.admin
@@ -43,7 +49,7 @@
         x-data="{ 
             openCreate: {{ $openCreateOnLoad }},
             openDetail: false, 
-            openEdit: {{ $openEditOnLoad }}, // <-- Data Modal Edit
+            openEdit: {{ $openEditOnLoad }}, 
             
             detailPenjualan: null, 
             editPenjualan: null, 
@@ -58,6 +64,7 @@
             editForm: {
                 id: {{ $oldEditId }}, 
                 produk_id: {{ old('produk_id') ?? 'null' }},
+                member_id: '{{ old('member_id') ?? 'null' }}',
                 jumlah: {{ old('jumlah') ?? 'null' }},
                 metode_pembayaran: '{{ old('metode_pembayaran') }}',
                 keterangan: '{{ old('keterangan') }}',
@@ -90,6 +97,7 @@
                 // Isi data ke form untuk modal edit
                 this.editForm.id = penjualan.id;
                 this.editForm.produk_id = penjualan.produk.id;
+                this.editForm.member_id = penjualan.member_id;
                 this.editForm.jumlah = penjualan.jumlah;
                 this.editForm.metode_pembayaran = penjualan.metode_pembayaran;
                 this.editForm.keterangan = penjualan.keterangan;
@@ -110,19 +118,15 @@
             
             // Hitung stok maksimal untuk input jumlah di modal edit
             calculateMaxStockEdit() {
-                 // Stok saat ini + Jumlah yang dibeli sebelumnya
-                 // Catatan: Asumsi produk.stok adalah stok produk SAAT INI (setelah transaksi ini dikurangi)
                  return (this.editForm.stok_awal + this.editForm.jumlah_awal);
             },
 
-            // Helper untuk format tanggal
+            // Helper untuk format tanggal (TIDAK ADA JAM DI MODAL DETAIL)
             formatDate(dateString) {
                 return new Date(dateString).toLocaleDateString('id-ID', {
                     year: 'numeric',
                     month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
+                    day: 'numeric'
                 });
             },
             
@@ -133,13 +137,10 @@
         }" 
         x-init="
             updateProductObject();
-            // Data penjualan dari PHP untuk Alpine.js
-            // Pastikan data ini di-load dengan relasi 'produk'
             window.penjualanData = {{ Js::from($daftar_penjualan) }};
 
             // Logika untuk mengisi data edit jika modal edit dibuka karena validasi error
             if (openEdit) {
-                // Mencari data transaksi yang gagal divalidasi
                 const failedPenjualan = window.penjualanData.data.find(p => p.id == editForm.id);
                 if (failedPenjualan) {
                     const produk = produkData.find(p => p.id === failedPenjualan.produk.id) || null;
@@ -148,45 +149,51 @@
                         editForm.stok_awal = produk.stok;
                         editForm.jumlah_awal = failedPenjualan.jumlah; 
                     }
+                    editForm.member_id = '{{ old('member_id') }}' || failedPenjualan.member_id;
+                    editForm.jumlah = {{ old('jumlah') ?? 'null' }};
+                    editForm.metode_pembayaran = '{{ old('metode_pembayaran') }}';
+                    editForm.keterangan = '{{ old('keterangan') }}';
                     editPenjualan = failedPenjualan;
                 } else {
                     openEdit = false;
                 }
             }
         "
+        class="min-h-screen pb-20"
     > 
-        {{-- HEADER HALAMAN (Sama seperti Produk) --}}
+        {{-- HEADER HALAMAN --}}
         <x-ui.section-header
             :title="$pageTitle"
             subtitle="Daftar transaksi penjualan produk yang pernah terjadi."
         >
-            {{-- TOMBOL CATAT PENJUALAN (Struktur dan Warna Sama Persis) --}}
+        </x-ui.section-header>
+
+        {{-- garis dibawah judul --}}
+        <div class="mt-2 h-px w-full bg-brand-borderSoft/70"></div>
+
+        <div class="mt-6 mb-4 flex justify-end">
             <x-ui.button-primary type="button" @click="openCreate = true">
                 <i data-lucide="plus" class="w-5 h-5 mr-1"></i> Catat Penjualan
             </x-ui.button-primary>
-        </x-ui.section-header>
+        </div>        
 
-        {{-- CARD TABEL PENJUALAN (Sama seperti Produk) --}}
+        {{-- CARD TABEL PENJUALAN --}}
         <x-ui.card
             title="Daftar Riwayat Penjualan"
             subtitle="Transaksi terbaru dan detailnya."
             class="border-brand-borderSoft"
         >
-            {{-- Perbaikan: Mengurangi min-w tabel agar tidak selalu melebihi wadah pada layar yang lebih kecil. --}}
             <div class="overflow-x-auto custom-scrollbar">
-                {{-- Menggunakan min-w dan w-full collapse --}}
-                {{-- Menurunkan min-w dari 900px menjadi 800px atau menyesuaikan lebar kolom di bawah --}}
-                <table class="w-full border-collapse min-w-[800px] text-sm"> 
+                <table class="w-full border-collapse min-w-[1000px] text-sm"> 
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
-                            {{-- PENYESUAIAN KOLOM agar tampil proporsional --}}
-                            {{-- Sesuaikan persentase dan min-width: --}}
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[18%] min-w-[150px]">Tanggal</th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[20%] min-w-[200px]">Produk</th>
-                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%] min-w-[70px]">Jumlah</th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[15%] min-w-[120px]">Total Harga</th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[15%] min-w-[120px]">Pembayaran</th>
-                            <th class="p-3 text-left text-[12px] font-bold uppercase tracking-wide text-text-muted w-[12%] min-w-[100px]">Keterangan</th>
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[12%] min-w-[120px]">Tanggal</th>
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[15%] min-w-[150px]">Member</th>
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[18%] min-w-[180px]">Produk</th>
+                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[8%] min-w-[60px]">Jumlah</th>
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[12%] min-w-[100px]">Total Harga</th>
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%] min-w-[100px]">Pembayaran</th>
+                            <th class="p-3 text-left text-[12px] font-bold uppercase tracking-wide text-text-muted w-[15%] min-w-[100px]">Keterangan</th>
                             <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%] min-w-[80px]">Aksi</th>
                         </tr>
                     </thead>
@@ -194,12 +201,17 @@
                     <tbody class="divide-y divide-brand-borderSoft/80">
                         @forelse ($daftar_penjualan as $penjualan)
                             @php
-                                $tanggal = Carbon::parse($penjualan->tanggal_transaksi)->locale('id')->isoFormat('D MMM YYYY, HH:mm');
+                                // PERBAIKAN: Hapus jam (HH:mm) dari tampilan tabel
+                                $tanggalDisplay = Carbon::parse($penjualan->tanggal_transaksi)->locale('id')->isoFormat('D MMM YYYY'); 
+                                
                                 $namaProduk = $penjualan->produk->nama ?? 'Produk Dihapus';
-                                // Siapkan data lengkap penjualan untuk AlpineJS (pastikan relasi produk juga dimuat)
+                                $namaMember = $penjualan->member->name ?? 'Umum'; 
+                                
                                 $penjualan_data_js = [
                                     'id' => $penjualan->id,
-                                    'tanggal_transaksi' => $penjualan->tanggal_transaksi,
+                                    'tanggal_transaksi' => $penjualan->tanggal_transaksi, // Full datetime string untuk JS Date()
+                                    'member_id' => $penjualan->member_id, 
+                                    'member_name' => $namaMember, 
                                     'produk' => $penjualan->produk ? ['id' => $penjualan->produk->id, 'nama' => $penjualan->produk->nama, 'harga' => $penjualan->produk->harga] : ['id' => 0, 'nama' => 'Produk Dihapus', 'harga' => 0],
                                     'jumlah' => $penjualan->jumlah,
                                     'total_harga' => $penjualan->total_harga,
@@ -213,43 +225,43 @@
                             <tr class="hover:bg-brand-surface-50 transition-colors duration-150">
                                 
                                 {{-- TANGGAL --}}
-                                {{-- Menggunakan lebar yang sama dengan header --}}
-                                <td class="p-3 align-middle w-[18%] min-w-[150px]"> 
-                                    <div class="text-xs text-text-muted">
-                                        {{ $tanggal }}
+                                <td class="p-3 align-middle w-[12%] min-w-[120px]"> 
+                                    <div class="text-xs text-text-muted">{{ $tanggalDisplay }}</div>
+                                </td>
+                                
+                                {{-- MEMBER --}}
+                                <td class="p-3 align-middle w-[15%] min-w-[150px]">
+                                    <div class="text-sm font-medium text-text-main">
+                                        {{ $namaMember }}
                                     </div>
                                 </td>
 
                                 {{-- PRODUK --}}
-                                <td class="p-3 align-middle w-[20%] min-w-[200px]">
-                                    <div class="text-sm font-semibold text-text-main">
-                                        {{ $namaProduk }}
-                                    </div>
+                                <td class="p-3 align-middle w-[18%] min-w-[180px]">
+                                    <div class="text-sm font-semibold text-text-main">{{ $namaProduk }}</div>
                                 </td>
 
                                 {{-- JUMLAH --}}
-                                <td class="p-3 align-middle text-center w-[10%] min-w-[70px]">
-                                    <div class="text-sm font-bold text-primary-dark">
-                                        {{ $penjualan->jumlah }}
-                                    </div>
+                                <td class="p-3 align-middle text-center w-[8%] min-w-[60px]">
+                                    <div class="text-sm font-bold text-primary-dark">{{ $penjualan->jumlah }}</div>
                                 </td>
                                 
                                 {{-- TOTAL HARGA --}}
-                                <td class="p-3 align-middle w-[15%] min-w-[120px]">
+                                <td class="p-3 align-middle w-[12%] min-w-[100px]">
                                     <div class="text-sm font-semibold text-success">
                                         {{ 'Rp ' . number_format($penjualan->total_harga, 0, ',', '.') }}
                                     </div>
                                 </td>
 
                                 {{-- METODE PEMBAYARAN --}}
-                                <td class="p-3 align-middle w-[15%] min-w-[120px]">
+                                <td class="p-3 align-middle w-[10%] min-w-[100px]">
                                     <span class="text-xs font-medium text-text-main whitespace-nowrap">
                                         {{ $penjualan->metode_pembayaran }}
                                     </span>
                                 </td>
                                 
                                 {{-- KETERANGAN --}}
-                                <td class="p-3 align-middle w-[12%] min-w-[100px]"> 
+                                <td class="p-3 align-middle w-[15%] min-w-[100px]"> 
                                     <div class="text-xs text-text-muted max-w-full">
                                         {{ $penjualan->keterangan ? Str::limit($penjualan->keterangan, 30) : '-' }}
                                     </div>
@@ -302,7 +314,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="p-6 text-center text-text-muted italic"> 
+                                <td colspan="8" class="p-6 text-center text-text-muted italic"> 
                                     Belum ada riwayat transaksi penjualan.
                                 </td>
                             </tr>
@@ -311,7 +323,6 @@
                 </table>
             </div>
 
-            {{-- PAGINATION --}}
             <div class="mt-6">
                 {{ $daftar_penjualan->links() }}
             </div>
@@ -332,21 +343,16 @@
             >
                 <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
                     <div>
-                        <h2 class="text-xl font-semibold text-text-main">
-                            Catat Penjualan Baru
-                        </h2>
-                        <p class="text-sm text-text-muted mt-0.5">
-                            Masukkan detail transaksi penjualan produk baru.
-                        </p>
+                        <h2 class="text-xl font-semibold text-text-main">Catat Penjualan Baru</h2>
+                        <p class="text-sm text-text-muted mt-0.5">Masukkan detail transaksi penjualan produk baru.</p>
                     </div>
-                    <button type="button"
-                            class="rounded-full p-1.5 hover:bg-brand-surface-50 transition"
-                            @click="openCreate = false">
+                    <button type="button" class="rounded-full p-1.5 hover:bg-brand-surface-50 transition" @click="openCreate = false">
                         <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
                     </button>
                 </div>
 
-                <div class="px-6 pb-6 pt-4">
+                {{-- KONTEN MODAL DENGAN SCROLL VERTICAL --}}
+                <div class="px-6 pb-6 pt-4 max-h-[85vh] overflow-y-auto custom-scrollbar"> 
                     <form action="{{ route('admin.penjualan_produk.store') }}" method="POST" class="space-y-6">
                         @csrf
                         
@@ -422,6 +428,24 @@
                                 
                             </div>
 
+                            {{-- MEMBER ID (OPSIONAL) --}}
+                            <div>
+                                <x-ui.label for="member_id_modal">Member (Opsional)</x-ui.label>
+                                <select 
+                                    id="member_id_modal" 
+                                    name="member_id"
+                                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('member_id') border-danger ring-danger-soft @enderror"
+                                >
+                                    <option value="" {{ old('member_id') == null ? 'selected' : '' }}>-- Umum (Tidak Terdaftar) --</option>
+                                    @foreach ($members as $member)
+                                        <option value="{{ $member->id }}" {{ old('member_id') == $member->id ? 'selected' : '' }}>
+                                            {{ $member->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('member_id')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
+                            </div>
+
                             {{-- METODE PEMBAYARAN --}}
                             <div>
                                 <x-ui.label for="metode_pembayaran_modal">Metode Pembayaran</x-ui.label>
@@ -466,10 +490,8 @@
                 </div>
             </div>
         </div>
-        
-        {{-- ======================== --}}
-        {{-- MODAL DETAIL PENJUALAN (SHOW) --}}
-        {{-- ======================== --}}
+
+        {{-- MODAL DETAIL DAN EDIT --}}
         <div
             x-show="openDetail"
             x-cloak
@@ -482,21 +504,15 @@
             >
                 <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
                     <div>
-                        <h2 class="text-xl font-semibold text-text-main">
-                            Detail Transaksi Penjualan
-                        </h2>
-                        <p class="text-sm text-text-muted mt-0.5">
-                            Informasi lengkap mengenai transaksi produk.
-                        </p>
+                        <h2 class="text-xl font-semibold text-text-main">Detail Transaksi Penjualan</h2>
+                        <p class="text-sm text-text-muted mt-0.5">Informasi lengkap mengenai transaksi produk.</p>
                     </div>
-                    <button type="button"
-                            class="rounded-full p-1.5 hover:bg-brand-surface-50 transition"
-                            @click="openDetail = false">
+                    <button type="button" class="rounded-full p-1.5 hover:bg-brand-surface-50 transition" @click="openDetail = false">
                         <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
                     </button>
                 </div>
 
-                <div class="px-6 pb-6 pt-4" x-if="detailPenjualan">
+                <div class="px-6 pb-6 pt-4 max-h-[85vh] overflow-y-auto custom-scrollbar" x-if="detailPenjualan">
                     
                     <div class="space-y-4">
                         
@@ -504,8 +520,16 @@
                         <div class="p-4 border border-brand-borderSoft rounded-xl bg-brand-surface-50 space-y-2">
                             <div class="flex justify-between items-center border-b border-brand-borderSoft pb-2">
                                 <span class="text-sm font-medium text-text-muted">Tanggal Transaksi:</span>
+                                {{-- PERBAIKAN: Gunakan helper formatDate yang hanya menampilkan tanggal --}}
                                 <span class="font-semibold text-sm text-text-main" x-text="formatDate(detailPenjualan.tanggal_transaksi)"></span>
                             </div>
+                            
+                            {{-- MEMBER ID (DETAIL) --}}
+                            <div class="flex justify-between items-center border-b border-brand-borderSoft pb-2">
+                                <span class="text-sm font-medium text-text-muted">Member:</span>
+                                <span class="font-semibold text-sm text-primary-dark" x-text="detailPenjualan.member_name || 'Umum'"></span>
+                            </div>
+
                             <div class="flex justify-between items-center">
                                 <span class="text-sm font-medium text-text-muted">Metode Pembayaran:</span>
                                 <span class="font-semibold text-sm text-primary-dark" x-text="detailPenjualan.metode_pembayaran"></span>
@@ -550,17 +574,13 @@
                     </div>
 
                     <div class="flex items-center justify-end mt-6">
-                        <x-ui.button-secondary type="button" @click="openDetail = false">
-                            Tutup
-                        </x-ui.button-secondary>
+                        <x-ui.button-secondary type="button" @click="openDetail = false">Tutup</x-ui.button-secondary>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- ======================== --}}
         {{-- MODAL EDIT PENJUALAN (UPDATE) --}}
-        {{-- ======================== --}}
         <div
             x-show="openEdit"
             x-cloak
@@ -573,27 +593,21 @@
             >
                 <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
                     <div>
-                        <h2 class="text-xl font-semibold text-text-main">
-                            Edit Transaksi Penjualan
-                        </h2>
+                        <h2 class="text-xl font-semibold text-text-main">Edit Transaksi Penjualan</h2>
                         <p class="text-sm text-text-muted mt-0.5" x-text="'ID Transaksi: ' + (editPenjualan ? editPenjualan.id : '')">
                             Ubah detail transaksi penjualan produk.
                         </p>
                     </div>
-                    <button type="button"
-                            class="rounded-full p-1.5 hover:bg-brand-surface-50 transition"
-                            @click="openEdit = false">
+                    <button type="button" class="rounded-full p-1.5 hover:bg-brand-surface-50 transition" @click="openEdit = false">
                         <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
                     </button>
                 </div>
 
-                <div class="px-6 pb-6 pt-4" x-if="editPenjualan">
-                    {{-- Form UPDATE --}}
+                <div class="px-6 pb-6 pt-4 max-h-[85vh] overflow-y-auto custom-scrollbar" x-if="editPenjualan">
                     <form :action="'{{ route('admin.penjualan_produk.index') }}/' + editForm.id" method="POST" class="space-y-6">
                         @csrf
                         @method('PUT') 
                         
-                        {{-- Hidden ID untuk dikirim saat validasi gagal --}}
                         <input type="hidden" name="id" :value="editForm.id">
                         
                         {{-- ERROR VALIDASI untuk PUT request --}}
@@ -612,7 +626,7 @@
                             <div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     
-                                    {{-- PRODUK ID (Disabled agar tidak diubah) --}}
+                                    {{-- PRODUK ID (Disabled) --}}
                                     <div>
                                         <x-ui.label for="produk_id_modal_edit">Produk Dijual</x-ui.label>
                                         <input 
@@ -621,7 +635,6 @@
                                             disabled
                                             class="w-full rounded-xl border bg-brand-surface-50 text-sm text-text-muted px-3 py-2 border-brand-borderSoft"
                                         >
-                                        {{-- Produk ID dikirim sebagai hidden field --}}
                                         <input type="hidden" name="produk_id" :value="editForm.produk_id"> 
                                         <p class="text-xs text-text-muted mt-1">Produk tidak dapat diubah.</p>
                                     </div>
@@ -656,6 +669,25 @@
                                     </p>
                                 </div>
                                 
+                            </div>
+
+                            {{-- MEMBER ID (EDIT) --}}
+                            <div>
+                                <x-ui.label for="member_id_modal_edit">Member (Opsional)</x-ui.label>
+                                <select 
+                                    id="member_id_modal_edit" 
+                                    name="member_id" 
+                                    x-model="editForm.member_id"
+                                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('member_id') border-danger ring-danger-soft @enderror"
+                                >
+                                    <option value="">-- Umum (Tidak Terdaftar) --</option>
+                                    @foreach ($members as $member)
+                                        <option :value="{{ $member->id }}">
+                                            {{ $member->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('member_id')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
                             </div>
 
                             {{-- METODE PEMBAYARAN --}}
@@ -696,7 +728,6 @@
                             <x-ui.button-secondary type="button" @click="openEdit = false" class="mr-2">
                                 Batal
                             </x-ui.button-secondary>
-                            {{-- MENGGANTI x-ui.button-warning dengan x-ui.button-primary --}}
                             <x-ui.button-primary type="submit">
                                 Simpan Perubahan
                             </x-ui.button-primary>
@@ -709,7 +740,7 @@
 
     </div> {{-- Penutup div x-data besar --}}
 
-    {{-- SCRIPT KONFIRMASI HAPUS (Pembatalan) dan CUSTOM STYLE --}}
+    {{-- SCRIPT KONFIRMASI HAPUS (TETAP) --}}
     <script>
         function confirmDeletePenjualan(penjualanId, productName) {
             if (typeof Swal === 'undefined') {
@@ -738,6 +769,7 @@
         }
     </script>
     
+    {{-- CUSTOM SCROLLBAR (TETAP) --}}
     <style>
         .custom-scrollbar::-webkit-scrollbar {
             height: 6px;

@@ -1,15 +1,13 @@
-{{-- resources/views/admin/products/index.blade.php --}}
+{{-- resources/views/admin/produk/index.blade.php --}}
 
 @php
     use Illuminate\Support\Str; 
     use Illuminate\Support\Facades\Storage; 
+    use Illuminate\Support\Js; 
 
-    // Variabel pageTitle dari Controller (ProdukController)
     $pageTitle = $pageTitle ?? 'Manajemen Produk';
-    // Kategori berdasarkan ENUM di migrasi
     $kategoriOptions = ['minuman', 'suplemen', 'lainnya'];
     
-    // Logika untuk membuka modal CREATE secara otomatis jika ada error validasi
     $openCreateOnLoad = ($errors->any() && old('_method') !== 'PUT') ? 'true' : 'false';
 @endphp
 
@@ -38,11 +36,17 @@
             :title="$pageTitle"
             subtitle="Daftar produk aktif dan pengelolaan datanya."
         >
-            {{-- PERBAIKAN TOMBOL TAMBAH: Memindahkan @click ke x-ui.button-primary --}}
+        </x-ui.section-header>
+
+        {{-- garis dibawah judul --}}
+        <div class="mt-2 h-px w-full bg-brand-borderSoft/70"></div>
+
+        <div class="mt-6 mb-4 flex justify-end">
             <x-ui.button-primary type="button" @click="openCreate = true">
                 <i data-lucide="plus" class="w-5 h-5 mr-1"></i> Tambah Produk Baru
             </x-ui.button-primary>
-        </x-ui.section-header>
+        </div>
+        
 
         {{-- CARD TABEL PRODUK --}}
         <x-ui.card
@@ -51,17 +55,14 @@
             class="border-brand-borderSoft"
         >
             <div class="overflow-x-auto custom-scrollbar">
-                {{-- PERBAIKAN UTAMA: Menggunakan min-w-[900px] agar konsisten dengan Coach --}}
                 <table class="w-full border-collapse min-w-[900px] text-sm"> 
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
-                            {{-- LEBAR KOLOM (Total 100%) --}}
                             <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[5%] min-w-[50px]">Foto</th>
                             <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[18%] min-w-[150px]">Nama Produk</th>
                             <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[12%] min-w-[100px]">Kategori</th>
                             <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[12%] min-w-[100px]">Harga</th>
                             <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%] min-w-[80px]">Stok</th>
-                            {{-- Porsi Deskripsi DIBATASI agar tidak melebih-lebihi --}}
                             <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[33%] min-w-[300px]">Deskripsi</th>
                             <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%] min-w-[120px]">Aksi</th>
                         </tr>
@@ -112,14 +113,14 @@
                                     </div>
                                 </td>
 
-                                {{-- STOK --}}
+                                {{-- STOK (Hanya Display) --}}
                                 <td class="p-3 align-middle text-center w-[10%] min-w-[80px]">
-                                    <div class="text-sm text-text-main">
+                                    <div class="text-sm text-text-main font-bold">
                                         {{ $produk->stok }}
                                     </div>
                                 </td>
 
-                                {{-- DESKRIPSI (Menggunakan max-w-full agar tidak over-expand) --}}
+                                {{-- DESKRIPSI --}}
                                 <td class="p-3 align-middle w-[33%] min-w-[300px]">
                                     <div class="text-xs text-text-muted max-w-full">
                                         {{ $produk->deskripsi ? Str::limit($produk->deskripsi, 80) : '-' }}
@@ -161,8 +162,7 @@
                                     </div>
 
                                     {{-- ======================= --}}
-                                    {{-- MODAL EDIT DATA PRODUK  --}}
-                                    {{-- ... (KODE MODAL EDIT LENGKAP) ... --}}
+                                    {{-- MODAL EDIT DATA PRODUK --}}
                                     {{-- ======================= --}}
                                     <div
                                         x-show="openEdit"
@@ -186,7 +186,7 @@
                                             </div>
 
                                             {{-- ISI MODAL EDIT --}}
-                                            <div class="px-6 pb-6 pt-4">
+                                            <div class="px-6 pb-6 pt-4 max-h-[85vh] overflow-y-auto custom-scrollbar">
                                                 <form
                                                     method="POST"
                                                     action="{{ route('admin.produk.update', $produk) }}"
@@ -200,18 +200,18 @@
                                                     
                                                     {{-- TAMPILAN ERROR VALIDASI UPDATE --}}
                                                     @if ($errors->any() && old('produk_id') == $produk->id && old('_method') === 'PUT')
-                                                         <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
-                                                            <p class="text-sm font-semibold">Ada kesalahan input saat mengedit:</p>
-                                                             <ul class="list-disc list-inside text-xs mt-1">
-                                                                 @foreach ($errors->all() as $error)
-                                                                     <li>{{ $error }}</li>
-                                                                 @endforeach
-                                                             </ul>
-                                                         </div>
+                                                           <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
+                                                                <p class="text-sm font-semibold">Ada kesalahan input saat mengedit:</p>
+                                                                <ul class="list-disc list-inside text-xs mt-1">
+                                                                     @foreach ($errors->all() as $error)
+                                                                            <li>{{ $error }}</li>
+                                                                     @endforeach
+                                                                </ul>
+                                                           </div>
                                                     @endif
 
                                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                        {{-- PANEL KIRI: FOTO + INFO SINGKAT --}}
+                                                        {{-- PANEL KIRI: FOTO + INFO SINGKAT (TETAP) --}}
                                                         <div class="md:col-span-1">
                                                             <div class="rounded-2xl border border-brand-borderSoft/70 bg-brand-card p-4 flex flex-col items-center gap-3">
                                                                 <div class="w-full aspect-square border-2 border-dashed border-brand-borderSoft rounded-lg overflow-hidden flex items-center justify-center bg-brand-surface-50">
@@ -259,13 +259,14 @@
                                                                             class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('harga') border-danger ring-danger-soft @enderror">
                                                                         @error('harga')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
                                                                     </div>
-                                                                    {{-- STOK --}}
+                                                                    {{-- STOK (DISABLED) --}}
                                                                     <div>
-                                                                        <x-ui.label for="stok_{{ $produk->id }}">Stok</x-ui.label>
-                                                                        <input type="number" id="stok_{{ $produk->id }}" name="stok"
-                                                                            value="{{ old('stok', $produk->stok) }}" required
-                                                                            class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('stok') border-danger ring-danger-soft @enderror">
-                                                                        @error('stok')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
+                                                                        <x-ui.label for="stok_{{ $produk->id }}">Stok (Otomatis)</x-ui.label>
+                                                                        <input type="text" 
+                                                                            value="{{ $produk->stok }}" 
+                                                                            disabled 
+                                                                            class="w-full rounded-xl border bg-brand-surface-50 text-sm text-text-muted px-3 py-2 border-brand-borderSoft">
+                                                                        <p class="text-xs text-text-muted mt-1">Stok dikelola melalui Riwayat Stok Produk.</p>
                                                                     </div>
                                                                 </div>
 
@@ -294,7 +295,7 @@
                                                                             }
                                                                         ">
                                                                     @error('foto')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
-                                                                    <p class="text-[11px] text-text-muted">Maksimal 2MB. Format yang didukung: JPG, PNG, dll.</p>
+                                                                    <p class="text-[11px] text-text-muted mt-1">Maksimal 2MB. Format yang didukung: JPG, PNG, dll.</p>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -349,7 +350,7 @@
                     </button>
                 </div>
 
-                <div class="px-6 pb-6 pt-4">
+                <div class="px-6 pb-6 pt-4 max-h-[85vh] overflow-y-auto custom-scrollbar">
                     <form
                         method="POST"
                         action="{{ route('admin.produk.store') }}"
@@ -360,14 +361,14 @@
 
                         {{-- MENAMPILKAN ERROR VALIDASI UNTUK CREATE --}}
                         @if ($errors->any() && old('_method') !== 'PUT')
-                             <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
-                                <p class="text-sm font-semibold">Ada kesalahan input:</p>
-                                <ul class="list-disc list-inside text-xs mt-1">
-                                    @foreach ($errors->all() as $error)
-                                        <li>{{ $error }}</li>
-                                    @endforeach
-                                </ul>
-                            </div>
+                               <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
+                                  <p class="text-sm font-semibold">Ada kesalahan input:</p>
+                                   <ul class="list-disc list-inside text-xs mt-1">
+                                       @foreach ($errors->all() as $error)
+                                          <li>{{ $error }}</li>
+                                       @endforeach
+                                   </ul>
+                               </div>
                         @endif
 
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -421,13 +422,13 @@
                                             @error('harga')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
                                         </div>
 
-                                        {{-- STOK --}}
+                                        {{-- STOK (DISABLED) --}}
                                         <div>
-                                            <x-ui.label for="stok_create">Stok</x-ui.label>
-                                            <input type="number" id="stok_create" name="stok"
-                                                value="{{ old('stok') }}" required
-                                                class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('stok') border-danger ring-danger-soft @enderror">
-                                            @error('stok')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
+                                            <x-ui.label for="stok_create">Stok Awal</x-ui.label>
+                                            <input type="text" value="0" disabled
+                                                class="w-full rounded-xl border bg-brand-surface-50 text-sm text-text-muted px-3 py-2 border-brand-borderSoft">
+                                            <input type="hidden" name="stok" value="0">
+                                            <p class="text-xs text-text-muted mt-1">Stok diinisialisasi 0. Tambah stok awal melalui Riwayat Stok.</p>
                                         </div>
                                     </div>
 
@@ -441,7 +442,7 @@
                                     </div>
 
                                     {{-- FOTO --}}
-                                    <div>
+                                    <div class="space-y-2">
                                         <x-ui.label for="foto_create">Foto Produk (opsional)</x-ui.label>
                                         <input type="file" id="foto_create" name="foto" accept="image/*"
                                             class="block w-full text-sm text-text-main file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gold-600 file:text-white hover:file:bg-gold-700 @error('foto') border-danger ring-danger-soft @enderror"
@@ -471,7 +472,7 @@
             </div>
         </div>
 
-        {{-- SCRIPT KONFIRMASI HAPUS --}}
+        {{-- SCRIPT KONFIRMASI HAPUS DAN STYLE TETAP --}}
         <script>
             function confirmDeleteProduct(productId, productName) {
                 if (typeof Swal === 'undefined') {
@@ -500,7 +501,6 @@
             }
         </script>
 
-        {{-- CUSTOM SCROLLBAR --}}
         <style>
             .custom-scrollbar::-webkit-scrollbar {
                 height: 6px;
