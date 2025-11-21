@@ -177,7 +177,7 @@
 
                     {{-- Stok Produk (placeholder) --}}
                     <a
-                        href="#"
+                        href="{{ route('admin.stok_produk.index') }}"
                         class="group flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
                                 {{ $stokActive
                                   ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'

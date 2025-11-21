@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\IzinLatihanController;
 use App\Http\Controllers\Admin\InventarisAlatController;
 use App\Http\Controllers\Admin\PenjualanProdukController; 
 use App\Http\Controllers\Admin\ProdukController;
+use App\Http\Controllers\Admin\StokProdukController;
 use App\Http\Controllers\Admin\CoachController;
 // use App\Http\Controllers\Admin\MemberController;
 
@@ -97,13 +98,16 @@ Route::middleware(['auth', 'admin'])
 
         // 1. Rute Penjualan Produk (Hanya index, create, store, show, destroy)
         Route::resource('penjualan_produk', PenjualanProdukController::class)
-            ->only(['index', 'create', 'store', 'show', 'destroy']);
+            ->only(['index', 'store', 'show', 'update', 'destroy']);
 
         // 2. RUTE Master Data Produk (CRUD Penuh)
         Route::resource('produk', ProdukController::class);
 
-        // Rute lain untuk manajemen Stok Produk akan ditambahkan di sini
-        // Route::resource('stok-produk', StokProdukController::class);
+        // 3. RUTE MANAJEMEN STOK PRODUK (BARU DITAMBAH)
+        Route::resource('stok_produk', StokProdukController::class)
+            ->parameters([
+                'stok_produk' => 'stokProduk', 
+            ]);
 
         // =========================================================
         // RUTE MANAJEMEN COACH
