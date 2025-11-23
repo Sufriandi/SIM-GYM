@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\CoachController;
 use App\Http\Controllers\Member\DashboardController as MemberDashboardController;
 use App\Http\Controllers\Member\IzinLatihanController as MemberIzinLatihanController;
 use App\Http\Controllers\Member\MemberProfileController;
+use App\Http\Controllers\Member\ProdukGymController;
 
 /*
 |--------------------------------------------------------------------------
@@ -136,6 +137,12 @@ Route::middleware(['auth', 'member'])
             Route::get('/ajukan', [MemberIzinLatihanController::class, 'create'])->name('create');
             Route::post('/store', [MemberIzinLatihanController::class, 'store'])->name('store');
         });
+
+        // produk gym (marketplace member)
+        Route::resource('produk_gym', ProdukGymController::class)
+            ->only(['index', 'store'])
+            ->names('produk_gym');
+
 
         // // Rute Pelengkapan Profil (jika diperlukan)
         // Route::get('/profile/lengkapi', [MemberProfileController::class, 'showCompletionForm'])->name('profile.complete.show');
