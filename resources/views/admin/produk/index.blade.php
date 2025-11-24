@@ -8,6 +8,7 @@
     $pageTitle = $pageTitle ?? 'Manajemen Produk';
     $kategoriOptions = ['minuman', 'suplemen', 'lainnya'];
     
+    // Pastikan openCreateOnLoad juga mereset createImageUrl jika ada validasi gagal
     $openCreateOnLoad = ($errors->any() && old('_method') !== 'PUT') ? 'true' : 'false';
 @endphp
 
@@ -29,7 +30,14 @@
     @endif
     
     {{-- STATE UTAMA UNTUK MODAL CREATE --}}
-    <div x-data="{ openCreate: {{ $openCreateOnLoad }} }"> 
+    <div x-data="{ 
+        openCreate: {{ $openCreateOnLoad }}, 
+        createImageUrl: null,
+        resetCreateForm() {
+            this.$refs.createForm.reset();
+            this.createImageUrl = null; 
+        }
+    }"> 
 
         {{-- HEADER HALAMAN --}}
         <x-ui.section-header
@@ -42,7 +50,7 @@
         <div class="mt-2 h-px w-full bg-brand-borderSoft/70"></div>
 
         <div class="mt-6 mb-4 flex justify-end">
-            <x-ui.button-primary type="button" @click="openCreate = true">
+            <x-ui.button-primary type="button" @click="resetCreateForm(); openCreate = true">
                 <i data-lucide="plus" class="w-5 h-5 mr-1"></i> Tambah Produk Baru
             </x-ui.button-primary>
         </div>
@@ -55,16 +63,30 @@
             class="border-brand-borderSoft"
         >
             <div class="overflow-x-auto custom-scrollbar">
-                <table class="w-full border-collapse min-w-[900px] text-sm"> 
+                {{-- MINIMUM WIDTH DIKURANGI AGAR LAYOUT TIDAK TERLALU LEBAR DI LAYAR KECIL --}}
+                <table class="w-full border-collapse min-w-[1000px] text-sm"> 
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[5%] min-w-[50px]">Foto</th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[18%] min-w-[150px]">Nama Produk</th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[12%] min-w-[100px]">Kategori</th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[12%] min-w-[100px]">Harga</th>
-                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%] min-w-[80px]">Stok</th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[33%] min-w-[300px]">Deskripsi</th>
-                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%] min-w-[120px]">Aksi</th>
+                            {{-- FOTO (8%) --}}
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[8%] min-w-[70px]">Foto</th>
+                            
+                            {{-- NAMA PRODUK (22%) --}}
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[22%] min-w-[180px]">Nama Produk</th>
+                            
+                            {{-- KATEGORI (13%) --}}
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[13%] min-w-[100px]">Kategori</th>
+                            
+                            {{-- HARGA (13%) --}}
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[13%]">Harga</th>
+                            
+                            {{-- STOK (7%) --}}
+                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[7%]">Stok</th>
+                            
+                            {{-- DESKRIPSI (25%) --}}
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[25%] min-w-[250px]">Deskripsi</th>
+                            
+                            {{-- AKSI (12%) --}}
+                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[12%] min-w-[100px]">Aksi</th>
                         </tr>
                     </thead>
 
@@ -74,16 +96,50 @@
                                 $currentFotoPath = $produk->foto ?? null;
                                 $currentFotoUrl = $currentFotoPath ? Storage::url($currentFotoPath) : 'https://placehold.co/100x100/3A2D2A/F5E6D6?text=No+Foto';
                                 
+                                // Jika validasi gagal, gunakan old URL, jika tidak, gunakan current URL
+                                $initialImageUrl = ($errors->any() && old('produk_id') == $produk->id && old('_method') === 'PUT') 
+                                    ? (old('foto_preview') ?? $currentFotoUrl) 
+                                    : $currentFotoUrl;
+
                                 $openEditOnLoad = ($errors->any() && old('produk_id') == $produk->id && old('_method') === 'PUT') ? 'true' : 'false';
                             @endphp
                             
                             {{-- State AlpineJS untuk modal edit dan preview foto --}}
                             <tr
                                 class="hover:bg-brand-surface-50 transition-colors duration-150"
-                                x-data="{ openEdit: {{ $openEditOnLoad }}, imageUrl: '{{ $currentFotoUrl }}' }"
+                                x-data="{ 
+                                    openEdit: {{ $openEditOnLoad }}, 
+                                    imageUrl: '{{ $initialImageUrl }}',
+                                    originalImageUrl: '{{ $currentFotoUrl }}',
+                                    // Data asli untuk reset
+                                    originalData: {
+                                        nama: '{{ $produk->nama }}',
+                                        kategori: '{{ $produk->kategori }}',
+                                        // HARGA SEBAGAI NOMINAL MURNI UNTUK EDIT
+                                        harga: '{{ (int) $produk->harga }}', 
+                                        deskripsi: '{{ $produk->deskripsi ?? '' }}'
+                                    },
+                                    resetEditForm() {
+                                        // Reset semua input ke nilai asli
+                                        document.getElementById('nama_{{ $produk->id }}').value = this.originalData.nama;
+                                        document.getElementById('kategori_{{ $produk->id }}').value = this.originalData.kategori;
+                                        // Reset harga ke nominal murni
+                                        document.getElementById('harga_{{ $produk->id }}').value = this.originalData.harga; 
+                                        document.getElementById('deskripsi_{{ $produk->id }}').value = this.originalData.deskripsi;
+                                        
+                                        // Reset file input
+                                        const fileInput = document.getElementById('foto_{{ $produk->id }}');
+                                        if (fileInput) {
+                                            fileInput.value = '';
+                                        }
+                                        
+                                        // Reset preview foto ke foto asli
+                                        this.imageUrl = this.originalImageUrl;
+                                    }
+                                }"
                             >
-                                {{-- FOTO --}}
-                                <td class="p-3 align-middle w-[5%] min-w-[80px]">
+                                {{-- FOTO (8%) --}}
+                                <td class="p-3 align-middle w-[8%] min-w-[70px]">
                                     <img
                                         src="{{ $currentFotoUrl }}"
                                         alt="Foto {{ $produk->nama }}"
@@ -92,72 +148,106 @@
                                     >
                                 </td>
 
-                                {{-- NAMA --}}
-                                <td class="p-3 align-middle w-[18%] min-w-[150px]">
+                                {{-- NAMA (22%) --}}
+                                <td class="p-3 align-middle w-[22%] min-w-[180px]">
                                     <div class="text-sm font-semibold text-text-main">
                                         {{ $produk->nama }}
                                     </div>
                                 </td>
 
-                                {{-- KATEGORI --}}
-                                <td class="p-3 align-middle w-[12%] min-w-[100px]">
+                                {{-- KATEGORI (13%) --}}
+                                <td class="p-3 align-middle w-[13%] min-w-[100px]">
                                     <div class="text-xs font-medium text-primary-dark">
                                         {{ ucwords($produk->kategori) }}
                                     </div>
                                 </td>
 
-                                {{-- HARGA --}}
-                                <td class="p-3 align-middle w-[12%] min-w-[100px]">
+                                {{-- HARGA (13%) --}}
+                                <td class="p-3 align-middle w-[13%]">
                                     <div class="text-sm text-text-main">
                                         {{ 'Rp ' . number_format($produk->harga, 0, ',', '.') }}
                                     </div>
                                 </td>
 
-                                {{-- STOK (Hanya Display) --}}
-                                <td class="p-3 align-middle text-center w-[10%] min-w-[80px]">
+                                {{-- STOK (7%) --}}
+                                <td class="p-3 align-middle text-center w-[7%]">
                                     <div class="text-sm text-text-main font-bold">
                                         {{ $produk->stok }}
                                     </div>
                                 </td>
 
-                                {{-- DESKRIPSI --}}
-                                <td class="p-3 align-middle w-[33%] min-w-[300px]">
+                                {{-- DESKRIPSI (25%) --}}
+                                <td class="p-3 align-middle w-[25%] min-w-[250px]">
                                     <div class="text-xs text-text-muted max-w-full">
                                         {{ $produk->deskripsi ? Str::limit($produk->deskripsi, 80) : '-' }}
                                     </div>
                                 </td>
 
-                                {{-- AKSI --}}
-                                <td class="p-3 align-middle w-[10%] min-w-[120px]">
-                                    <div class="flex items-center justify-center gap-1.5">
+                                {{-- AKSI (12%) - Diubah untuk efek hover dan posisi teks --}}
+                                <td class="p-3 align-middle w-[12%] min-w-[100px]">
+                                    {{-- Menggunakan h-full untuk mengisi tinggi baris tabel --}}
+                                    <div class="flex items-center justify-center gap-1.5 h-full">
                                         
-                                        {{-- EDIT ICON --}}
-                                        <button 
-                                            type="button"
-                                            @click="openEdit = true"
-                                            title="Edit Produk"
-                                            class="p-2 rounded-full text-primary-dark hover:bg-primary-soft/50 transition-colors duration-150"
-                                        >
-                                            <i data-lucide="square-pen" class="w-6 h-6"></i>
-                                        </button>
+                                        {{-- WRAPPER EDIT ICON (Posisi Teks Disesuaikan) --}}
+                                        <div x-data="{ editing: false }" class="relative flex flex-col items-center justify-start h-full">
+                                            <button 
+                                                type="button"
+                                                @mouseenter="editing = true"
+                                                @mouseleave="editing = false"
+                                                @click.stop="resetEditForm(); openEdit = true" 
+                                                title="Edit Produk"
+                                                class="p-2 rounded-full text-primary-dark hover:bg-primary-soft/50 transition-colors duration-150 z-10"
+                                            >
+                                                <i data-lucide="square-pen" class="w-6 h-6"></i>
+                                            </button>
+                                            {{-- Teks Edit: Posisi bottom diubah menjadi lebih ke atas, transisi opacity & transform untuk animasi halus --}}
+                                            <span x-show="editing" 
+                                                  x-cloak 
+                                                  x-transition:enter="transition ease-out duration-300"
+                                                  x-transition:enter-start="opacity-0 translate-y-2"
+                                                  x-transition:enter-end="opacity-100 translate-y-0"
+                                                  x-transition:leave="transition ease-in duration-200"
+                                                  x-transition:leave-start="opacity-100 translate-y-0"
+                                                  x-transition:leave-end="opacity-0 translate-y-2"
+                                                  class="absolute top-[33px] text-[10px] font-medium text-primary-dark whitespace-nowrap z-0">
+                                                Edit
+                                            </span>
+                                        </div>
 
-                                        {{-- HAPUS ICON --}}
+                                        {{-- WRAPPER HAPUS ICON (Posisi Teks Disesuaikan) --}}
                                         <form
                                             id="delete-product-{{ $produk->id }}"
                                             action="{{ route('admin.produk.destroy', $produk) }}"
                                             method="POST"
                                             class="inline-block"
+                                            @click.stop
                                         >
                                             @csrf
                                             @method('DELETE')
-                                            <button
-                                                type="button"
-                                                title="Hapus Produk"
-                                                class="p-2 rounded-full text-danger hover:bg-danger-soft/50 transition-colors duration-150"
-                                                onclick="confirmDeleteProduct({{ $produk->id }}, '{{ $produk->nama }}')"
-                                            >
-                                                <i data-lucide="trash-2" class="w-6 h-6"></i>
-                                            </button>
+                                            <div x-data="{ deleting: false }" class="relative flex flex-col items-center justify-start h-full">
+                                                <button
+                                                    type="button"
+                                                    @mouseenter="deleting = true"
+                                                    @mouseleave="deleting = false"
+                                                    title="Hapus Produk"
+                                                    class="p-2 rounded-full text-danger hover:bg-danger-soft/50 transition-colors duration-150 z-10"
+                                                    onclick="confirmDeleteProduct({{ $produk->id }}, '{{ $produk->nama }}')"
+                                                >
+                                                    <i data-lucide="trash-2" class="w-6 h-6"></i>
+                                                </button>
+                                                {{-- Teks Hapus: Posisi bottom diubah menjadi lebih ke atas, transisi opacity & transform untuk animasi halus --}}
+                                                <span x-show="deleting" 
+                                                      x-cloak 
+                                                      x-transition:enter="transition ease-out duration-300"
+                                                      x-transition:enter-start="opacity-0 translate-y-2"
+                                                      x-transition:enter-end="opacity-100 translate-y-0"
+                                                      x-transition:leave="transition ease-in duration-200"
+                                                      x-transition:leave-start="opacity-100 translate-y-0"
+                                                      x-transition:leave-end="opacity-0 translate-y-2"
+                                                      class="absolute top-[33px] text-[10px] font-medium text-danger whitespace-nowrap z-0">
+                                                    Hapus
+                                                </span>
+                                            </div>
                                         </form>
                                     </div>
 
@@ -168,10 +258,17 @@
                                         x-show="openEdit"
                                         x-cloak
                                         x-transition
+                                        @click.self="resetEditForm(); openEdit = false"
                                         class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
                                     >
                                         <div
-                                            @click.away="openEdit = false"
+                                            @click.stop
+                                            x-transition:enter="transition ease-out duration-300"
+                                            x-transition:enter-start="opacity-0 scale-95"
+                                            x-transition:enter-end="opacity-100 scale-100"
+                                            x-transition:leave="transition ease-in duration-200"
+                                            x-transition:leave-start="opacity-100 scale-100"
+                                            x-transition:leave-end="opacity-0 scale-95"
                                             class="relative w-full max-w-4xl rounded-3xl shadow-2xl border border-brand-borderSoft bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell"
                                         >
                                             {{-- HEADER MODAL --}}
@@ -180,7 +277,7 @@
                                                     <h2 class="text-xl font-semibold text-text-main">Edit Produk</h2>
                                                     <p class="text-sm text-text-muted mt-0.5">{{ $produk->nama }}</p>
                                                 </div>
-                                                <button type="button" class="rounded-full p-1.5 hover:bg-brand-surface-50 transition" @click="openEdit = false">
+                                                <button type="button" class="rounded-full p-1.5 hover:bg-brand-surface-50 transition" @click="resetEditForm(); openEdit = false">
                                                     <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
                                                 </button>
                                             </div>
@@ -195,23 +292,23 @@
                                                 >
                                                     @csrf
                                                     @method('PUT')
-                                                    {{-- Input hidden untuk identifikasi produk pada saat validasi gagal --}}
                                                     <input type="hidden" name="produk_id" value="{{ $produk->id }}">
+                                                    <input type="hidden" name="foto_preview" :value="imageUrl">
                                                     
                                                     {{-- TAMPILAN ERROR VALIDASI UPDATE --}}
                                                     @if ($errors->any() && old('produk_id') == $produk->id && old('_method') === 'PUT')
-                                                           <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
-                                                                <p class="text-sm font-semibold">Ada kesalahan input saat mengedit:</p>
-                                                                <ul class="list-disc list-inside text-xs mt-1">
+                                                         <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
+                                                             <p class="text-sm font-semibold">Ada kesalahan input saat mengedit:</p>
+                                                             <ul class="list-disc list-inside text-xs mt-1">
                                                                      @foreach ($errors->all() as $error)
-                                                                            <li>{{ $error }}</li>
+                                                                         <li>{{ $error }}</li>
                                                                      @endforeach
-                                                                </ul>
-                                                           </div>
+                                                             </ul>
+                                                         </div>
                                                     @endif
 
                                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                        {{-- PANEL KIRI: FOTO + INFO SINGKAT (TETAP) --}}
+                                                        {{-- PANEL KIRI: FOTO + INFO SINGKAT --}}
                                                         <div class="md:col-span-1">
                                                             <div class="rounded-2xl border border-brand-borderSoft/70 bg-brand-card p-4 flex flex-col items-center gap-3">
                                                                 <div class="w-full aspect-square border-2 border-dashed border-brand-borderSoft rounded-lg overflow-hidden flex items-center justify-center bg-brand-surface-50">
@@ -255,7 +352,7 @@
                                                                     <div>
                                                                         <x-ui.label for="harga_{{ $produk->id }}">Harga (Rp)</x-ui.label>
                                                                         <input type="number" id="harga_{{ $produk->id }}" name="harga"
-                                                                            value="{{ old('harga', $produk->harga) }}" required
+                                                                            value="{{ old('harga', (int) $produk->harga) }}" required
                                                                             class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('harga') border-danger ring-danger-soft @enderror">
                                                                         @error('harga')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
                                                                     </div>
@@ -272,9 +369,10 @@
 
                                                                 {{-- DESKRIPSI --}}
                                                                 <div>
-                                                                    <x-ui.label for="deskripsi_{{ $produk->id }}">Deskripsi</x-ui.label>
-                                                                    <textarea id="deskripsi_{{ $produk->id }}" name="deskripsi" rows="3"
-                                                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('deskripsi') border-danger ring-danger-soft @enderror"
+                                                                    <x-ui.label for="deskripsi_{{ $produk->id }}">Deskripsi (opsional)</x-ui.label>
+                                                                    <textarea id="deskripsi_{{ $produk->id }}" name="deskripsi" rows="1"
+                                                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft 
+                                                                        focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('deskripsi') border-danger ring-danger-soft @enderror"
                                                                     >{{ old('deskripsi', $produk->deskripsi) }}</textarea>
                                                                     @error('deskripsi')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
                                                                 </div>
@@ -291,7 +389,7 @@
                                                                                 reader.onload = (e) => { imageUrl = e.target.result; };
                                                                                 reader.readAsDataURL(file);
                                                                             } else {
-                                                                                imageUrl = '{{ $currentFotoUrl }}';
+                                                                                imageUrl = originalImageUrl;
                                                                             }
                                                                         ">
                                                                     @error('foto')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
@@ -302,7 +400,7 @@
                                                     </div>
 
                                                     <div class="flex items-center justify-end gap-2 pt-3">
-                                                        <x-ui.button-secondary type="button" @click="openEdit = false">Batal</x-ui.button-secondary>
+                                                        <x-ui.button-secondary type="button" @click="resetEditForm(); openEdit = false">Batal</x-ui.button-secondary>
                                                         <x-ui.button-primary type="submit">Simpan Perubahan</x-ui.button-primary>
                                                     </div>
                                                 </form>
@@ -336,22 +434,22 @@
             class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
         >
             <div
-                @click.away="openCreate = false"
+                @click.away="if (!{{ $openCreateOnLoad }}) openCreate = false" 
                 class="relative w-full max-w-4xl rounded-3xl shadow-2xl border border-brand-borderSoft bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell"
-                x-data="{ createImageUrl: null }"
             >
                 <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
                     <div>
                         <h2 class="text-xl font-semibold text-text-main">Tambah Produk</h2>
                         <p class="text-sm text-text-muted mt-0.5">Data Produk Baru</p>
                     </div>
-                    <button type="button" class="rounded-full p-1.5 hover:bg-brand-surface-50 transition" @click="openCreate = false">
+                    <button type="button" class="rounded-full p-1.5 hover:bg-brand-surface-50 transition" @click="openCreate = false; resetCreateForm()">
                         <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
                     </button>
                 </div>
 
                 <div class="px-6 pb-6 pt-4 max-h-[85vh] overflow-y-auto custom-scrollbar">
                     <form
+                        x-ref="createForm" 
                         method="POST"
                         action="{{ route('admin.produk.store') }}"
                         enctype="multipart/form-data"
@@ -360,15 +458,16 @@
                         @csrf
 
                         {{-- MENAMPILKAN ERROR VALIDASI UNTUK CREATE --}}
-                        @if ($errors->any() && old('_method') !== 'PUT')
-                               <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
-                                  <p class="text-sm font-semibold">Ada kesalahan input:</p>
-                                   <ul class="list-disc list-inside text-xs mt-1">
-                                       @foreach ($errors->all() as $error)
-                                          <li>{{ $error }}</li>
-                                       @endforeach
-                                   </ul>
-                               </div>
+                        @php $openCreateFormErrors = $errors->any() && old('_method') !== 'PUT'; @endphp
+                        @if ($openCreateFormErrors)
+                             <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
+                                 <p class="text-sm font-semibold">Ada kesalahan input:</p>
+                                 <ul class="list-disc list-inside text-xs mt-1">
+                                         @foreach ($errors->all() as $error)
+                                             <li>{{ $error }}</li>
+                                         @endforeach
+                                 </ul>
+                             </div>
                         @endif
 
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -417,7 +516,7 @@
                                         <div>
                                             <x-ui.label for="harga_create">Harga (Rp)</x-ui.label>
                                             <input type="number" id="harga_create" name="harga"
-                                                value="{{ old('harga') }}" required
+                                                value="{{ old('harga') ? (int) old('harga') : '' }}" required
                                                 class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('harga') border-danger ring-danger-soft @enderror">
                                             @error('harga')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
                                         </div>
@@ -434,9 +533,10 @@
 
                                     {{-- DESKRIPSI --}}
                                     <div>
-                                        <x-ui.label for="deskripsi_create">Deskripsi</x-ui.label>
-                                        <textarea id="deskripsi_create" name="deskripsi" rows="3"
-                                            class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('deskripsi') border-danger ring-danger-soft @enderror"
+                                        <x-ui.label for="deskripsi">Deskripsi (opsional)</x-ui.label>
+                                        <textarea id="deskripsi" name="deskripsi" rows="1"
+                                            class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft 
+                                            focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('deskripsi') border-danger ring-danger-soft @enderror"
                                         >{{ old('deskripsi') }}</textarea>
                                         @error('deskripsi')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
                                     </div>
@@ -464,7 +564,7 @@
                         </div>
 
                         <div class="flex items-center justify-end gap-2 pt-3">
-                            <x-ui.button-secondary type="button" @click="openCreate = false">Batal</x-ui.button-secondary>
+                            <x-ui.button-secondary type="button" @click="openCreate = false; resetCreateForm()">Batal</x-ui.button-secondary>
                             <x-ui.button-primary type="submit">Simpan Produk</x-ui.button-primary>
                         </div>
                     </form>
@@ -502,6 +602,8 @@
         </script>
 
         <style>
+            /* Menambahkan z-index pada script agar teks hover tidak tertutup */
+            [x-cloak] { display: none !important; }
             .custom-scrollbar::-webkit-scrollbar {
                 height: 6px;
                 width: 6px;

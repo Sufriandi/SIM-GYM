@@ -4,11 +4,15 @@
     use Illuminate\Support\Js; 
     
     // Asumsi data: $riwayat_stok (StokProduk::paginate), $produks (Produk::all())
-    $pageTitle = 'Riwayat Stok Produk';
+    $pageTitle = 'Stok Produk';
     
     // LOGIKA UNTUK MEMBUKA MODAL CREATE/EDIT JIKA ADA VALIDASI ERROR
     $openCreateOnLoad = ($errors->any() && (old('_method') !== 'PUT')) ? 'true' : 'false';
-    $openEditOnLoad = ($errors->any() && old('_method') === 'PUT' && old('id')) ? 'true' : 'false';
+    
+    // PERBAIKAN UTAMA: Menggunakan shouldOpenEdit
+    $shouldOpenEdit = $errors->any() && old('_method') === 'PUT' && old('id');
+    $openEditOnLoad = $shouldOpenEdit ? 'true' : 'false';
+    
     $oldEditId = old('_method') === 'PUT' ? (old('id') ?? 'null') : 'null';
     
     // Data untuk AlpineJS
@@ -67,6 +71,37 @@
                 this.selectedProductObject = this.produkData.find(p => p.id == this.selectedProductId);
             },
             
+            // FUNGSI UNTUK MERESET MODAL CREATE
+            resetCreateForm() {
+                // PENTING: Reset variabel AlpineJS yang terikat pada input
+                this.selectedProductId = null; 
+                this.selectedProductObject = null;
+
+                this.$nextTick(() => {
+                    const form = document.getElementById('create_form_stok'); 
+                    if (form) form.reset();
+                    // Reset manual tanggal default jika diperlukan
+                    document.getElementById('tanggal_modal').value = '{{ now()->format('Y-m-d') }}';
+                });
+            },
+
+            // FUNGSI UNTUK MERESET MODAL EDIT
+            resetEditForm() {
+                this.editStok = null;
+                this.editForm = {
+                    id: null,
+                    produk_id: null,
+                    jumlah: null,
+                    tanggal: '',
+                    keterangan: '',
+                    stok_saat_ini: null,
+                    jumlah_awal: null,
+                };
+                this.$nextTick(() => {
+                    const form = document.getElementById('edit_form_stok'); 
+                });
+            },
+            
             // Fungsi untuk membuka modal detail
             showDetail(stok) {
                 this.detailStok = stok;
@@ -75,6 +110,9 @@
             
             // Fungsi untuk membuka modal Edit
             showEdit(stok) {
+                // Reset form terlebih dahulu untuk membersihkan data lama/error validasi
+                this.resetEditForm(); 
+
                 const produk = this.produkData.find(p => p.id === stok.produk.id) || null; 
                 
                 if (!produk) {
@@ -103,7 +141,6 @@
                 if (!dateString) return '-';
                 const date = new Date(dateString);
                 
-                // PERBAIKAN: Hapus opsi jam dan menit
                 return date.toLocaleDateString('id-ID', {
                     year: 'numeric',
                     month: 'short',
@@ -139,21 +176,41 @@
             class="border-brand-borderSoft"
         >
             <div class="overflow-x-auto custom-scrollbar">
-                <table class="w-full border-collapse min-w-[900px] text-sm"> 
+                {{-- MIN-WIDTH DIKECILKAN MENJADI 950px --}}
+                <table class="w-full border-collapse min-w-[950px] text-sm"> 
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
-                            {{-- KOLOM HEADERS --}}
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[20%] min-w-[150px]">Tanggal Input</th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[30%] min-w-[250px]">Produk</th>
-                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%] min-w-[80px]">Jumlah</th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[20%] min-w-[250px]">Keterangan</th>
-                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%] min-w-[80px]">Aksi</th>
+                            {{-- TANGGAL INPUT (15%) --}}
+                            <th class="p-3 text-left text-[15%] font-bold uppercase tracking-wide text-text-muted min-w-[100px]">Tanggal Input</th>
+                            
+                            {{-- PRODUK (25%) --}}
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[25%] min-w-[150px]">Produk</th>
+                            
+                            {{-- KATEGORI (15%) --}}
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[15%] min-w-[100px]">Kategori</th>
+                            
+                            {{-- JUMLAH (10%) --}}
+                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%] min-w-[70px]">Jumlah</th>
+                            
+                            {{-- KETERANGAN (25% - Paling fleksibel) --}}
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[25%] min-w-[150px]">Keterangan</th>
+                            
+                            {{-- AKSI (10%) --}}
+                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%] min-w-[90px]">Aksi</th>
                         </tr>
                     </thead>
 
                     <tbody class="divide-y divide-brand-borderSoft/80">
                         @forelse ($riwayat_stok as $stok)
+                            {{-- LOGIKA: ABAIKAN BARIS JIKA JUMLAH STOK KURANG DARI ATAU SAMA DENGAN NOL (Hanya tampilkan STOK MASUK) --}}
+                            @if ($stok->jumlah <= 0)
+                                @continue
+                            @endif
+                            
                             @php
+                                // Mengambil kategori jika relasi produk tersedia
+                                $kategori = $stok->produk->kategori ?? '-';
+                                
                                 // PERBAIKAN: Hapus format jam (HH:mm) untuk tampilan tabel
                                 $tanggalDisplay = Carbon::parse($stok->tanggal)->locale('id')->isoFormat('D MMM YYYY');
                                 
@@ -164,7 +221,8 @@
                                 
                                 $stok_data_js = [
                                     'id' => $stok->id,
-                                    'produk' => $stok->produk ? ['id' => $stok->produk->id, 'nama' => $stok->produk->nama, 'stok' => $stok->produk->stok] : ['id' => 0, 'nama' => 'Produk Dihapus', 'stok' => 0],
+                                    // Tambahkan kategori ke data JS jika diperlukan untuk Detail Modal
+                                    'produk' => $stok->produk ? ['id' => $stok->produk->id, 'nama' => $stok->produk->nama, 'stok' => $stok->produk->stok, 'kategori' => $kategori] : ['id' => 0, 'nama' => 'Produk Dihapus', 'stok' => 0, 'kategori' => '-'],
                                     'jumlah' => $stok->jumlah,
                                     'tanggal' => $stok->tanggal, 
                                     'tanggal_input_format' => $tanggalInputFormat, 
@@ -174,30 +232,38 @@
                             
                             <tr class="hover:bg-brand-surface-50 transition-colors duration-150">
                                 
-                                {{-- TANGGAL INPUT --}}
-                                <td class="p-3 align-middle w-[20%] min-w-[150px]"> 
+                                {{-- TANGGAL INPUT (15%) --}}
+                                <td class="p-3 align-middle w-[15%] min-w-[100px]"> 
                                     <div class="text-xs text-text-muted">{{ $tanggalDisplay }}</div>
                                 </td>
                                 
-                                {{-- PRODUK --}}
-                                <td class="p-3 align-middle w-[30%] min-w-[250px]">
+                                {{-- PRODUK (25%) --}}
+                                <td class="p-3 align-middle w-[25%] min-w-[150px]">
                                     <div class="text-sm font-semibold text-text-main">{{ $namaProduk }}</div>
                                 </td>
 
-                                {{-- JUMLAH --}}
-                                <td class="p-3 align-middle text-center w-[10%] min-w-[80px]">
+                                {{-- KATEGORI (15%) --}}
+                                <td class="p-3 align-middle w-[15%] min-w-[100px]">
+                                    <div class="text-xs font-medium text-primary-dark">
+                                        {{ ucwords($kategori) }}
+                                    </div>
+                                </td>
+
+                                {{-- JUMLAH (10%) --}}
+                                <td class="p-3 align-middle text-center w-[10%] min-w-[70px]">
+                                    {{-- Menggunakan warna teks success karena hanya stok masuk yang ditampilkan --}}
                                     <div class="text-sm font-bold text-success">{{ $stok->jumlah }}</div>
                                 </td>
                                 
-                                {{-- KETERANGAN --}}
-                                <td class="p-3 align-middle w-[20%] min-w-[250px]"> 
+                                {{-- KETERANGAN (25% - Min-w dipersingkat) --}}
+                                <td class="p-3 align-middle w-[25%] min-w-[150px]"> 
                                     <div class="text-xs text-text-muted max-w-full">
                                         {{ $stok->keterangan ? Str::limit($stok->keterangan, 50) : '-' }}
                                     </div>
                                 </td>
 
-                                {{-- AKSI --}}
-                                <td class="p-3 align-middle w-[10%] min-w-[80px]">
+                                {{-- AKSI (10%) --}}
+                                <td class="p-3 align-middle w-[10%] min-w-[90px]">
                                     <div class="flex items-center justify-center gap-1.5">
                                         
                                         {{-- DETAIL ICON --}}
@@ -243,7 +309,8 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="p-6 text-center text-text-muted italic"> 
+                                {{-- colspan diubah menjadi 6 karena ada 6 kolom (termasuk Kategori) --}}
+                                <td colspan="6" class="p-6 text-center text-text-muted italic"> 
                                     Belum ada riwayat penambahan stok produk.
                                 </td>
                             </tr>
@@ -268,7 +335,8 @@
             class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
         >
             <div
-                @click.away="openCreate = false"
+                {{-- PERBAIKAN: Memanggil resetCreateForm() saat klik diluar modal --}}
+                @click.away="openCreate = false; resetCreateForm()"
                 class="relative w-full max-w-4xl rounded-3xl shadow-2xl border border-brand-borderSoft bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell"
             >
                 <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
@@ -276,13 +344,14 @@
                         <h2 class="text-xl font-semibold text-text-main">Tambah Stok Produk</h2>
                         <p class="text-sm text-text-muted mt-0.5">Masukkan detail penambahan stok produk.</p>
                     </div>
-                    <button type="button" class="rounded-full p-1.5 hover:bg-brand-surface-50 transition" @click="openCreate = false">
+                    {{-- PERBAIKAN: Memanggil resetCreateForm() saat klik tombol X --}}
+                    <button type="button" class="rounded-full p-1.5 hover:bg-brand-surface-50 transition" @click="openCreate = false; resetCreateForm()">
                         <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
                     </button>
                 </div>
 
                 <div class="px-6 pb-6 pt-4 max-h-[80vh] overflow-y-auto custom-scrollbar"> 
-                    <form action="{{ route('admin.stok_produk.store') }}" method="POST" class="space-y-6">
+                    <form id="create_form_stok" action="{{ route('admin.stok_produk.store') }}" method="POST" class="space-y-6">
                         @csrf
                         
                         {{-- Menampilkan error validasi dari Store --}}
@@ -290,9 +359,9 @@
                              <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
                                  <p class="text-sm font-semibold">Ada kesalahan input:</p>
                                  <ul class="list-disc list-inside text-xs mt-1">
-                                     @foreach ($errors->all() as $error)
+                                    @foreach ($errors->all() as $error)
                                          <li>{{ $error }}</li>
-                                     @endforeach
+                                    @endforeach
                                  </ul>
                              </div>
                         @endif
@@ -322,6 +391,7 @@
                                         @endforeach
                                     </select>
                                     @error('produk_id')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
+                                    <p x-show="selectedProductObject" class="text-xs text-text-muted mt-1">Stok produk ini saat ini: <span x-text="selectedProductObject.stok"></span></p>
                                 </div>
 
                                 {{-- JUMLAH STOK --}}
@@ -337,7 +407,6 @@
                                         class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('jumlah') border-danger ring-danger-soft @enderror"
                                     >
                                     @error('jumlah')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
-                                    <p x-show="selectedProductObject" class="text-xs text-text-muted mt-1">Stok produk ini saat ini: <span x-text="selectedProductObject.stok"></span></p>
                                 </div>
                             </div>
                             
@@ -370,7 +439,8 @@
                         </div>
 
                         <div class="flex items-center justify-end">
-                            <x-ui.button-secondary type="button" @click="openCreate = false" class="mr-2">
+                            {{-- PERBAIKAN: Memanggil resetCreateForm() saat klik Batal --}}
+                            <x-ui.button-secondary type="button" @click="openCreate = false; resetCreateForm()" class="mr-2">
                                 Batal
                             </x-ui.button-secondary>
                             <x-ui.button-primary type="submit">
@@ -420,6 +490,11 @@
                                 <span class="text-sm font-medium text-text-muted">Produk:</span>
                                 <span class="font-semibold text-sm text-primary-dark" x-text="detailStok.produk.nama"></span>
                             </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm font-medium text-text-muted">Kategori:</span>
+                                {{-- Tampilkan kategori dari data JS --}}
+                                <span class="font-semibold text-sm text-primary-dark" x-text="detailStok.produk.kategori ? detailStok.produk.kategori.charAt(0).toUpperCase() + detailStok.produk.kategori.slice(1) : '-'"></span>
+                            </div>
                         </div>
 
                         {{-- Detail Jumlah --}}
@@ -463,7 +538,8 @@
             class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
         >
             <div
-                @click.away="openEdit = false"
+                {{-- PERBAIKAN: Memanggil resetEditForm() saat klik diluar modal --}}
+                @click.away="openEdit = false; resetEditForm()"
                 class="relative w-full max-w-4xl rounded-3xl shadow-2xl border border-brand-borderSoft bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell"
             >
                 <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
@@ -473,13 +549,14 @@
                             Ubah detail entri stok produk.
                         </p>
                     </div>
-                    <button type="button" class="rounded-full p-1.5 hover:bg-brand-surface-50 transition" @click="openEdit = false">
+                    {{-- PERBAIKAN: Memanggil resetEditForm() saat klik tombol X --}}
+                    <button type="button" class="rounded-full p-1.5 hover:bg-brand-surface-50 transition" @click="openEdit = false; resetEditForm()">
                         <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
                     </button>
                 </div>
 
                 <div class="px-6 pb-6 pt-4 max-h-[80vh] overflow-y-auto custom-scrollbar" x-if="editStok">
-                    <form :action="'{{ route('admin.stok_produk.index') }}/' + editForm.id" method="POST" class="space-y-6">
+                    <form id="edit_form_stok" :action="'{{ route('admin.stok_produk.index') }}/' + editForm.id" method="POST" class="space-y-6">
                         @csrf
                         @method('PUT') 
                         
@@ -562,7 +639,8 @@
                         </div>
 
                         <div class="flex items-center justify-end">
-                            <x-ui.button-secondary type="button" @click="openEdit = false" class="mr-2">
+                            {{-- PERBAIKAN: Memanggil resetEditForm() saat klik Batal --}}
+                            <x-ui.button-secondary type="button" @click="openEdit = false; resetEditForm()" class="mr-2">
                                 Batal
                             </x-ui.button-secondary>
                             <x-ui.button-primary type="submit">

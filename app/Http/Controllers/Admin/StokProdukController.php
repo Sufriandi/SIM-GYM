@@ -19,7 +19,7 @@ class StokProdukController extends Controller
         // Ambil semua riwayat stok dengan relasi produk (untuk ditampilkan di index)
         $riwayat_stok = StokProduk::with('produk')
                                   ->latest('tanggal')
-                                  ->paginate(10);
+                                  ->paginate(15);
         
         // Ambil daftar produk untuk dropdown di modal tambah stok
         $produks = Produk::orderBy('nama')->get(['id', 'nama', 'stok']);
