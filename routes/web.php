@@ -91,7 +91,12 @@ Route::middleware(['auth', 'admin'])
             Route::get('/{izinLatihan}/setujui', [IzinLatihanController::class, 'approveForm'])->name('approve.form');
             Route::post('/{izinLatihan}/approve', [IzinLatihanController::class, 'approveIzin'])->name('approve');
             Route::post('/{id}/reject', [IzinLatihanController::class, 'reject'])->name('reject');
+
+            // 🔴 Tambahkan di sini, perhatikan name()-nya
+            Route::post('/store-manual', [IzinLatihanController::class, 'storeManual'])
+                ->name('store.manual');
         });
+
       
         // =========================================================
         // RUTE MANAJEMEN PRODUK
