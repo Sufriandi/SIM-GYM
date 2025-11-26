@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\CoachController;
 // Controller Member
 use App\Http\Controllers\Member\DashboardController as MemberDashboardController;
 use App\Http\Controllers\Member\IzinLatihanController as MemberIzinLatihanController;
+use App\Http\Controllers\Member\CoachController as MemberCoachController;
 use App\Http\Controllers\Member\MemberProfileController;
 use App\Http\Controllers\Member\ProdukGymController;
 
@@ -147,6 +148,10 @@ Route::middleware(['auth', 'member'])
         Route::resource('produk_gym', ProdukGymController::class)
             ->only(['index', 'store'])
             ->names('produk_gym');
+
+        // Daftar coach (member bisa melihat list coach)
+        Route::get('coach', [MemberCoachController::class, 'index'])->name('coach.index');
+
 
 
         // // Rute Pelengkapan Profil (jika diperlukan)

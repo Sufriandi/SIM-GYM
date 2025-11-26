@@ -148,20 +148,7 @@
                     id="produk-submenu"
                     class="space-y-1 mt-1 pl-4"
                     role="menu">
-
-                    {{-- Penjualan Produk --}}
-                    <a
-                        href="{{ route('admin.penjualan_produk.index') }}"
-                        class="group flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
-                                {{ $penjualanActive
-                                  ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
-                                  : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
-                        role="menuitem"
-                        aria-current="{{ $penjualanActive ? 'page' : 'false' }}">
-                        <i data-lucide="shopping-cart" class="w-4 h-4 {{ $penjualanActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
-                        <span>Penjualan Produk</span>
-                    </a>
-
+                    
                     {{-- Produk --}}
                     <a
                         href="{{ route('admin.produk.index') }}"
@@ -187,7 +174,21 @@
                         <i data-lucide="box" class="w-4 h-4 {{ $stokActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
                         <span>Stok Produk</span>
                     </a>
+
+                    {{-- Penjualan Produk --}}
+                    <a
+                        href="{{ route('admin.penjualan_produk.index') }}"
+                        class="group flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
+                                {{ $penjualanActive
+                                  ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
+                                  : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
+                        role="menuitem"
+                        aria-current="{{ $penjualanActive ? 'page' : 'false' }}">
+                        <i data-lucide="shopping-cart" class="w-4 h-4 {{ $penjualanActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
+                        <span>Penjualan Produk</span>
+                    </a>
                 </div>
+                
 
                 {{-- Manajemen Coach --}}
                 <a

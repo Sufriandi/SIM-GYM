@@ -58,6 +58,7 @@
                     $isDashboard = request()->routeIs('member.dashboard');
                     $isIzin      = request()->routeIs('member.izin_latihan.*');
                     $isProdukGym = request()->routeIs('member.produk_gym.*'); // <-- BARU: Cek rute produk gym
+                    $isCoach     = request()->routeIs('member.coach.*'); 
                     $isProfile   = request()->routeIs('profile.*');
                 @endphp
 
@@ -85,6 +86,16 @@
                            {{ $isProdukGym ? 'text-gold-300' : 'text-brand-silver hover:text-brand-white' }}">
                     Produk Gym
                     @if($isProdukGym)
+                        <span class="absolute left-0 -bottom-1 w-full h-0.5 bg-gold-400 rounded-full"></span>
+                    @endif
+                </a>
+
+                {{-- LINK COACH (BARU) --}}
+                <a href="{{ route('member.coach.index') }}"
+                class="relative pb-1 transition-colors
+                        {{ $isCoach ? 'text-gold-300' : 'text-brand-silver hover:text-brand-white' }}">
+                    Coach
+                    @if($isCoach)
                         <span class="absolute left-0 -bottom-1 w-full h-0.5 bg-gold-400 rounded-full"></span>
                     @endif
                 </a>
@@ -231,6 +242,15 @@
                             ? 'text-gold-300 bg-brand-gunmetal/60'
                             : 'text-brand-silver hover:bg-brand-gunmetal/50 hover:text-brand-white' }}">
                 Produk Gym
+            </a>
+
+            {{-- LINK COACH MOBILE (BARU) --}}
+            <a href="{{ route('member.coach.index') }}"
+            class="block px-2 py-2 rounded-lg
+                    {{ request()->routeIs('member.coach.*')
+                            ? 'text-gold-300 bg-brand-gunmetal/60'
+                            : 'text-brand-silver hover:bg-brand-gunmetal/50 hover:text-brand-white' }}">
+                Coach
             </a>
 
             <a href="{{ route('profile.edit') }}"
