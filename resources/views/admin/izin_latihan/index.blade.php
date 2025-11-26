@@ -11,8 +11,6 @@
 
     /**
      * Sumber data member untuk searchable dropdown di modal
-     * PRIORITAS: $membersForSelect dari controller (sudah difilter hanya role "user")
-     * fallback: query langsung (jaga-jaga kalau dipakai di tempat lain).
      */
     $sourceMembers = isset($membersForSelect)
         ? $membersForSelect
@@ -74,28 +72,140 @@
         />
 
         {{-- GARIS PEMBATAS --}}
-        <hr class="border-t border-brand-borderSoft mb-4">
+        <hr class="border-t border-brand-borderSoft mb-6">
 
-        {{-- TOMBOL AKSI ATAS --}}
-        <div class="mb-8 flex justify-end gap-2">
-            <x-ui.button-primary type="button" @click="$dispatch('open-izin-manual')">
-                <i data-lucide="plus" class="w-5 h-5 mr-1"></i>
-                Tambah Izin Manual
-            </x-ui.button-primary>
+        {{-- ROW: SEARCH BAR (KIRI) & TOMBOL AKSI (KANAN) --}}
+        <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
 
-            <a href="{{ route('admin.izin_latihan.history') }}">
-                <x-ui.button-secondary>
-                    Riwayat Persetujuan
-                </x-ui.button-secondary>
-            </a>
+            {{-- SEARCH BAR + FILTER --}}
+            <div class="relative w-full max-w-md z-30" x-data="{ showFilter: false }">
+                <form action="{{ route('admin.izin_latihan.index') }}" method="GET">
+                    {{-- Container Input Gabungan --}}
+                    <div class="flex items-center w-full rounded-full border border-brand-borderSoft bg-brand-card shadow-sm focus-within:ring-2 focus-within:ring-primary-dark/50 transition-all hover:border-brand-borderSoft/80">
+                        {{-- Icon Search --}}
+                        <div class="pl-4 text-text-muted">
+                            <i data-lucide="search" class="w-5 h-5"></i>
+                        </div>
+
+                        {{-- Input Text --}}
+                        <input
+                            type="text"
+                            name="q"
+                            value="{{ request('q') }}"
+                            placeholder="Cari nama member..."
+                            class="w-full bg-transparent border-none text-sm text-text-main placeholder:text-text-muted/50 focus:ring-0 py-3 pl-3 pr-2 rounded-l-full"
+                            autocomplete="off"
+                        >
+
+                        {{-- Divider Vertical --}}
+                        <div class="h-6 w-px bg-brand-borderSoft mx-1"></div>
+
+                        {{-- Tombol Filter Toggle --}}
+                        <button
+                            type="button"
+                            @click="showFilter = !showFilter"
+                            class="flex items-center gap-2 px-5 py-2 text-sm font-medium text-text-muted hover:text-text-main transition-colors mr-1 rounded-full hover:bg-brand-surface-50"
+                            :class="showFilter ? 'text-gold-600 bg-brand-surface-50' : ''"
+                        >
+                            <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                            <span class="hidden sm:inline">Filter</span>
+                        </button>
+
+                        {{-- Hidden Submit (untuk enter key) --}}
+                        <button type="submit" class="hidden"></button>
+                    </div>
+
+                    {{-- POPUP DROPDOWN FILTER --}}
+                    <div
+                        x-show="showFilter"
+                        x-cloak
+                        @click.outside="showFilter = false"
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 translate-y-2"
+                        x-transition:enter-end="opacity-100 translate-y-0"
+                        x-transition:leave="transition ease-in duration-150"
+                        x-transition:leave-start="opacity-100 translate-y-0"
+                        x-transition:leave-end="opacity-0 translate-y-2"
+                        class="absolute top-full left-0 right-0 mt-3 bg-brand-card border border-brand-borderSoft rounded-2xl shadow-xl p-5"
+                    >
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center pb-2 border-b border-brand-borderSoft/50">
+                                <h4 class="text-sm font-semibold text-text-main">Filter Lanjutan</h4>
+                                <a href="{{ route('admin.izin_latihan.index') }}" class="text-xs text-danger hover:underline">Reset</a>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                {{-- Filter Tanggal Mulai --}}
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">Dari Tanggal</label>
+                                    <input
+                                        type="date"
+                                        name="start_date"
+                                        value="{{ request('start_date') }}"
+                                        class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark"
+                                    >
+                                </div>
+                                {{-- Filter Tanggal Akhir --}}
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">Sampai Tanggal</label>
+                                    <input
+                                        type="date"
+                                        name="end_date"
+                                        value="{{ request('end_date') }}"
+                                        class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark"
+                                    >
+                                </div>
+                            </div>
+
+                            {{-- Filter Urutan --}}
+                            <div>
+                                <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">Urutan</label>
+                                <select name="sort" class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark">
+                                    <option value="newest" {{ request('sort') == 'newest' ? 'selected' : '' }}>Terbaru (Default)</option>
+                                    <option value="oldest" {{ request('sort') == 'oldest' ? 'selected' : '' }}>Terlama</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="w-full bg-primary-dark hover:bg-primary-dark/90 text-white text-sm font-medium py-2 rounded-lg transition shadow-md">
+                                Terapkan Filter
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            {{-- TOMBOL AKSI KANAN --}}
+            <div class="flex items-center gap-2 justify-end">
+                <x-ui.button-primary type="button" @click="$dispatch('open-izin-manual')">
+                    <i data-lucide="plus" class="w-5 h-5 mr-1"></i>
+                    Tambah Manual
+                </x-ui.button-primary>
+
+                <a href="{{ route('admin.izin_latihan.history') }}">
+                    <x-ui.button-secondary>
+                        <i data-lucide="history" class="w-4 h-4 mr-1"></i>
+                        Riwayat
+                    </x-ui.button-secondary>
+                </a>
+            </div>
         </div>
 
         {{-- CARD UTAMA: TABEL PERMINTAAN IZIN PENDING --}}
         <x-ui.card
-            title="Daftar Permintaan Izin Pending"
-            subtitle="Semua permintaan izin yang masih menunggu tindakan Admin."
             class="border-brand-borderSoft"
         >
+            {{-- Slot Header Card (Optional) --}}
+            <div class="px-6 py-4 border-b border-brand-borderSoft flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-text-main">Daftar Permintaan Izin</h3>
+                    <p class="text-xs text-text-muted mt-0.5">Semua permintaan izin yang masih menunggu tindakan.</p>
+                </div>
+                {{-- Badge Total --}}
+                <div class="bg-brand-surface-50 border border-brand-borderSoft px-3 py-1 rounded-full">
+                    <span class="text-xs font-semibold text-text-main">{{ $daftar_izin->total() }} Pending</span>
+                </div>
+            </div>
+
             <div class="w-full">
                 <table class="w-full border-collapse text-xs md:text-sm md:min-w-[900px]">
                     <thead>
