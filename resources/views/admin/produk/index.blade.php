@@ -64,7 +64,7 @@
         >
             <div class="overflow-x-auto custom-scrollbar">
                 {{-- MINIMUM WIDTH DIKURANGI AGAR LAYOUT TIDAK TERLALU LEBAR DI LAYAR KECIL --}}
-                <table class="w-full border-collapse min-w-[1000px] text-sm"> 
+                <table class="w-full border-collapse text-xs md:text-sm md:min-w-[900px]"> 
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
                             {{-- FOTO (8%) --}}
