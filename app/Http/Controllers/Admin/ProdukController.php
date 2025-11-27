@@ -20,9 +20,9 @@ class ProdukController extends Controller
      */
     public function index()
     {
-        $pageTitle = 'Data Produk';
+        $pageTitle = 'Daftar Produk';
         
-        $produks = Produk::orderBy('created_at', 'desc')->paginate(10);
+        $produks = Produk::orderBy('created_at', 'desc')->paginate(15);
         $kategoriOptions = $this->kategoriOptions;
 
         return view('admin.produk.index', compact('produks', 'pageTitle', 'kategoriOptions')); 

@@ -31,7 +31,7 @@
                bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell
                overflow-hidden flex flex-col"
     >
-        {{-- HEADER MODAL (selaras dengan Tambah Izin) --}}
+        {{-- HEADER MODAL --}}
         <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
             <div>
                 <h2 class="text-xl font-semibold text-text-main">
@@ -52,7 +52,7 @@
             </button>
         </div>
 
-        {{-- ISI MODAL (tanpa overflow scroll; hanya alasan yang bisa scroll) --}}
+        {{-- ISI MODAL --}}
         <div class="p-6 pb-5">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
 
@@ -96,20 +96,16 @@
                         </div>
                     </div>
 
-                    {{-- CARD ALASAN (punya scrollbar sendiri kalau panjang) --}}
+                    {{-- CARD ALASAN --}}
                     <div class="rounded-2xl border border-brand-borderSoft bg-brand-card px-5 pt-3 pb-4">
                         <p class="text-[11px] font-semibold tracking-wide text-text-muted uppercase mb-1.5">
                             Alasan Member
                         </p>
-                        <div
-                            class="text-sm text-text-main leading-relaxed text-left whitespace-pre-wrap
-                                   max-h-32 overflow-y-auto custom-scrollbar"
-                        >
-                            {{ trim($izin->alasan ?: '-') }}
-                        </div>
+                        {{-- PERBAIKAN: Tag HTML dirapatkan satu baris agar tidak ada whitespace di awal --}}
+                        <div class="text-sm text-text-main leading-relaxed text-left whitespace-pre-wrap max-h-32 overflow-y-auto custom-scrollbar">{{ trim($izin->alasan ?: '-') }}</div>
                     </div>
 
-                    {{-- CARD BUKTI LAMPIRAN (mini preview) --}}
+                    {{-- CARD BUKTI LAMPIRAN --}}
                     @if ($hasEvidence)
                         <div class="rounded-2xl border border-brand-borderSoft bg-brand-card overflow-hidden">
                             <div class="px-5 py-2.5 border-b border-brand-borderSoft flex items-center justify-between">
@@ -163,7 +159,7 @@
                 {{-- KOLOM KANAN: FORM APPROVE --}}
                 {{-- ========================= --}}
                 <div class="lg:col-span-5 flex flex-col">
-                    <div class="rounded-2xl border border-brand-borderSoft bg-brand-card px-5 py-4 flex flex-col h-full">
+                    <div class="rounded-2xl border border-brand-borderSoft bg-brand-card px-5 py-4 flex flex-col h-full relative overflow-hidden">
                         {{-- Error validasi --}}
                         @if ($errors->any())
                             <div class="mb-4 rounded-xl border border-danger bg-danger-soft/40 px-3 py-2 text-xs text-danger">
@@ -222,7 +218,7 @@
                             </div>
 
                             {{-- CATATAN ADMIN --}}
-                            <div class="flex-1">
+                            <div class="flex-1 flex flex-col">
                                 <label class="block text-[11px] font-semibold tracking-wide text-text-muted uppercase mb-1.5">
                                     Catatan Admin
                                     <span class="text-[10px] font-normal normal-case opacity-70">(opsional)</span>
@@ -230,18 +226,21 @@
                                 <textarea
                                     name="keterangan_admin"
                                     rows="4"
-                                    class="w-full h-full min-h-[100px] rounded-xl border bg-brand-shell text-sm text-text-main px-4 py-3
+                                    class="w-full min-h-[100px] flex-1 rounded-xl border bg-brand-shell text-sm text-text-main px-4 py-3
                                            border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
                                            resize-none custom-scrollbar placeholder:text-text-muted/50"
                                     placeholder="Tulis alasan persetujuan atau catatan khusus..."
                                 >{{ old('keterangan_admin') }}</textarea>
-                                <p class="text-[11px] text-text-muted mt-1">
+                                <p class="text-[11px] text-text-muted mt-2 mb-1">
                                     Catatan ini akan muncul di riwayat serta halaman detail izin.
                                 </p>
                             </div>
 
-                            {{-- FOOTER BUTTONS – rata kanan, gaya sama dengan modal create --}}
-                            <div class="pt-4 mt-2 border-t border-brand-borderSoft/60 flex items-center justify-end gap-2">
+                            {{-- PERBAIKAN: FOOTER BUTTONS
+                                 Menggunakan mt-auto, bg-brand-card (solid), dan relative z-10
+                                 agar tidak menutupi teks secara transparan.
+                            --}}
+                            <div class="pt-4 mt-auto border-t border-brand-borderSoft/60 flex items-center justify-end gap-2 bg-brand-card relative z-10">
                                 <x-ui.button-secondary
                                     type="button"
                                     @click="openApproveId = null"

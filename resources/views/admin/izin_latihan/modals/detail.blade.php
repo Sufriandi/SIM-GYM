@@ -28,13 +28,7 @@
             </div>
 
             <div class="flex items-center gap-3">
-                @if($izin->status === 'pending')
-                    <x-ui.badge variant="warning">Pending</x-ui.badge>
-                @elseif($izin->status === 'disetujui')
-                    <x-ui.badge variant="success">Disetujui</x-ui.badge>
-                @else
-                    <x-ui.badge variant="danger">Ditolak</x-ui.badge>
-                @endif
+                
 
                 <button
                     type="button"

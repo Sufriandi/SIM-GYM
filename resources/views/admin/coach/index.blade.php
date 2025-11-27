@@ -3,10 +3,12 @@
 @php
     use Illuminate\Support\Facades\Storage;
 
-    $pageTitle = $pageTitle ?? 'Manajemen Coach';
+    $pageTitle = $pageTitle ?? 'Daftar Coach';
 
     // Buka modal create otomatis jika ada error dan bukan request PUT
     $openCreateOnLoad = ($errors->any() && old('_method') !== 'PUT') ? 'true' : 'false';
+
+    $search = request('search'); // nilai pencarian saat ini
 @endphp
 
 <x-layouts.admin
@@ -26,8 +28,11 @@
         </div>
     @endif
 
-    {{-- STATE UTAMA UNTUK MODAL CREATE --}}
-    <div x-data="{ openCreate: {{ $openCreateOnLoad }} }">
+    {{-- STATE UTAMA UNTUK MODAL CREATE & Search --}}
+    <div x-data="{ 
+        openCreate: {{ $openCreateOnLoad }},
+        search: '{{ request('search') }}'
+     }">
 
         {{-- HEADER HALAMAN --}}
         <x-ui.section-header
@@ -39,12 +44,115 @@
         {{-- GARIS DIBAWAH JUDUL (SAMA KAYA PRODUK) --}}
         <div class="mt-2 h-px w-full bg-brand-borderSoft/70"></div>
 
-        {{-- TOMBOL TAMBAH DI BAWAH GARIS, RATA KANAN --}}
-        <div class="mt-6 mb-4 flex justify-end">
-            <x-ui.button-primary type="button" @click="openCreate = true">
-                <i data-lucide="plus" class="w-5 h-5 mr-1"></i> Tambah Coach
-            </x-ui.button-primary>
+{{-- BARIS: SEARCH + TOMBOL TAMBAH --}}
+<div class="mt-6 mb-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+
+    {{-- SEARCH SECTION - ENHANCED & COMPACT --}}
+    <div class="w-full md:w-auto md:flex-1 md:max-w-md">
+        
+        {{-- LABEL WITH GRADIENT - MORE COMPACT --}}
+        <div class="flex items-center gap-1.5 mb-1.5">
+            <div class="p-1 bg-gradient-to-br from-gold-500 to-gold-600 rounded-md shadow-sm">
+                <i data-lucide="search" class="w-3 h-3 text-white"></i>
+            </div>
+            <label class="text-[10px] font-bold tracking-wider text-text-main uppercase">
+                Cari Coach
+            </label>
         </div>
+
+        <form id="searchForm" action="{{ route('admin.coaches.index') }}" method="GET">
+            
+            {{-- SEARCH INPUT CONTAINER --}}
+            <div class="relative">
+                
+                {{-- MAIN INPUT WRAPPER - REFINED --}}
+                <div class="relative flex items-center bg-brand-shell/80 backdrop-blur-sm
+                            px-3.5 py-2.5 rounded-xl border border-brand-borderSoft
+                            shadow-sm hover:shadow-md
+                            focus-within:border-gold-500 focus-within:shadow-lg focus-within:ring-2 focus-within:ring-gold-500/20
+                            transition-all duration-200 ease-out
+                            overflow-hidden">
+
+                    {{-- ANIMATED SEARCH ICON --}}
+                    <div class="flex-shrink-0 w-4 h-4 text-text-muted 
+                                transition-all duration-200">
+                        <i data-lucide="search" class="w-4 h-4"></i>
+                    </div>
+
+                    {{-- INPUT FIELD - NO OVERFLOW --}}
+                    <input type="text"
+                        name="search"
+                        x-model="search"
+                        placeholder="Cari nama atau no. HP..."
+                        value="{{ $search }}"
+                        class="flex-1 ml-2.5 text-sm font-medium text-text-main placeholder:text-text-muted/50
+                               bg-transparent border-none focus:outline-none focus:ring-0
+                               transition-all duration-200 pr-2"
+                        style="border:none;background:transparent;box-shadow:none;max-width:100%;">
+
+                    {{-- CLEAR BUTTON (when typing) --}}
+                    @if ($search)
+                        <button type="button"
+                                onclick="document.querySelector('input[name=search]').value=''; document.getElementById('searchForm').submit();"
+                                class="flex-shrink-0 ml-1.5 p-1 rounded-full bg-danger/10 hover:bg-danger/20
+                                       text-danger transition-all duration-150
+                                       hover:scale-110 active:scale-95">
+                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                        </button>
+                    @endif
+
+                    {{-- SUBMIT BUTTON - COMPACT --}}
+                    <button type="submit"
+                            class="flex-shrink-0 ml-2 px-3 py-1 rounded-lg
+                                   bg-gradient-to-r from-gold-500 to-gold-600
+                                   text-white text-[10px] font-bold uppercase tracking-wide
+                                   shadow-sm hover:shadow-md hover:from-gold-600 hover:to-gold-700
+                                   transform hover:scale-105 active:scale-95
+                                   transition-all duration-150">
+                        Cari
+                    </button>
+                </div>
+            </div>
+
+            {{-- SEARCH INFO / RESULTS COUNT - MORE REFINED --}}
+            @if ($search)
+            <div class="mt-2 flex items-center gap-2 px-3 py-1.5 bg-gold-50/80 dark:bg-gold-500/5 
+                        rounded-lg border border-gold-200/50 dark:border-gold-500/20">
+                
+                {{-- INFO ICON --}}
+                <div class="flex-shrink-0 w-3.5 h-3.5 text-gold-600">
+                    <i data-lucide="info" class="w-3.5 h-3.5"></i>
+                </div>
+                
+                {{-- TEXT - COMPACT --}}
+                <p class="text-[11px] text-gold-800 dark:text-gold-400 flex-1">
+                    Hasil untuk <span class="font-bold">"{{ $search }}"</span>
+                    — 
+                    <span class="font-bold">{{ $coaches->total() }}</span> coach
+                </p>
+
+                {{-- RESET LINK - SMALLER --}}
+                <a href="{{ route('admin.coaches.index') }}"
+                   class="text-[10px] font-semibold text-gold-600 hover:text-gold-700
+                          underline decoration-dotted hover:decoration-solid transition whitespace-nowrap">
+                    Tampilkan Semua
+                </a>
+            </div>
+            @endif
+
+        </form>
+    </div>
+
+    {{-- BUTTON TAMBAH --}}
+    <div>
+        <x-ui.button-primary type="button" @click="openCreate = true">
+            <i data-lucide="plus" class="w-5 h-5 mr-1"></i>
+            Tambah Coach
+        </x-ui.button-primary>
+    </div>
+</div>
+
+
 
         {{-- CARD TABEL COACH --}}
         <x-ui.card
@@ -53,9 +161,12 @@
             class="border-brand-borderSoft"
         >
             <div class="overflow-x-auto custom-scrollbar">
-                <table class="w-full border-collapse min-w-[900px] text-sm">
+                <table class="w-full border-collapse text-xs md:text-sm md:min-w-[900px]">
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[2%] min-w-[10px]">
+                                No
+                            </th>
                             <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[8%] min-w-[80px]">
                                 Foto
                             </th>
@@ -65,10 +176,10 @@
                             <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[15%] min-w-[120px]">
                                 No. HP
                             </th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[20%] min-w-[180px]">
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[20%] min-w-[150px]">
                                 Alamat
                             </th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[27%] min-w-[220px]">
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[27%] min-w-[150px]">
                                 Deskripsi
                             </th>
                             <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[12%] min-w-[120px]">
@@ -88,9 +199,22 @@
 
                             {{-- STATE KHUSUS PER-BARIS UNTUK MODAL EDIT, DETAIL & PREVIEW FOTO --}}
                             <tr
+                                 x-show="
+                                    !search 
+                                    || @js(strtolower($coach->nama)).includes(search.toLowerCase())
+                                    || @js(strtolower($coach->no_hp)).includes(search.toLowerCase())
+                                    || @js(strtolower($coach->alamat)).includes(search.toLowerCase())
+                                    || @js(strtolower($coach->deskripsi ?? '')).includes(search.toLowerCase())
+                                "
                                 class="hover:bg-brand-surface-50 transition-colors duration-150"
                                 x-data="{ openEdit: false, openDetail: false, imageUrl: '{{ $currentFotoUrl }}' }"
                             >
+
+                                {{-- NO --}}
+                                <td class="p-3 align-middle text-sm font-medium text-text-main w-[2%]">
+                                    {{ $loop->iteration + ($coaches->currentPage() - 1) * $coaches->perPage() }}
+                                </td>
+
                                 {{-- FOTO --}}
                                 <td class="p-3 align-middle w-[8%] min-w-[80px]">
                                     <img
@@ -110,21 +234,21 @@
 
                                 {{-- NO HP --}}
                                 <td class="p-3 align-middle w-[15%] min-w-[120px]">
-                                    <div class="text-sm text-text-main">
+                                    <div class="text-sm text-text-main truncate">
                                         {{ $coach->no_hp }}
                                     </div>
                                 </td>
 
                                 {{-- ALAMAT --}}
-                                <td class="p-3 align-middle w-[20%] min-w-[180px]">
-                                    <div class="text-xs text-text-muted max-w-[180px] truncate">
+                                <td class="p-3 align-middle w-[20%] min-w-[150px]">
+                                    <div class="text-xs text-text-muted max-w-[150px] truncate">
                                         {{ \Illuminate\Support\Str::limit($coach->alamat, 80) }}
                                     </div>
                                 </td>
 
                                 {{-- DESKRIPSI --}}
-                                <td class="p-3 align-middle w-[27%] min-w-[220px]">
-                                    <div class="text-xs text-text-muted max-w-[180px] truncate">
+                                <td class="p-3 align-middle w-[27%] min-w-[150px]">
+                                    <div class="text-xs text-text-muted max-w-[150px] truncate">
                                         {{ $coach->deskripsi ? \Illuminate\Support\Str::limit($coach->deskripsi, 80) : '-' }}
                                     </div>
                                 </td>
@@ -457,7 +581,7 @@
 
             {{-- PAGINATION --}}
             <div class="mt-6">
-                {{ $coaches->links() }}
+                {{ $coaches->appends(['search' => $search])->links() }}
             </div>
         </x-ui.card>
 
@@ -668,6 +792,19 @@
                 });
             }
         </script>
+
+        <script>
+    let typingTimer;
+    const searchInput = document.getElementById('searchInput');
+    const searchForm = document.getElementById('searchForm');
+
+    searchInput.addEventListener('input', function () {
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+            searchForm.submit();
+        }, 300); // delay 300ms biar ga spam request
+    });
+</script>
 
         {{-- CUSTOM SCROLLBAR --}}
         <style>

@@ -14,11 +14,24 @@ class CoachController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $coaches = Coach::latest()->paginate(10);
+        $search = $request->query('search');
 
-        return view('admin.coach.index', compact('coaches'));
+        $coaches = Coach::query()
+            ->when($search, function ($query) use ($search) {
+                $query->where('nama', 'like', "%{$search}%")
+                    ->orWhere('no_hp', 'like', "%{$search}%")
+                    ->orWhere('alamat', 'like', "%{$search}%")
+                    ->orWhere('deskripsi', 'like', "%{$search}%");
+            })
+            ->latest()
+            ->paginate(10)
+            ->withQueryString(); // biar query ?search=... ikut di pagination
+
+        $pageTitle = 'Daftar Coach';
+
+        return view('admin.coach.index', compact('coaches', 'pageTitle'));
     }
 
     /**
