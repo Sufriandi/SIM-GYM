@@ -768,7 +768,7 @@
         <script>
             function confirmDeleteCoach(coachId, coachName) {
                 if (typeof Swal === 'undefined') {
-                    if (confirm(`Yakin ingin menghapus coach ${coachName}?`)) {
+                    if (confirm(Yakin ingin menghapus coach ${coachName}?)) {
                         document.getElementById('delete-coach-' + coachId).submit();
                     }
                     return;
@@ -776,7 +776,7 @@
 
                 Swal.fire({
                     title: 'Hapus Coach?',
-                    text: `Anda yakin ingin menghapus data coach ${coachName}? Tindakan ini tidak dapat dibatalkan.`,
+                    text: Anda yakin ingin menghapus data coach ${coachName}? Tindakan ini tidak dapat dibatalkan.,
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#C73527',

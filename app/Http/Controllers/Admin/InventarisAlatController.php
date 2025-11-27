@@ -11,12 +11,34 @@ class InventarisAlatController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $data = InventarisAlat::orderBy('id', 'DESC')->get();
+        // Ambil input filter & search dari request
+        $search  = $request->get('search');   // untuk cari berdasarkan NAMA
+        $kondisi = $request->get('kondisi');  // untuk filter kondisi
 
-        // view: resources/views/admin/inventaris/index.blade.php
-        return view('admin.inventaris.index', compact('data'));
+        // Base query
+        $query = InventarisAlat::query()->orderBy('id', 'DESC');
+
+        // FILTER: Pencarian berdasarkan NAMA saja
+        if ($search) {
+            $query->where('nama', 'like', '%' . $search . '%');
+        }
+
+        // FILTER: Berdasarkan kondisi (Baik / Maintenance / Rusak)
+        if ($kondisi && in_array($kondisi, ['Baik', 'Maintenance', 'Rusak'])) {
+            $query->where('kondisi', $kondisi);
+        }
+
+        // Ambil hasil (kalau mau bisa diganti ->paginate(10))
+        $data = $query->get();
+
+        // Kirim juga nilai search & kondisi ke view supaya bisa dipakai ulang di form
+        return view('admin.inventaris.index', [
+            'data'    => $data,
+            'search'  => $search,
+            'kondisi' => $kondisi,
+        ]);
     }
 
     /**
