@@ -1,7 +1,12 @@
 {{-- resources/views/admin/coach/index.blade.php --}}
 
 @php
+    use Illuminate\Support\Facades\Storage;
+
     $pageTitle = $pageTitle ?? 'Manajemen Coach';
+
+    // Buka modal create otomatis jika ada error dan bukan request PUT
+    $openCreateOnLoad = ($errors->any() && old('_method') !== 'PUT') ? 'true' : 'false';
 @endphp
 
 <x-layouts.admin
@@ -9,18 +14,37 @@
     :page-title="$pageTitle"
     page-subtitle="Kelola data coach yang terdaftar di BETA GYM."
 >
+    {{-- FLASH MESSAGE (opsional, kalau dipakai di controller) --}}
+    @if (session('success'))
+        <div class="bg-primary-soft border border-primary text-primary-dark px-4 py-3 rounded relative mb-4">
+            <span class="block sm:inline">{{ session('success') }}</span>
+        </div>
+    @endif
+    @if (session('error'))
+        <div class="bg-danger-soft border border-danger text-danger px-4 py-3 rounded relative mb-4">
+            <span class="block sm:inline">{{ session('error') }}</span>
+        </div>
+    @endif
+
     {{-- STATE UTAMA UNTUK MODAL CREATE --}}
-    <div x-data="{ openCreate: false }">
+    <div x-data="{ openCreate: {{ $openCreateOnLoad }} }">
 
         {{-- HEADER HALAMAN --}}
         <x-ui.section-header
             :title="$pageTitle"
             subtitle="Daftar coach aktif dan pengelolaan datanya."
         >
-            <x-ui.button-primary @click="openCreate = true">
-                + Tambah Coach
-            </x-ui.button-primary>
         </x-ui.section-header>
+
+        {{-- GARIS DIBAWAH JUDUL (SAMA KAYA PRODUK) --}}
+        <div class="mt-2 h-px w-full bg-brand-borderSoft/70"></div>
+
+        {{-- TOMBOL TAMBAH DI BAWAH GARIS, RATA KANAN --}}
+        <div class="mt-6 mb-4 flex justify-end">
+            <x-ui.button-primary type="button" @click="openCreate = true">
+                <i data-lucide="plus" class="w-5 h-5 mr-1"></i> Tambah Coach
+            </x-ui.button-primary>
+        </div>
 
         {{-- CARD TABEL COACH --}}
         <x-ui.card
@@ -32,22 +56,22 @@
                 <table class="w-full border-collapse min-w-[900px] text-sm">
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
-                            <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[8%] min-w-[80px]">
                                 Foto
                             </th>
-                            <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[18%] min-w-[150px]">
                                 Nama
                             </th>
-                            <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[15%] min-w-[120px]">
                                 No. HP
                             </th>
-                            <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[20%] min-w-[180px]">
                                 Alamat
                             </th>
-                            <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[27%] min-w-[220px]">
                                 Deskripsi
                             </th>
-                            <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[12%] min-w-[120px]">
                                 Aksi
                             </th>
                         </tr>
@@ -55,67 +79,80 @@
 
                     <tbody class="divide-y divide-brand-borderSoft/80">
                         @forelse ($coaches as $coach)
-                            {{-- STATE KHUSUS UNTUK MODAL EDIT PER-BARIS --}}
+                            @php
+                                $currentFotoPath = $coach->foto ?? null;
+                                $currentFotoUrl = $currentFotoPath
+                                    ? Storage::url($currentFotoPath)
+                                    : 'https://placehold.co/100x100/3A2D2A/F5E6D6?text=No+Foto';
+                            @endphp
+
+                            {{-- STATE KHUSUS PER-BARIS UNTUK MODAL EDIT, DETAIL & PREVIEW FOTO --}}
                             <tr
                                 class="hover:bg-brand-surface-50 transition-colors duration-150"
-                                x-data="{ openEdit: false }"
+                                x-data="{ openEdit: false, openDetail: false, imageUrl: '{{ $currentFotoUrl }}' }"
                             >
                                 {{-- FOTO --}}
-                                <td class="p-3 align-top">
-                                    @if ($coach->foto)
-                                        <img
-                                            src="{{ Storage::url($coach->foto) }}"
-                                            alt="Foto {{ $coach->nama }}"
-                                            class="w-12 h-12 rounded-full object-cover border border-brand-borderSoft shadow-sm"
-                                        >
-                                    @else
-                                        <div
-                                            class="w-12 h-12 rounded-full bg-brand-surface-50 border border-dashed border-brand-borderSoft flex items-center justify-center text-[10px] text-text-muted">
-                                            No Foto
-                                        </div>
-                                    @endif
+                                <td class="p-3 align-middle w-[8%] min-w-[80px]">
+                                    <img
+                                        src="{{ $currentFotoUrl }}"
+                                        alt="Foto {{ $coach->nama }}"
+                                        class="w-12 h-12 rounded-lg object-cover border border-brand-borderSoft shadow-sm"
+                                        onerror="this.onerror=null; this.src='https://placehold.co/100x100/3A2D2A/F5E6D6?text=No+Foto';"
+                                    >
                                 </td>
 
                                 {{-- NAMA --}}
-                                <td class="p-3 align-top">
-                                    <div class="text-sm font-semibold text-text-main">
+                                <td class="p-3 align-middle w-[18%] min-w-[150px]">
+                                    <div class="text-sm font-semibold text-text-main max-w-[100px] truncate">
                                         {{ $coach->nama }}
                                     </div>
                                 </td>
 
                                 {{-- NO HP --}}
-                                <td class="p-3 align-top">
+                                <td class="p-3 align-middle w-[15%] min-w-[120px]">
                                     <div class="text-sm text-text-main">
                                         {{ $coach->no_hp }}
                                     </div>
                                 </td>
 
                                 {{-- ALAMAT --}}
-                                <td class="p-3 align-top">
-                                    <div class="text-xs text-text-muted max-w-xs">
+                                <td class="p-3 align-middle w-[20%] min-w-[180px]">
+                                    <div class="text-xs text-text-muted max-w-[180px] truncate">
                                         {{ \Illuminate\Support\Str::limit($coach->alamat, 80) }}
                                     </div>
                                 </td>
 
                                 {{-- DESKRIPSI --}}
-                                <td class="p-3 align-top">
-                                    <div class="text-xs text-text-muted max-w-xs">
+                                <td class="p-3 align-middle w-[27%] min-w-[220px]">
+                                    <div class="text-xs text-text-muted max-w-[180px] truncate">
                                         {{ $coach->deskripsi ? \Illuminate\Support\Str::limit($coach->deskripsi, 80) : '-' }}
                                     </div>
                                 </td>
 
-                                {{-- AKSI --}}
-                                <td class="p-3 align-top">
-                                    <div class="flex items-center justify-center gap-2">
-                                        {{-- EDIT --}}
-                                        <x-ui.button-secondary
-                                            class="px-3 py-1.5 text-[11px]"
-                                            @click="openEdit = true"
+                                {{-- AKSI (IKON) --}}
+                                <td class="p-3 align-middle w-[12%] min-w-[120px]">
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        {{-- DETAIL ICON - biru soft --}}
+                                        <button
+                                            type="button"
+                                            @click="openDetail = true"
+                                            title="Detail Coach"
+                                            class="p-2 rounded-full text-info hover:bg-info-soft/50 transition-colors duration-150"
                                         >
-                                            Edit
-                                        </x-ui.button-secondary>
+                                            <i data-lucide="eye" class="w-6 h-6"></i>
+                                        </button>
 
-                                        {{-- HAPUS --}}
+                                        {{-- EDIT ICON --}}
+                                        <button
+                                            type="button"
+                                            @click="openEdit = true"
+                                            title="Edit Coach"
+                                            class="p-2 rounded-full text-primary-dark hover:bg-primary-soft/50 transition-colors duration-150"
+                                        >
+                                            <i data-lucide="square-pen" class="w-6 h-6"></i>
+                                        </button>
+
+                                        {{-- HAPUS ICON --}}
                                         <form
                                             id="delete-coach-{{ $coach->id }}"
                                             action="{{ route('admin.coaches.destroy', $coach) }}"
@@ -124,13 +161,14 @@
                                         >
                                             @csrf
                                             @method('DELETE')
-                                            <x-ui.button-secondary
+                                            <button
                                                 type="button"
-                                                class="px-3 py-1.5 text-[11px] bg-danger-soft text-danger hover:bg-danger-soft/80"
+                                                title="Hapus Coach"
+                                                class="p-2 rounded-full text-danger hover:bg-danger-soft/50 transition-colors duration-150"
                                                 onclick="confirmDeleteCoach({{ $coach->id }}, '{{ $coach->nama }}')"
                                             >
-                                                Hapus
-                                            </x-ui.button-secondary>
+                                                <i data-lucide="trash-2" class="w-6 h-6"></i>
+                                            </button>
                                         </form>
                                     </div>
 
@@ -150,11 +188,9 @@
                                             {{-- HEADER MODAL --}}
                                             <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
                                                 <div>
-                                                    {{-- Judul besar --}}
                                                     <h2 class="text-xl font-semibold text-text-main">
                                                         Edit Coach
                                                     </h2>
-                                                    {{-- Nama coach kecil & pudar --}}
                                                     <p class="text-sm text-text-muted mt-0.5">
                                                         {{ $coach->nama }}
                                                     </p>
@@ -167,7 +203,7 @@
                                             </div>
 
                                             {{-- ISI MODAL --}}
-                                            <div class="px-6 pb-6 pt-4">
+                                            <div class="px-6 pb-6 pt-4 max-h-[85vh] overflow-y-auto custom-scrollbar">
                                                 <form
                                                     method="POST"
                                                     action="{{ route('admin.coaches.update', $coach) }}"
@@ -178,21 +214,23 @@
                                                     @method('PUT')
 
                                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                        {{-- PANEL KIRI: FOTO + INFO SINGKAT --}}
+                                                        {{-- PANEL KIRI: FOTO + INFO --}}
                                                         <div class="md:col-span-1">
                                                             <div class="rounded-2xl border border-brand-borderSoft/70 bg-brand-card p-4 flex flex-col items-center gap-3">
-                                                                @if ($coach->foto)
+                                                                <div class="w-24 h-24 rounded-full border-2 border-dashed border-brand-borderSoft overflow-hidden flex items-center justify-center bg-brand-surface-50">
                                                                     <img
-                                                                        src="{{ Storage::url($coach->foto) }}"
+                                                                        :src="imageUrl"
                                                                         alt="Foto {{ $coach->nama }}"
-                                                                        class="w-24 h-24 rounded-full object-cover border-2 border-gold-500 shadow-md"
+                                                                        class="object-cover w-full h-full"
+                                                                        :style="{ display: imageUrl.includes('No+Foto') ? 'none' : 'block' }"
                                                                     >
-                                                                @else
-                                                                    <div
-                                                                        class="w-24 h-24 rounded-full border-2 border-dashed border-brand-borderSoft flex items-center justify-center text-xs text-text-muted bg-brand-surface-50">
+                                                                    <span
+                                                                        x-show="imageUrl.includes('No+Foto')"
+                                                                        class="text-xs text-text-muted text-center p-2"
+                                                                    >
                                                                         No Foto
-                                                                    </div>
-                                                                @endif
+                                                                    </span>
+                                                                </div>
 
                                                                 <div class="text-center">
                                                                     <p class="text-sm font-semibold text-text-main">
@@ -283,6 +321,16 @@
                                                                                file:text-sm file:font-semibold
                                                                                file:bg-gold-600 file:text-white
                                                                                hover:file:bg-gold-700"
+                                                                        @change="
+                                                                            const file = $event.target.files[0];
+                                                                            if (file) {
+                                                                                const reader = new FileReader();
+                                                                                reader.onload = (e) => { imageUrl = e.target.result; };
+                                                                                reader.readAsDataURL(file);
+                                                                            } else {
+                                                                                imageUrl = '{{ $currentFotoUrl }}';
+                                                                            }
+                                                                        "
                                                                     >
                                                                     <p class="text-[11px] text-text-muted">
                                                                         Maksimal 2MB. Jika diisi, foto lama akan diganti.
@@ -301,6 +349,96 @@
                                                         </x-ui.button-primary>
                                                     </div>
                                                 </form>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                   {{-- MODAL DETAIL DATA COACH --}}
+                                    <div
+                                        x-show="openDetail"
+                                        x-cloak
+                                        x-transition
+                                        class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
+                                    >
+                                        <div
+                                            @click.away="openDetail = false"
+                                            class="relative w-full max-w-2xl rounded-3xl shadow-2xl border border-brand-borderSoft bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell"
+                                        >
+                                            {{-- HEADER --}}
+                                            <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
+                                                <div>
+                                                    <h2 class="text-xl font-semibold text-text-main">Detail Coach</h2>
+                                                    <p class="text-sm text-text-muted mt-0.5">
+                                                        Informasi lengkap mengenai profil coach.
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    @click="openDetail = false"
+                                                    class="rounded-full p-1.5 hover:bg-brand-surface-50 transition"
+                                                >
+                                                    <i data-lucide="x" class="w-5 h-5 text-text-muted"></i>
+                                                </button>
+                                            </div>
+
+                                            {{-- ISI MODAL --}}
+                                            <div class="px-6 pb-6 pt-4 space-y-5 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                                                {{-- FOTO + NAMA --}}
+                                                <div class="flex flex-col items-center gap-3 p-5 rounded-2xl bg-brand-surface-50 border border-brand-borderSoft">
+                                                    <div class="w-24 h-24 rounded-full overflow-hidden border-2 border-brand-borderSoft shadow">
+                                                        <img
+                                                            src="{{ $currentFotoUrl }}"
+                                                            alt="Foto {{ $coach->nama }}"
+                                                            class="w-full h-full object-cover"
+                                                        >
+                                                    </div>
+                                                    <div class="text-center">
+                                                        <p class="text-base font-semibold text-text-main">
+                                                            {{ $coach->nama }}
+                                                        </p>
+                                                        <p class="text-xs text-text-muted mt-1">
+                                                            Nomor HP: {{ $coach->no_hp }}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {{-- KONTAK + ALAMAT --}}
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {{-- KONTAK --}}
+                                                    <div class="p-4 rounded-2xl bg-brand-surface-50 border border-brand-borderSoft">
+                                                        <h3 class="text-sm font-semibold text-text-main mb-2">Kontak</h3>
+                                                        <p class="text-xs text-text-muted mb-1">Nomor HP:</p>
+                                                        <p class="text-sm text-text-main break-words">
+                                                            {{ $coach->no_hp }}
+                                                        </p>
+                                                    </div>
+
+                                                    {{-- ALAMAT --}}
+                                                    <div class="p-4 rounded-2xl bg-brand-surface-50 border border-brand-borderSoft">
+                                                        <h3 class="text-sm font-semibold text-text-main mb-2">Alamat</h3>
+                                                        <p
+                                                            class="text-sm text-text-main whitespace-pre-line break-words max-h-32 overflow-y-auto custom-scrollbar"
+                                                        >
+                                                            {{ $coach->alamat }}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {{-- DESKRIPSI / KEAHLIAN --}}
+                                                <div class="p-4 rounded-2xl bg-brand-surface-50 border border-brand-borderSoft">
+                                                    <h3 class="text-sm font-semibold text-text-main mb-2">Deskripsi / Keahlian</h3>
+                                                    <p
+                                                        class="text-sm text-text-main whitespace-pre-line break-words max-h-40 overflow-y-auto custom-scrollbar"
+                                                    >
+                                                        {{ $coach->deskripsi ?: '-' }}
+                                                    </p>
+                                                </div>
+
+                                                <div class="flex justify-end pt-2">
+                                                    <x-ui.button-secondary type="button" @click="openDetail = false">
+                                                        Tutup
+                                                    </x-ui.button-secondary>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -335,6 +473,7 @@
             <div
                 @click.away="openCreate = false"
                 class="relative w-full max-w-4xl rounded-3xl shadow-2xl border border-brand-borderSoft bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell"
+                x-data="{ createImageUrl: null }"
             >
                 <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
                     <div>
@@ -352,7 +491,7 @@
                     </button>
                 </div>
 
-                <div class="px-6 pb-6 pt-4">
+                <div class="px-6 pb-6 pt-4 max-h-[85vh] overflow-y-auto custom-scrollbar">
                     <form
                         method="POST"
                         action="{{ route('admin.coaches.store') }}"
@@ -361,16 +500,38 @@
                     >
                         @csrf
 
+                        {{-- ERROR VALIDASI UNTUK CREATE --}}
+                        @if ($errors->any() && old('_method') !== 'PUT')
+                            <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
+                                <p class="text-sm font-semibold">Ada kesalahan input:</p>
+                                <ul class="list-disc list-inside text-xs mt-1">
+                                    @foreach ($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {{-- PANEL KIRI: PREVIEW AVATAR --}}
                             <div class="md:col-span-1">
                                 <div class="rounded-2xl border border-brand-borderSoft/70 bg-brand-card p-4 flex flex-col items-center gap-3">
-                                    <div
-                                        class="w-24 h-24 rounded-full border-2 border-dashed border-brand-borderSoft flex items-center justify-center text-xs text-text-muted bg-brand-surface-50">
-                                        Foto Coach
+                                    <div class="w-24 h-24 rounded-full border-2 border-dashed border-brand-borderSoft overflow-hidden flex items-center justify-center bg-brand-surface-50">
+                                        <img
+                                            x-show="createImageUrl"
+                                            :src="createImageUrl"
+                                            alt="Preview Foto Coach"
+                                            class="object-cover w-full h-full"
+                                        >
+                                        <span
+                                            x-show="!createImageUrl"
+                                            class="text-xs text-text-muted text-center p-2"
+                                        >
+                                            Preview Foto Coach
+                                        </span>
                                     </div>
                                     <p class="text-[11px] text-text-muted text-center">
-                                        Upload foto coach di kolom form kanan untuk menambahkan avatar.
+                                        Foto yang akan diupload.
                                     </p>
                                 </div>
                             </div>
@@ -434,7 +595,7 @@
                                     </div>
 
                                     {{-- FOTO --}}
-                                    <div>
+                                    <div class="space-y-2">
                                         <x-ui.label for="foto_create">Foto Profil (opsional)</x-ui.label>
                                         <input
                                             type="file"
@@ -447,6 +608,16 @@
                                                    file:text-sm file:font-semibold
                                                    file:bg-gold-600 file:text-white
                                                    hover:file:bg-gold-700"
+                                            @change="
+                                                const file = $event.target.files[0];
+                                                if (file) {
+                                                    const reader = new FileReader();
+                                                    reader.onload = (e) => { createImageUrl = e.target.result; };
+                                                    reader.readAsDataURL(file);
+                                                } else {
+                                                    createImageUrl = null;
+                                                }
+                                            "
                                         >
                                         <p class="text-[11px] text-text-muted mt-1">
                                             Maksimal 2MB. Format yang didukung: JPG, PNG, dll.
@@ -473,7 +644,7 @@
         <script>
             function confirmDeleteCoach(coachId, coachName) {
                 if (typeof Swal === 'undefined') {
-                    if (confirm(`Yakin ingin menghapus coach ${coachName}?`)) {
+                    if (confirm(Yakin ingin menghapus coach ${coachName}?)) {
                         document.getElementById('delete-coach-' + coachId).submit();
                     }
                     return;
@@ -481,7 +652,7 @@
 
                 Swal.fire({
                     title: 'Hapus Coach?',
-                    text: `Anda yakin ingin menghapus data coach ${coachName}? Tindakan ini tidak dapat dibatalkan.`,
+                    text: Anda yakin ingin menghapus data coach ${coachName}? Tindakan ini tidak dapat dibatalkan.,
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#C73527',
