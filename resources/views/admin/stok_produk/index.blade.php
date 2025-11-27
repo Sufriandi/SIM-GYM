@@ -1,29 +1,31 @@
+{{-- resources/views/admin/stok_produk/index.blade.php --}}
 @php
     use Carbon\Carbon;
     use Illuminate\Support\Str;
     use Illuminate\Support\Js; 
     
-    // Asumsi data: $riwayat_stok (StokProduk::paginate), $produks (Produk::all())
-    $pageTitle = 'Stok Produk';
+    $pageTitle = 'Daftar Stok Produk'; 
+    // Ambil nilai search dari request, hanya untuk nilai awal Alpine
+    $search = request('search', '');
     
-    // LOGIKA UNTUK MEMBUKA MODAL CREATE/EDIT JIKA ADA VALIDASI ERROR
-    $openCreateOnLoad = ($errors->any() && (old('_method') !== 'PUT')) ? 'true' : 'false';
+    // Variabel $produks (paginated) di-pass dari controller.
+    $produks = $produks ?? collect(); 
     
-    // PERBAIKAN UTAMA: Menggunakan shouldOpenEdit
-    $shouldOpenEdit = $errors->any() && old('_method') === 'PUT' && old('id');
-    $openEditOnLoad = $shouldOpenEdit ? 'true' : 'false';
+    // Asumsi $allProduk di-pass dari controller untuk dropdown
+    $allProduk = $allProduk ?? $produks; 
+
+    // Persistensi Modal Edit/Penyesuaian (Jika validasi gagal)
+    $openEditOnLoad = session('modal_edit_open', false);
     
-    $oldEditId = old('_method') === 'PUT' ? (old('id') ?? 'null') : 'null';
-    
-    // Data untuk AlpineJS
-    $produks = $produks ?? collect();
-    $riwayat_stok = $riwayat_stok ?? collect(); // Pastikan variabel ini ada
+    // Menghitung nomor urut dengan memperhitungkan paginasi
+    $currentPage = $produks->currentPage() ?? 1;
+    $perPage = $produks->perPage() ?? 15;
 @endphp
 
 <x-layouts.admin
     :title="$pageTitle . ' – BETA GYM'"
     :page-title="$pageTitle"
-    page-subtitle="Mencatat dan meninjau riwayat penambahan dan pengurangan stok produk."
+    page-subtitle="Daftar stok produk yang tersedia di gudang."
 >
     {{-- TAMPILKAN PESAN FLASH --}}
     @if (session('success'))
@@ -44,103 +46,41 @@
 
     <div 
         x-data="{ 
-            openCreate: {{ $openCreateOnLoad }},
             openDetail: false, 
-            openEdit: {{ $openEditOnLoad }}, 
-            
-            detailStok: null, 
-            editStok: null, 
-            
-            // Data Create
-            selectedProductId: {{ old('produk_id') ?? 'null' }}, 
-            produkData: {{ Js::from($produks) }},
-            selectedProductObject: null,
-            
-            // Data Edit (untuk form)
-            editForm: {
-                id: {{ $oldEditId }}, 
-                produk_id: {{ old('produk_id') ?? 'null' }},
-                jumlah: {{ old('jumlah') ?? 'null' }},
-                tanggal: '{{ old('tanggal') }}',
-                keterangan: '{{ old('keterangan') }}',
-                stok_saat_ini: null, 
-                jumlah_awal: null, 
-            },
-            
-            updateProductObject() {
-                this.selectedProductObject = this.produkData.find(p => p.id == this.selectedProductId);
-            },
-            
-            // FUNGSI UNTUK MERESET MODAL CREATE
-            resetCreateForm() {
-                // PENTING: Reset variabel AlpineJS yang terikat pada input
-                this.selectedProductId = null; 
-                this.selectedProductObject = null;
+            detailProduk: null, 
+            openEditStok: {{ Js::from($openEditOnLoad) }}, 
+            openTambahStok: false,
+            // STATE PENCARIAN CLIENT-SIDE
+            searchQuery: '{{ $search }}', 
 
-                this.$nextTick(() => {
-                    const form = document.getElementById('create_form_stok'); 
-                    if (form) form.reset();
-                    // Reset manual tanggal default jika diperlukan
-                    document.getElementById('tanggal_modal').value = '{{ now()->format('Y-m-d') }}';
-                });
-            },
-
-            // FUNGSI UNTUK MERESET MODAL EDIT
-            resetEditForm() {
-                this.editStok = null;
-                this.editForm = {
-                    id: null,
-                    produk_id: null,
-                    jumlah: null,
-                    tanggal: '',
-                    keterangan: '',
-                    stok_saat_ini: null,
-                    jumlah_awal: null,
-                };
-                this.$nextTick(() => {
-                    const form = document.getElementById('edit_form_stok'); 
-                });
+            editStokForm: {
+                id: '{{ old('id') ?? '' }}',
+                nama: '',
+                stok_lama: {{ old('stok_lama') ?? 0 }},
+                stok_baru: {{ old('stok_baru') ?? 0 }},
+                keterangan: '{{ old('keterangan') ?? '' }}',
             },
             
-            // Fungsi untuk membuka modal detail
-            showDetail(stok) {
-                this.detailStok = stok;
+            // === FUNCTIONS ===
+            showDetail(produk) {
+                this.detailProduk = produk;
                 this.openDetail = true;
             },
             
-            // Fungsi untuk membuka modal Edit
-            showEdit(stok) {
-                // Reset form terlebih dahulu untuk membersihkan data lama/error validasi
-                this.resetEditForm(); 
+            showEditStok(data) {
+                this.editStokForm.id = data.id;
+                this.editStokForm.nama = data.nama;
+                this.editStokForm.stok_lama = data.stok;
+                this.editStokForm.stok_baru = data.stok;
+                this.editStokForm.keterangan = data.deskripsi ?? '';
 
-                const produk = this.produkData.find(p => p.id === stok.produk.id) || null; 
-                
-                if (!produk) {
-                    alert('Produk tidak ditemukan. Tidak dapat mengedit.');
-                    return;
-                }
-
-                this.editStok = stok;
-
-                // Isi data ke form untuk modal edit
-                this.editForm.id = stok.id;
-                this.editForm.produk_id = stok.produk.id;
-                this.editForm.jumlah = stok.jumlah;
-                this.editForm.tanggal = stok.tanggal_input_format; // YYYY-MM-DD
-                this.editForm.keterangan = stok.keterangan;
-                
-                // Data untuk perhitungan (Stok produk saat ini di DB)
-                this.editForm.stok_saat_ini = produk.stok;
-                this.editForm.jumlah_awal = stok.jumlah;
-                
-                this.openEdit = true;
+                this.openEditStok = true;
             },
             
-            // Helper untuk format tanggal untuk tampilan (DIGUNAKAN DI MODAL DETAIL)
+            // Helper untuk format tanggal untuk tampilan
             formatDateDisplay(dateString) {
                 if (!dateString) return '-';
                 const date = new Date(dateString);
-                
                 return date.toLocaleDateString('id-ID', {
                     year: 'numeric',
                     month: 'short',
@@ -148,170 +88,229 @@
                 });
             }
         }" 
-        x-init="
-            updateProductObject();
-        "
     > 
+        
         {{-- HEADER HALAMAN --}}
         <x-ui.section-header
             :title="$pageTitle"
-            subtitle="Daftar riwayat penambahan atau penyesuaian stok produk."
+            subtitle="Daftar produk dan stok akhirnya. Gunakan tombol edit untuk menyesuaikan stok."
         >
         </x-ui.section-header>
 
         {{-- garis dibawah judul --}}
         <div class="mt-2 h-px w-full bg-brand-borderSoft/70"></div>
 
-        {{-- TOMBOL TAMBAH STOK --}}
-        <div class="mt-6 mb-4 flex justify-end">
-            <x-ui.button-primary type="button" @click="openCreate = true">
-                <i data-lucide="plus" class="w-5 h-5 mr-1"></i> Tambah Stok
-            </x-ui.button-primary>
-        </div>
+        {{-- FITUR PENCARIAN & TOMBOL TAMBAH PRODUK --}}
+        <div class="mt-6 mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            {{-- INPUT PENCARIAN CLIENT-SIDE --}}
+            <div class="flex-grow flex items-center gap-3">
+                <div class="relative w-full md:max-w-xs flex-grow">
+                    <i data-lucide="search" class="w-4 h-4 text-text-muted absolute left-3 top-1/2 transform -translate-y-1/2"></i>
+                    <input type="text" 
+                        x-model.debounce.300ms="searchQuery" {{-- Bind ke searchQuery dan tunda 300ms --}}
+                        placeholder="Cari produk/kategori..." 
+                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main pl-9 pr-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
+                </div>
+                
+                {{-- Tombol Reset (Hanya muncul jika ada input) --}}
+                <template x-if="searchQuery">
+                    <button type="button" 
+                        @click="searchQuery = ''" 
+                        class="p-2 rounded-xl text-danger hover:bg-danger-soft/50 transition duration-150" 
+                        title="Reset Pencarian">
+                        <i data-lucide="x-circle" class="w-5 h-5"></i>
+                    </button>
+                </template>
+            </div>
             
-        {{-- CARD TABEL RIWAYAT STOK --}}
+            {{-- TOMBOL TAMBAH PRODUK (Minimal UI) --}}
+            <div class="flex justify-end md:justify-start w-full md:w-auto mt-3 md:mt-0">
+                <x-ui.button-primary type="button" @click="openTambahStok = true">
+                    <i data-lucide="plus" class="w-5 h-5 mr-1"></i> Tambah Stok Produk
+                </x-ui.button-primary>
+            </div>
+        </div>
+        
+        {{-- CARD TABEL STOK AKHIR --}}
         <x-ui.card
-            title="Riwayat Stok Masuk"
-            subtitle="Pencatatan penambahan stok terbaru."
+            title="Daftar Stok Produk"
+            subtitle="Stok yang tersedia saat ini di database."
             class="border-brand-borderSoft"
         >
-            <div class="overflow-x-auto custom-scrollbar">
-                {{-- MIN-WIDTH DIKECILKAN MENJADI 950px --}}
-                <table class="w-full border-collapse min-w-[950px] text-sm"> 
+            <div>
+                <table class="w-full border-collapse min-w-[900px] text-sm"> 
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
-                            {{-- TANGGAL INPUT (15%) --}}
-                            <th class="p-3 text-left text-[15%] font-bold uppercase tracking-wide text-text-muted min-w-[100px]">Tanggal Input</th>
-                            
-                            {{-- PRODUK (25%) --}}
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[25%] min-w-[150px]">Produk</th>
-                            
-                            {{-- KATEGORI (15%) --}}
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[15%] min-w-[100px]">Kategori</th>
-                            
-                            {{-- JUMLAH (10%) --}}
-                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%] min-w-[70px]">Jumlah</th>
-                            
-                            {{-- KETERANGAN (25% - Paling fleksibel) --}}
+                            {{-- KOLOM HEADERS --}}
+                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[3%] min-w-[30px]">No.</th>
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[14%] min-w-[100px]">Tanggal Dibuat</th>
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[24%] min-w-[150px]">Produk</th>
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[14%] min-w-[100px]">Kategori</th>
+                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[9%] min-w-[70px]">Stok</th>
                             <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[25%] min-w-[150px]">Keterangan</th>
-                            
-                            {{-- AKSI (10%) --}}
-                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%] min-w-[90px]">Aksi</th>
+                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[11%] min-w-[90px]">Aksi</th>
                         </tr>
                     </thead>
 
                     <tbody class="divide-y divide-brand-borderSoft/80">
-                        @forelse ($riwayat_stok as $stok)
-                            {{-- LOGIKA: ABAIKAN BARIS JIKA JUMLAH STOK KURANG DARI ATAU SAMA DENGAN NOL (Hanya tampilkan STOK MASUK) --}}
-                            @if ($stok->jumlah <= 0)
-                                @continue
-                            @endif
-                            
+                        @php $no_urut = ($currentPage - 1) * $perPage + 1; @endphp
+                        {{-- LOOPING DATA PRODUK (Stok Akhir) --}}
+                        @forelse ($produks as $produk)
                             @php
-                                // Mengambil kategori jika relasi produk tersedia
-                                $kategori = $stok->produk->kategori ?? '-';
+                                $kategori = $produk->kategori ?? '-';
+                                $tanggalDisplay = Carbon::parse($produk->created_at)->locale('id')->isoFormat('D MMM YYYY');
+                                $stokAkhir = $produk->stok; 
+                                $namaProduk = $produk->nama ?? 'Produk Dihapus';
                                 
-                                // PERBAIKAN: Hapus format jam (HH:mm) untuk tampilan tabel
-                                $tanggalDisplay = Carbon::parse($stok->tanggal)->locale('id')->isoFormat('D MMM YYYY');
-                                
-                                // FIX: Menggunakan format date-only (Y-m-d) agar kompatibel dengan input type="date"
-                                $tanggalInputFormat = Carbon::parse($stok->tanggal)->format('Y-m-d'); 
-                                
-                                $namaProduk = $stok->produk->nama ?? 'Produk Dihapus';
-                                
-                                $stok_data_js = [
-                                    'id' => $stok->id,
-                                    // Tambahkan kategori ke data JS jika diperlukan untuk Detail Modal
-                                    'produk' => $stok->produk ? ['id' => $stok->produk->id, 'nama' => $stok->produk->nama, 'stok' => $stok->produk->stok, 'kategori' => $kategori] : ['id' => 0, 'nama' => 'Produk Dihapus', 'stok' => 0, 'kategori' => '-'],
-                                    'jumlah' => $stok->jumlah,
-                                    'tanggal' => $stok->tanggal, 
-                                    'tanggal_input_format' => $tanggalInputFormat, 
-                                    'keterangan' => $stok->keterangan,
+                                // Data produk yang dipersiapkan untuk Alpine.js
+                                $produk_data_js = [
+                                    'id' => $produk->id,
+                                    'nama' => $namaProduk,
+                                    'kategori' => ucwords($kategori),
+                                    'stok' => $stokAkhir,
+                                    'tanggal_dibuat' => $tanggalDisplay,
+                                    'deskripsi' => $produk->deskripsi,
                                 ];
+                                
+                                // Data untuk pencarian client-side
+                                $search_data = strtolower($namaProduk . ' ' . $kategori . ' ' . $produk->deskripsi);
                             @endphp
                             
-                            <tr class="hover:bg-brand-surface-50 transition-colors duration-150">
+                            {{-- LOGIKA CLIENT-SIDE FILTERING DENGAN x-show --}}
+                            <tr 
+                                class="hover:bg-brand-surface-50 transition-colors duration-150"
+                                x-show="!searchQuery || @js($search_data).includes(searchQuery.toLowerCase())"
+                            >
                                 
-                                {{-- TANGGAL INPUT (15%) --}}
-                                <td class="p-3 align-middle w-[15%] min-w-[100px]"> 
+                                {{-- NO (3%) --}}
+                                <td class="p-3 align-middle text-center text-text-muted w-[3%] min-w-[30px]">{{ $no_urut++ }}</td>
+                                
+                                {{-- TANGGAL DIBUAT (14%) --}}
+                                <td class="p-3 align-middle w-[14%] min-w-[100px]"> 
                                     <div class="text-xs text-text-muted">{{ $tanggalDisplay }}</div>
                                 </td>
                                 
-                                {{-- PRODUK (25%) --}}
-                                <td class="p-3 align-middle w-[25%] min-w-[150px]">
-                                    <div class="text-sm font-semibold text-text-main">{{ $namaProduk }}</div>
+                                {{-- PRODUK (24%) --}}
+                                <td class="p-3 align-middle w-[24%] min-w-[150px]">
+                                    <div class="text-sm font-semibold text-text-main line-clamp-1">{{ $namaProduk }}</div>
                                 </td>
-
-                                {{-- KATEGORI (15%) --}}
-                                <td class="p-3 align-middle w-[15%] min-w-[100px]">
+                                
+                                {{-- KATEGORI (14%) --}}
+                                <td class="p-3 align-middle w-[14%] min-w-[100px]">
                                     <div class="text-xs font-medium text-primary-dark">
                                         {{ ucwords($kategori) }}
                                     </div>
                                 </td>
 
-                                {{-- JUMLAH (10%) --}}
-                                <td class="p-3 align-middle text-center w-[10%] min-w-[70px]">
-                                    {{-- Menggunakan warna teks success karena hanya stok masuk yang ditampilkan --}}
-                                    <div class="text-sm font-bold text-success">{{ $stok->jumlah }}</div>
+                                {{-- JUMLAH (STOK AKHIR) (9%) --}}
+                                <td class="p-3 align-middle text-center w-[9%] min-w-[70px]">
+                                    <div class="text-sm font-bold {{ $stokAkhir > 0 ? 'text-success' : 'text-danger' }}">
+                                        {{ $stokAkhir }}
+                                    </div>
                                 </td>
                                 
-                                {{-- KETERANGAN (25% - Min-w dipersingkat) --}}
+                                {{-- KETERANGAN (Menggunakan deskripsi singkat produk) (25%) --}}
                                 <td class="p-3 align-middle w-[25%] min-w-[150px]"> 
-                                    <div class="text-xs text-text-muted max-w-full">
-                                        {{ $stok->keterangan ? Str::limit($stok->keterangan, 50) : '-' }}
+                                    <div class="text-xs text-text-muted max-w-full line-clamp-1">
+                                        {{ $produk->deskripsi ? Str::limit($produk->deskripsi, 50) : '-' }}
                                     </div>
                                 </td>
 
-                                {{-- AKSI (10%) --}}
-                                <td class="p-3 align-middle w-[10%] min-w-[90px]">
-                                    <div class="flex items-center justify-center gap-1.5">
+                                {{-- AKSI (11%) --}}
+                                <td class="p-3 align-middle w-[11%] min-w-[90px]">
+                                    <div class="flex items-center justify-center gap-1.5 h-full">
                                         
-                                        {{-- DETAIL ICON --}}
-                                        <button 
-                                            type="button" 
-                                            @click="showDetail({{ Js::from($stok_data_js) }})" 
-                                            title="Lihat Detail"
-                                            class="p-2 rounded-full text-info hover:bg-info-soft/50 transition-colors duration-150"
-                                        >
-                                            <i data-lucide="eye" class="w-6 h-6"></i>
-                                        </button>
+                                        {{-- 1. DETAIL ICON --}}
+                                        <div x-data="{ viewing: false }" class="relative flex flex-col items-center justify-start h-full">
+                                            <button 
+                                                type="button" 
+                                                @mouseenter="viewing = true"
+                                                @mouseleave="viewing = false"
+                                                @click="showDetail({{ Js::from($produk_data_js) }})" 
+                                                title="Lihat Detail"
+                                                class="p-2 rounded-full text-info hover:bg-info-soft/50 transition-colors duration-150 z-10"
+                                            >
+                                                <i data-lucide="eye" class="w-6 h-6"></i>
+                                            </button>
+                                            <span x-show="viewing" 
+                                                    x-cloak 
+                                                    x-transition:enter="transition ease-out duration-300"
+                                                    x-transition:enter-start="opacity-0 translate-y-2"
+                                                    x-transition:enter-end="opacity-100 translate-y-0"
+                                                    x-transition:leave="transition ease-in duration-200"
+                                                    x-transition:leave-start="opacity-100 translate-y-0"
+                                                    x-transition:leave-end="opacity-0 translate-y-2"
+                                                    class="absolute top-[33px] text-[10px] font-medium text-info whitespace-nowrap z-0">
+                                                Detail
+                                            </span>
+                                        </div>
 
-                                        {{-- EDIT ICON --}}
-                                        <button 
-                                            type="button" 
-                                            @click="showEdit({{ Js::from($stok_data_js) }})" 
-                                            title="Edit Penambahan Stok"
-                                            class="p-2 rounded-full text-yellow-600 hover:bg-yellow-100/50 transition-colors duration-150"
-                                        >
-                                            <i data-lucide="square-pen" class="w-6 h-6"></i>
-                                        </button>
+                                        {{-- 2. EDIT ICON --}}
+                                        <div x-data="{ editing: false }" class="relative flex flex-col items-center justify-start h-full">
+                                            <button 
+                                                type="button"
+                                                @mouseenter="editing = true"
+                                                @mouseleave="editing = false"
+                                                @click.stop="showEditStok({{ Js::from($produk_data_js) }})" 
+                                                title="Edit Stok Produk"
+                                                class="p-2 rounded-full text-yellow-600 hover:bg-yellow-100/50 transition-colors duration-150 z-10"
+                                            >
+                                                <i data-lucide="square-pen" class="w-6 h-6"></i>
+                                            </button>
+                                            <span x-show="editing" 
+                                                x-cloak 
+                                                x-transition:enter="transition ease-out duration-300"
+                                                x-transition:enter-start="opacity-0 translate-y-2"
+                                                x-transition:enter-end="opacity-100 translate-y-0"
+                                                x-transition:leave="transition ease-in duration-200"
+                                                x-transition:leave-start="opacity-100 translate-y-0"
+                                                x-transition:leave-end="opacity-0 translate-y-2"
+                                                class="absolute top-[33px] text-[10px] font-medium text-yellow-600 whitespace-nowrap z-0">
+                                                Edit
+                                            </span>
+                                        </div>
                                         
-                                        {{-- HAPUS / BATALKAN STOK --}}
+                                        {{-- 3. HAPUS PRODUK PERMANEN --}}
                                         <form
-                                            id="delete-stok-{{ $stok->id }}"
-                                            action="{{ route('admin.stok_produk.destroy', $stok) }}"
+                                            id="delete-produk-{{ $produk->id }}"
+                                            action="{{ route('admin.stok_produk.destroy', $produk->id) }}" 
                                             method="POST"
                                             class="inline-block"
                                         >
                                             @csrf
                                             @method('DELETE')
-                                            <button
-                                                type="button"
-                                                title="Batalkan Penambahan Stok"
-                                                class="p-2 rounded-full text-danger hover:bg-danger-soft/50 transition-colors duration-150"
-                                                onclick="confirmDeleteStok({{ $stok->id }}, '{{ $namaProduk }}')"
-                                            >
-                                                <i data-lucide="trash-2" class="w-6 h-6"></i>
-                                            </button>
+                                            <div x-data="{ deleting: false }" class="relative flex flex-col items-center justify-start h-full">
+                                                <button
+                                                    type="button"
+                                                    @mouseenter="deleting = true"
+                                                    @mouseleave="deleting = false"
+                                                    title="Hapus Produk Permanen"
+                                                    class="p-2 rounded-full text-danger hover:bg-danger-soft/50 transition-colors duration-150 z-10"
+                                                    onclick="confirmDeleteProduct({{ $produk->id }}, '{{ $namaProduk }}')"
+                                                >
+                                                    <i data-lucide="trash-2" class="w-6 h-6"></i>
+                                                </button>
+                                                <span x-show="deleting" 
+                                                        x-cloak 
+                                                        x-transition:enter="transition ease-out duration-300"
+                                                        x-transition:enter-start="opacity-0 translate-y-2"
+                                                        x-transition:enter-end="opacity-100 translate-y-0"
+                                                        x-transition:leave="transition ease-in duration-200"
+                                                        x-transition:leave-start="opacity-100 translate-y-0"
+                                                        x-transition:leave-end="opacity-0 translate-y-2"
+                                                        class="absolute top-[33px] text-[10px] font-medium text-danger whitespace-nowrap z-0">
+                                                    Hapus
+                                                </span>
+                                            </div>
                                         </form>
                                     </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                {{-- colspan diubah menjadi 6 karena ada 6 kolom (termasuk Kategori) --}}
-                                <td colspan="6" class="p-6 text-center text-text-muted italic"> 
-                                    Belum ada riwayat penambahan stok produk.
+                                <td colspan="7" class="p-6 text-center text-text-muted italic"> 
+                                    <span x-show="searchQuery">Tidak ada produk yang ditemukan dengan kriteria pencarian saat ini.</span>
+                                    <span x-show="!searchQuery">Belum ada data produk.</span>
                                 </td>
                             </tr>
                         @endforelse
@@ -321,144 +320,16 @@
 
             {{-- PAGINATION --}}
             <div class="mt-6">
-                {{ $riwayat_stok->links() }}
+                {{ $produks->links() }}
             </div>
         </x-ui.card>
-
-        {{-- ======================== --}}
-        {{-- MODAL TAMBAH STOK BARU (CREATE) --}}
-        {{-- ======================== --}}
-        <div
-            x-show="openCreate"
-            x-cloak
-            x-transition
-            class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
-        >
-            <div
-                {{-- PERBAIKAN: Memanggil resetCreateForm() saat klik diluar modal --}}
-                @click.away="openCreate = false; resetCreateForm()"
-                class="relative w-full max-w-4xl rounded-3xl shadow-2xl border border-brand-borderSoft bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell"
-            >
-                <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
-                    <div>
-                        <h2 class="text-xl font-semibold text-text-main">Tambah Stok Produk</h2>
-                        <p class="text-sm text-text-muted mt-0.5">Masukkan detail penambahan stok produk.</p>
-                    </div>
-                    {{-- PERBAIKAN: Memanggil resetCreateForm() saat klik tombol X --}}
-                    <button type="button" class="rounded-full p-1.5 hover:bg-brand-surface-50 transition" @click="openCreate = false; resetCreateForm()">
-                        <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
-                    </button>
-                </div>
-
-                <div class="px-6 pb-6 pt-4 max-h-[80vh] overflow-y-auto custom-scrollbar"> 
-                    <form id="create_form_stok" action="{{ route('admin.stok_produk.store') }}" method="POST" class="space-y-6">
-                        @csrf
-                        
-                        {{-- Menampilkan error validasi dari Store --}}
-                        @if ($errors->any() && (old('_method') !== 'PUT' || session('modal_create_open')))
-                             <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
-                                 <p class="text-sm font-semibold">Ada kesalahan input:</p>
-                                 <ul class="list-disc list-inside text-xs mt-1">
-                                    @foreach ($errors->all() as $error)
-                                         <li>{{ $error }}</li>
-                                    @endforeach
-                                 </ul>
-                             </div>
-                        @endif
-
-                        <div class="space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                
-                                {{-- PRODUK ID --}}
-                                <div>
-                                    <x-ui.label for="produk_id_modal">Pilih Produk</x-ui.label>
-                                    <select 
-                                        id="produk_id_modal" 
-                                        name="produk_id"
-                                        x-model="selectedProductId" 
-                                        x-on:change="updateProductObject()"
-                                        required
-                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('produk_id') border-danger ring-danger-soft @enderror"
-                                    >
-                                        <option value="" disabled :selected="selectedProductId === null">-- Pilih Produk --</option>
-                                        @foreach ($produks as $produk)
-                                            <option 
-                                                value="{{ $produk->id }}" 
-                                                {{ old('produk_id') == $produk->id ? 'selected' : '' }}
-                                            >
-                                                {{ $produk->nama }} (Stok Saat Ini: {{ $produk->stok }})
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @error('produk_id')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
-                                    <p x-show="selectedProductObject" class="text-xs text-text-muted mt-1">Stok produk ini saat ini: <span x-text="selectedProductObject.stok"></span></p>
-                                </div>
-
-                                {{-- JUMLAH STOK --}}
-                                <div>
-                                    <x-ui.label for="jumlah_modal">Jumlah Stok Masuk</x-ui.label>
-                                    <input 
-                                        type="number" 
-                                        id="jumlah_modal" 
-                                        name="jumlah"
-                                        value="{{ old('jumlah') ?? 1 }}" 
-                                        min="1"
-                                        required
-                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('jumlah') border-danger ring-danger-soft @enderror"
-                                    >
-                                    @error('jumlah')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
-                                </div>
-                            </div>
-                            
-                            {{-- TANGGAL MASUK --}}
-                            <div>
-                                <x-ui.label for="tanggal_modal">Tanggal Input Stok</x-ui.label>
-                                <input 
-                                    type="date" 
-                                    id="tanggal_modal" 
-                                    name="tanggal"
-                                    value="{{ old('tanggal') ?? now()->format('Y-m-d') }}" 
-                                    required
-                                    max="{{ now()->format('Y-m-d') }}"
-                                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('tanggal') border-danger ring-danger-soft @enderror"
-                                >
-                                @error('tanggal')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
-                            </div>
-
-                            {{-- KETERANGAN --}}
-                            <div>
-                                <x-ui.label for="keterangan_modal">Keterangan (Sumber/Catatan)</x-ui.label>
-                                <textarea 
-                                    id="keterangan_modal" 
-                                    name="keterangan" 
-                                    rows="3"
-                                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('keterangan') border-danger ring-danger-soft @enderror"
-                                >{{ old('keterangan') }}</textarea>
-                                @error('keterangan')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
-                            </div>
-                        </div>
-
-                        <div class="flex items-center justify-end">
-                            {{-- PERBAIKAN: Memanggil resetCreateForm() saat klik Batal --}}
-                            <x-ui.button-secondary type="button" @click="openCreate = false; resetCreateForm()" class="mr-2">
-                                Batal
-                            </x-ui.button-secondary>
-                            <x-ui.button-primary type="submit">
-                                Catat Stok
-                            </x-ui.button-primary>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        {{-- ======================== --}}
-        {{-- MODAL DETAIL STOK (SHOW) --}}
-        {{-- ======================== --}}
+        
+        {{-- MODAL DETAIL PRODUK (TIDAK BERUBAH) --}}
         <div
             x-show="openDetail"
             x-cloak
             x-transition
+            @click.self="openDetail = false"
             class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
         >
             <div
@@ -467,28 +338,27 @@
             >
                 <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
                     <div>
-                        <h2 class="text-xl font-semibold text-text-main">Detail Riwayat Stok</h2>
-                        <p class="text-sm text-text-muted mt-0.5">Informasi lengkap penambahan stok.</p>
+                        <h2 class="text-xl font-semibold text-text-main">Detail Produk</h2>
+                        <p class="text-sm text-text-muted mt-0.5" x-text="detailProduk ? detailProduk.nama : ''"></p>
                     </div>
                     <button type="button" class="rounded-full p-1.5 hover:bg-brand-surface-50 transition" @click="openDetail = false">
                         <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
                     </button>
                 </div>
 
-                <div class="px-6 pb-6 pt-4 max-h-[80vh] overflow-y-auto custom-scrollbar" x-if="detailStok">
+                <div class="px-6 pb-6 pt-4 max-h-[80vh] overflow-y-auto custom-scrollbar" x-if="detailProduk">
                     
                     <div class="space-y-4">
                         
-                        {{-- Ringkasan Stok --}}
+                        {{-- Ringkasan Produk --}}
                         <div class="p-4 border border-brand-borderSoft rounded-xl bg-brand-surface-50 space-y-2">
                             <div class="flex justify-between items-center border-b border-brand-borderSoft pb-2">
-                                <span class="text-sm font-medium text-text-muted">Tanggal Input:</span>
-                                {{-- PERBAIKAN: Gunakan helper formatDateDisplay yang sudah dimodifikasi untuk hanya tampilkan tanggal --}}
-                                <span class="font-semibold text-sm text-text-main" x-text="formatDateDisplay(detailStok.tanggal)"></span>
+                                <span class="text-sm font-medium text-text-muted">Tanggal Dibuat:</span>
+                                <span class="font-semibold text-sm text-text-main" x-text="formatDateDisplay(detailProduk.created_at)"></span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-sm font-medium text-text-muted">Produk:</span>
-                                <span class="font-semibold text-sm text-primary-dark" x-text="detailStok.produk.nama"></span>
+                                <span class="text-sm font-medium text-text-muted">Kategori:</span>
+                                <span class="font-semibold text-sm text-primary-dark" x-text="detailProduk.kategori"></span>
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-sm font-medium text-text-muted">Kategori:</span>
@@ -497,26 +367,24 @@
                             </div>
                         </div>
 
-                        {{-- Detail Jumlah --}}
-                        <div class="p-4 border border-success/50 rounded-xl bg-success-soft/30">
+                        {{-- Detail Jumlah (Stok Akhir) --}}
+                        <div :class="{
+                            'border-success/50 bg-success-soft/30': detailProduk && detailProduk.stok > 0,
+                            'border-danger/50 bg-danger-soft/30': detailProduk && detailProduk.stok <= 0
+                        }" class="p-4 border rounded-xl">
                             <div class="flex justify-between items-center">
-                                <span class="text-lg font-bold text-text-main">Jumlah Stok Masuk:</span>
-                                <span class="text-xl font-extrabold text-success" x-text="detailStok.jumlah + ' unit'"></span>
+                                <span class="text-lg font-bold text-text-main">Stok Akhir Produk:</span>
+                                <span :class="{
+                                    'text-success': detailProduk && detailProduk.stok > 0,
+                                    'text-danger': detailProduk && detailProduk.stok <= 0
+                                }" class="text-xl font-extrabold" x-text="detailProduk.stok + ' unit'"></span>
                             </div>
                         </div>
                         
-                        {{-- Stok Saat Ini di Produk (Optional info) --}}
-                        <div class="p-4 border border-brand-borderSoft rounded-xl bg-brand-surface-50">
-                             <div class="flex justify-between items-center">
-                                <span class="text-sm font-medium text-text-muted">Stok Produk Saat Ini:</span>
-                                <span class="font-semibold text-sm text-text-main" x-text="detailStok.produk.stok + ' unit'"></span>
-                            </div>
-                        </div>
-                        
-                        {{-- Keterangan --}}
+                        {{-- Keterangan / Deskripsi --}}
                         <div class="p-4 border border-brand-borderSoft rounded-xl bg-brand-surface-50">
                             <h3 class="text-sm font-medium text-text-muted">Keterangan:</h3>
-                            <p class="text-sm text-text-main mt-1 italic" x-text="detailStok.keterangan || '-'"></p>
+                            <p class="text-sm text-text-main mt-1 italic" x-text="detailProduk.deskripsi || 'Tidak ada deskripsi.'"></p>
                         </div>
                         
                     </div>
@@ -528,164 +396,193 @@
             </div>
         </div>
 
-        {{-- ======================== --}}
-        {{-- MODAL EDIT STOK (UPDATE) --}}
-        {{-- ======================== --}}
+        {{-- ============================== --}}
+        {{-- MODAL TAMBAH STOK PRODUK BARU --}}
+        {{-- ============================== --}}
         <div
-            x-show="openEdit"
+            x-show="openTambahStok"
             x-cloak
             x-transition
-            class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
+            @click.self="openTambahStok = false"
+            class="fixed inset-0 z-[999] flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
         >
             <div
-                {{-- PERBAIKAN: Memanggil resetEditForm() saat klik diluar modal --}}
-                @click.away="openEdit = false; resetEditForm()"
-                class="relative w-full max-w-4xl rounded-3xl shadow-2xl border border-brand-borderSoft bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell"
+                @click.away="openTambahStok = false"
+                class="relative w-full max-w-xl rounded-3xl shadow-2xl border border-brand-borderSoft 
+                    bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell"
             >
-                <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
-                    <div>
-                        <h2 class="text-xl font-semibold text-text-main">Edit Penambahan Stok</h2>
-                        <p class="text-sm text-text-muted mt-0.5" x-text="'ID Riwayat Stok: ' + (editStok ? editStok.id : '')">
-                            Ubah detail entri stok produk.
-                        </p>
+                <form action="{{ route('admin.stok_produk.store') }}" method="POST">
+                    @csrf
+
+                    {{-- HEADER --}}
+                    <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
+                        <div>
+                            <h2 class="text-xl font-semibold text-text-main">Tambah Stok Produk</h2>
+                            <p class="text-sm text-text-muted mt-0.5">Isi detail produk yang akan ditambahkan ke stok.</p>
+                        </div>
+                        <button type="button"
+                            class="rounded-full p-1.5 hover:bg-brand-surface-50 transition"
+                            @click="openTambahStok = false">
+                            <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
+                        </button>
                     </div>
-                    {{-- PERBAIKAN: Memanggil resetEditForm() saat klik tombol X --}}
-                    <button type="button" class="rounded-full p-1.5 hover:bg-brand-surface-50 transition" @click="openEdit = false; resetEditForm()">
-                        <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
-                    </button>
-                </div>
 
-                <div class="px-6 pb-6 pt-4 max-h-[80vh] overflow-y-auto custom-scrollbar" x-if="editStok">
-                    <form id="edit_form_stok" :action="'{{ route('admin.stok_produk.index') }}/' + editForm.id" method="POST" class="space-y-6">
-                        @csrf
-                        @method('PUT') 
-                        
-                        <input type="hidden" name="id" :value="editForm.id">
-                        
-                        {{-- ERROR VALIDASI untuk PUT request --}}
-                        @if ($errors->any() && old('_method') === 'PUT')
-                            <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
-                                <p class="text-sm font-semibold">Ada kesalahan input saat mengedit:</p>
-                                <ul class="list-disc list-inside text-xs mt-1">
-                                    @foreach ($errors->all() as $error)
-                                        <li>{{ $error }}</li>
+                    {{-- BODY --}}
+                    <div class="px-6 pb-6 pt-4 space-y-4">
+
+                        {{-- PRODUK (Dropdown dengan Panah) --}}
+                        <div>
+                            <x-ui.label for="produk_id">Produk <span class="text-danger">*</span></x-ui.label>
+                            <div class="relative">
+                                <select name="produk_id" id="produk_id" required
+                                    class="custom-select w-full rounded-xl border bg-brand-shell text-sm px-3 py-2 pr-8 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
+                                    <option value="">-- Pilih Produk --</option>
+                                    @foreach ($allProduk as $p)
+                                        <option value="{{ $p->id }}">{{ $p->nama }}</option>
                                     @endforeach
-                                </ul>
-                            </div>
-                        @endif
-
-                        <div class="space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                
-                                {{-- PRODUK ID (DISABLED) --}}
-                                <div>
-                                    <x-ui.label for="produk_id_modal_edit">Produk</x-ui.label>
-                                    <input 
-                                        type="text" 
-                                        :value="editStok ? editStok.produk.nama : ''" 
-                                        disabled
-                                        class="w-full rounded-xl border bg-brand-surface-50 text-sm text-text-muted px-3 py-2 border-brand-borderSoft"
-                                    >
-                                    <input type="hidden" name="produk_id" :value="editForm.produk_id"> 
-                                    <p class="text-xs text-text-muted mt-1">Produk tidak dapat diubah.</p>
-                                </div>
-
-                                {{-- JUMLAH STOK --}}
-                                <div>
-                                    <x-ui.label for="jumlah_modal_edit">Jumlah Stok Masuk</x-ui.label>
-                                    <input 
-                                        type="number" 
-                                        id="jumlah_modal_edit" 
-                                        name="jumlah"
-                                        x-model.number="editForm.jumlah" 
-                                        min="1"
-                                        required
-                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('jumlah') border-danger ring-danger-soft @enderror"
-                                    >
-                                    @error('jumlah')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
-                                    <p class="text-xs text-text-muted mt-1">
-                                        Stok akan disesuaikan. Jumlah awal: <span x-text="editForm.jumlah_awal"></span>
-                                    </p>
-                                </div>
-                            </div>
-                            
-                            {{-- TANGGAL MASUK --}}
-                            <div>
-                                <x-ui.label for="tanggal_modal_edit">Tanggal Input Stok</x-ui.label>
-                                <input 
-                                    type="date" {{-- Benar: type="date" untuk menghilangkan waktu --}}
-                                    id="tanggal_modal_edit" 
-                                    name="tanggal"
-                                    x-model="editForm.tanggal"
-                                    required
-                                    max="{{ now()->format('Y-m-d') }}"
-                                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('tanggal') border-danger ring-danger-soft @enderror"
-                                >
-                                @error('tanggal')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
-                            </div>
-
-                            {{-- KETERANGAN --}}
-                            <div>
-                                <x-ui.label for="keterangan_modal_edit">Keterangan (Sumber/Catatan)</x-ui.label>
-                                <textarea 
-                                    id="keterangan_modal_edit" 
-                                    name="keterangan" 
-                                    rows="3"
-                                    x-model="editForm.keterangan"
-                                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('keterangan') border-danger ring-danger-soft @enderror"
-                                ></textarea>
-                                @error('keterangan')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
+                                </select>
+                                <i data-lucide="chevron-down" class="w-4 h-4 text-text-muted absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none"></i>
                             </div>
                         </div>
 
-                        <div class="flex items-center justify-end">
-                            {{-- PERBAIKAN: Memanggil resetEditForm() saat klik Batal --}}
-                            <x-ui.button-secondary type="button" @click="openEdit = false; resetEditForm()" class="mr-2">
-                                Batal
-                            </x-ui.button-secondary>
-                            <x-ui.button-primary type="submit">
-                                Simpan Perubahan
-                            </x-ui.button-primary>
+                        {{-- STOK --}}
+                        <div>
+                            <x-ui.label for="stok">Stok Awal <span class="text-danger">*</span></x-ui.label>
+                            <input type="number" name="stok" id="stok" required min="0"
+                                class="w-full rounded-xl border bg-brand-shell text-sm px-3 py-2 border-brand-borderSoft">
                         </div>
-                    </form>
-                </div>
+
+                        {{-- KETERANGAN --}}
+                        <div>
+                            <x-ui.label for="keterangan">Keterangan (opsional)</x-ui.label>
+                            <textarea name="keterangan" id="keterangan"
+                                class="w-full rounded-xl border bg-brand-shell text-sm px-3 py-2 border-brand-borderSoft"
+                                rows="3"></textarea>
+                        </div>
+
+                    </div>
+
+                    {{-- FOOTER --}}
+                    <div class="flex justify-end gap-2 px-6 pb-5">
+                        <x-ui.button-secondary type="button" @click="openTambahStok = false">Batal</x-ui.button-secondary>
+                        <x-ui.button-primary type="submit">Simpan</x-ui.button-primary>
+                    </div>
+
+                </form>
             </div>
         </div>
+        
+        {{-- ============================== --}}
+        {{-- MODAL EDIT STOK PRODUK (SNIPPET 1) --}}
+        {{-- ============================== --}}
+        <div
+            x-show="openEditStok"
+            x-cloak
+            x-transition
+            @click.self="openEditStok = false"
+            class="fixed inset-0 z-[999] flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
+        >
+            <div
+                @click.away="openEditStok = false"
+                class="relative w-full max-w-xl rounded-3xl shadow-2xl border border-brand-borderSoft 
+                        bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell"
+            >
+                <form :action="`{{ url('admin/stok_produk') }}/${editStokForm.id}`" method="POST">
+                    @csrf
+                    @method('PUT')
 
+                    {{-- HEADER --}}
+                    <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
+                        <div>
+                            <h2 class="text-xl font-semibold text-text-main">Edit Stok Produk</h2>
+                            <p class="text-sm text-text-muted mt-0.5" x-text="editStokForm.nama"></p>
+                        </div>
+                        <button type="button"
+                            class="rounded-full p-1.5 hover:bg-brand-surface-50 transition"
+                            @click="openEditStok = false">
+                            <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
+                        </button>
+                    </div>
 
+                    {{-- BODY --}}
+                    <div class="px-6 pb-6 pt-4 space-y-4">
+
+                        {{-- STOK LAMA --}}
+                        <div>
+                            <x-ui.label>Stok Lama</x-ui.label>
+                            <input type="number" x-model="editStokForm.stok_lama" readonly
+                                class="w-full rounded-xl border bg-brand-surface-50 text-sm px-3 py-2 border-brand-borderSoft cursor-not-allowed">
+                            <input type="hidden" name="stok_lama" :value="editStokForm.stok_lama">
+                        </div>
+
+                        {{-- STOK BARU --}}
+                        <div>
+                            <x-ui.label for="stok_baru">Stok Baru <span class="text-danger">*</span></x-ui.label>
+                            <input type="number" name="stok_baru" id="stok_baru" required min="0"
+                                x-model="editStokForm.stok_baru"
+                                class="w-full rounded-xl border bg-brand-shell text-sm px-3 py-2 border-brand-borderSoft">
+                        </div>
+
+                        {{-- KETERANGAN --}}
+                        <div>
+                            <x-ui.label for="keterangan_edit">Keterangan Penyesuaian (opsional)</x-ui.label>
+                            <textarea name="keterangan" id="keterangan_edit" rows="3"
+                                x-model="editStokForm.keterangan"
+                                class="w-full rounded-xl border bg-brand-shell text-sm px-3 py-2 border-brand-borderSoft"></textarea>
+                        </div>
+
+                    </div>
+
+                    {{-- FOOTER --}}
+                    <div class="flex justify-end gap-2 px-6 pb-5">
+                        <x-ui.button-secondary type="button" @click="openEditStok = false">
+                            Batal
+                        </x-ui.button-secondary>
+                        <x-ui.button-primary type="submit">
+                            Perbarui Stok
+                        </x-ui.button-primary>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+        
     </div> {{-- Penutup div x-data besar --}}
 
-    {{-- SCRIPT KONFIRMASI HAPUS (Pembatalan Stok) --}}
+    {{-- SCRIPT KONFIRMASI HAPUS PRODUK --}}
     <script>
-        function confirmDeleteStok(stokId, productName) {
+        // FUNGSI KONFIRMASI HAPUS PRODUK (TETAP)
+        function confirmDeleteProduct(productId, productName) {
             if (typeof Swal === 'undefined') {
-                if (confirm(`Yakin ingin membatalkan penambahan stok untuk produk ${productName}? Stok produk akan dikurangi.`)) {
-                    document.getElementById('delete-stok-' + stokId).submit();
+                // Fallback jika SweetAlert tidak terdefinisi
+                if (confirm(`Yakin ingin menghapus produk ${productName} (stok akan hilang permanen)?`)) {
+                    document.getElementById('delete-produk-' + productId).submit();
                 }
                 return;
             }
 
             Swal.fire({
-                title: 'Batalkan Penambahan Stok?',
-                html: `Anda yakin ingin membatalkan entri stok untuk produk <strong>${productName}</strong>? <br> Jumlah stok di produk akan **dikurangi** sesuai entri ini.`,
+                title: 'Hapus Produk Permanen?',
+                html: `Anda yakin ingin menghapus produk **${productName}**? <br> Penghapusan ini akan menghapus produk, stok, dan semua riwayat yang terkait.`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#C73527',
                 cancelButtonColor: '#6C5A46',
-                confirmButtonText: 'Ya, Batalkan!',
+                confirmButtonText: 'Ya, Hapus!',
                 cancelButtonText: 'Tutup',
                 background: '#21160F',
                 color: '#F8F2E7',
             }).then((result) => {
                 if (result.isConfirmed) {
-                    document.getElementById('delete-stok-' + stokId).submit();
+                    document.getElementById('delete-produk-' + productId).submit();
                 }
             });
         }
     </script>
     
-    {{-- CUSTOM SCROLLBAR (TETAP) --}}
+    {{-- CUSTOM SCROLLBAR & DROPDOWN STYLING --}}
     <style>
+        [x-cloak] { display: none !important; }
         .custom-scrollbar::-webkit-scrollbar {
             height: 6px;
             width: 6px;
@@ -700,6 +597,18 @@
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #A67C39; /* gold-700 */
+        }
+        
+        /* CSS KHUSUS UNTUK MENIRU DROPDOWN (Menghilangkan panah default) */
+        .custom-select {
+            /* Menghilangkan panah default di kebanyakan browser */
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            /* Memberi ruang di kanan untuk ikon panah Lucide */
+            padding-right: 2.5rem !important; 
+            /* Mengganti kursor ke pointer, seperti yang bisa diklik */
+            cursor: pointer;
         }
     </style>
 </x-layouts.admin>
