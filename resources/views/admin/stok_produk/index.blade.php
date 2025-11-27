@@ -360,6 +360,11 @@
                                 <span class="text-sm font-medium text-text-muted">Kategori:</span>
                                 <span class="font-semibold text-sm text-primary-dark" x-text="detailProduk.kategori"></span>
                             </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm font-medium text-text-muted">Kategori:</span>
+                                {{-- Tampilkan kategori dari data JS --}}
+                                <span class="font-semibold text-sm text-primary-dark" x-text="detailStok.produk.kategori ? detailStok.produk.kategori.charAt(0).toUpperCase() + detailStok.produk.kategori.slice(1) : '-'"></span>
+                            </div>
                         </div>
 
                         {{-- Detail Jumlah (Stok Akhir) --}}
