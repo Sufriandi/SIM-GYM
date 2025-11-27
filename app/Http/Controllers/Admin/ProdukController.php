@@ -4,25 +4,45 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Produk;
-use App\Models\StokProduk; // Digunakan untuk mencatat stok awal
+use App\Models\StokProduk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Validator; // Tambahkan ini jika validasi di-handle manual
+use Illuminate\Support\Facades\Validator;
 
 class ProdukController extends Controller
 {
     private $kategoriOptions = ['minuman', 'suplemen', 'lainnya'];
 
     /**
-     * Menampilkan daftar semua produk (Index).
+     * Menampilkan daftar semua produk (Index), dengan fitur pencarian dan filter.
      */
-    public function index()
+    public function index(Request $request) // <--- Tambahkan Request di sini
     {
         $pageTitle = 'Daftar Produk';
+
+        // --- START: LOGIKA PENCARIAN DAN FILTER BARU ---
+        $search = $request->query('search');
+        $filterKategori = $request->query('kategori');
+
+        $produks = Produk::query()
+            // Logika Pencarian: Berdasarkan nama atau deskripsi
+            ->when($search, function ($query) use ($search) {
+                $query->where('nama', 'like', "%{$search}%")
+                      ->orWhere('deskripsi', 'like', "%{$search}%");
+            })
+            // Logika Filter: Berdasarkan kategori
+            ->when($filterKategori && in_array($filterKategori, $this->kategoriOptions), function ($query) use ($filterKategori) {
+                // Gunakan where() jika $filterKategori ada dan valid
+                $query->where('kategori', $filterKategori);
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate(15)
+            ->withQueryString(); // Agar parameter query tetap ada saat pindah halaman
+
+        // --- END: LOGIKA PENCARIAN DAN FILTER BARU ---
         
-        $produks = Produk::orderBy('created_at', 'desc')->paginate(15);
         $kategoriOptions = $this->kategoriOptions;
 
         return view('admin.produk.index', compact('produks', 'pageTitle', 'kategoriOptions')); 
@@ -33,13 +53,12 @@ class ProdukController extends Controller
      */
     public function store(Request $request)
     {
-        // 1. Validasi Input (HILANGKAN 'stok')
+        // ... (Fungsi store tidak berubah) ...
         $validatedData = $request->validate([
             'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'nama' => 'required|string|max:255', 
             'kategori' => 'required|in:' . implode(',', $this->kategoriOptions), 
             'harga' => 'required|numeric|min:0',
-            // 'stok' DIHAPUS DARI SINI
             'deskripsi' => 'nullable|string',
         ]);
         
@@ -49,13 +68,11 @@ class ProdukController extends Controller
         }
 
         try {
-            // 2. Stok diinisialisasi 0 saat membuat produk baru
             $produk = Produk::create(array_merge($validatedData, [
                 'foto' => $fotoPath,
-                'stok' => 0, // <-- SET STOK AWAL KE 0
+                'stok' => 0,
             ]));
             
-            // 3. Catat stok awal 0 ke log StokProduk
             StokProduk::create([
                 'produk_id' => $produk->id,
                 'jumlah' => 0,
@@ -78,7 +95,7 @@ class ProdukController extends Controller
      */
     public function update(Request $request, Produk $produk)
     {
-        // 1. Validasi Input (HILANGKAN 'stok')
+        // ... (Fungsi update tidak berubah) ...
         $validatedData = $request->validate([
             'nama' => [
                 'required', 
@@ -88,13 +105,9 @@ class ProdukController extends Controller
             ],
             'kategori' => 'required|in:' . implode(',', $this->kategoriOptions),
             'harga' => 'required|numeric|min:0',
-            // 'stok' DIHAPUS
             'deskripsi' => 'nullable|string',
             'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
-        
-        // Cek jika validasi gagal
-        // Note: Error handling sudah dilakukan secara default oleh Laravel pada validate()
         
         $fotoPath = $produk->foto; 
         
@@ -106,7 +119,6 @@ class ProdukController extends Controller
         }
         
         try {
-            // 2. Update Produk (Pertahankan nilai stok lama)
             $produk->update(array_merge($validatedData, [
                 'foto' => $fotoPath,
                 'stok' => $produk->stok, 
@@ -124,7 +136,7 @@ class ProdukController extends Controller
      */
     public function destroy(Produk $produk)
     {
-        // ... (Kode destroy tetap, asumsikan relasi penjualan() dan stok() sudah ada di Model Produk) ...
+        // ... (Fungsi destroy tidak berubah) ...
         if ($produk->penjualan()->exists()) {
             return back()->with('error', 'Gagal menghapus produk. Produk ini sudah memiliki riwayat transaksi penjualan.');
         }
