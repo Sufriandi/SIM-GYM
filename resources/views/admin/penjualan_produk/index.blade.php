@@ -9,11 +9,11 @@
     $pageTitle = $pageTitle ?? 'Penjualan Produk';
     
     // --- VARIABEL UNTUK FILTER (Diambil dari Controller) ---
-    $search = $search ?? request('search', ''); 
+    $search = $search ?? request('q', ''); 
     $filterMetode = $filterMetode ?? request('metode_pembayaran', ''); 
     $filterProduk = $filterProduk ?? request('produk_id', ''); 
 
-    // Opsi untuk filter Metode Pembayaran (Sesuaikan jika Anda mengambil dari DB)
+    // Opsi untuk filter Metode Pembayaran
     $metodePembayaranOptions = $metodePembayaran ?? ['Cash', 'Transfer', 'QRIS'];
     // ---------------------------------------------------
 
@@ -21,13 +21,13 @@
     $openCreateOnLoad = ($errors->any() && (old('_method') !== 'PUT')) ? 'true' : 'false';
 
     // LOGIKA UNTUK MEMBUKA MODAL EDIT JIKA ADA VALIDASI ERROR DARI UPDATE
-    $errorsEdit = Session::get('errors') ? Session::get('errors')->getBag('default') : null; // Menggunakan bag 'default' jika tidak spesifik
+    $errorsEdit = Session::get('errors') ? Session::get('errors')->getBag('default') : null; 
     $oldEditId = old('_method') === 'PUT' ? (old('id') ?? 'null') : 'null';
     $openEditOnLoad = ($errorsEdit && old('_method') === 'PUT' && $oldEditId != 'null') ? 'true' : 'false';
     
-    // Data untuk AlpineJS (Diasumsikan $produks dan $daftar_penjualan sudah ada dari Controller)
+    // Data untuk AlpineJS
     $produks = $produks ?? collect();
-    $members = $members ?? collect(); // Ambil dari controller
+    $members = $members ?? collect(); 
     
     // Ambil nomor halaman saat ini (default 1)
     $currentPage = $daftar_penjualan->currentPage() ?? 1;
@@ -66,32 +66,26 @@
             detailPenjualan: null, 
             editPenjualan: null, 
             
-            // STATE BARU UNTUK PENCARIAN INSTAN
+            // STATE PENCARIAN CLIENT-SIDE (Live Search)
             searchQuery: '{{ $search }}', 
             
-            // --- DATA CREATE MULTI-ITEM ---
+            // --- DATA CREATE MULTI-ITEM (Dipotong untuk fokus, aslinya tetap) ---
             produkData: {{ Js::from($produks) }},
             membersData: {{ Js::from($members) }},
             metodePembayaranOptions: {{ Js::from($metodePembayaranOptions) }},
             
-            // State untuk searchable dropdown member
             memberSearchQuery: '',
-            isMemberDropdownFocused: false, // Untuk kontrol fokus dropdown
-
-            // Keranjang Belanja
+            isMemberDropdownFocused: false, 
             cartItems: [
                 { produk_id: null, jumlah: 1, max_stok: 9999, harga_satuan: 0, stok_tersedia: 0, nama_produk: '' }
             ],
 
-            // Data Form Global
             createForm: {
                 member_id: '{{ old('member_id') ?? '' }}', 
                 metode_pembayaran: '{{ old('metode_pembayaran') ?? '' }}',
                 keterangan: '{{ old('keterangan') ?? '' }}',
             },
-            // --- END DATA CREATE MULTI-ITEM ---
 
-            // Data Edit (untuk form) - DIKEMBALIKAN
             editForm: {
                 id: {{ $oldEditId }}, 
                 produk_id: {{ old('produk_id') ?? 'null' }},
@@ -104,45 +98,33 @@
                 jumlah_awal: null, 
             },
 
-            // --- FUNCTIONALITY MEMBER SEARCH ---
+            // --- FUNCTIONS ---
             filteredMembers() {
-                if (this.memberSearchQuery.length < 1) {
-                    // Tampilkan semua jika input kosong
-                    return this.membersData;
-                }
+                if (this.memberSearchQuery.length < 1) { return this.membersData; }
                 const query = this.memberSearchQuery.toLowerCase();
                 return this.membersData.filter(member => member.name.toLowerCase().includes(query));
             },
-
             selectMember(memberId, memberName) {
                 this.createForm.member_id = memberId;
                 this.memberSearchQuery = memberName; 
                 this.isMemberDropdownFocused = false;
             },
-            
-            // Fungsi untuk menampilkan nama member yang dipilih di input
             getMemberName(memberId) {
                 if (!memberId || memberId === 'null') return 'Umum (Tidak Terdaftar)';
                 const member = this.membersData.find(m => m.id == memberId);
                 return member ? member.name : 'Umum (Tidak Terdaftar)';
             },
-
-            // --- FUNCTIONALITY MULTI-ITEM (CREATE) ---
             resetCreateForm() {
                 this.createForm.member_id = '';
                 this.createForm.metode_pembayaran = '';
                 this.createForm.keterangan = '';
-                this.memberSearchQuery = ''; // Reset input pencarian
+                this.memberSearchQuery = ''; 
                 this.isMemberDropdownFocused = false;
                 this.cartItems = [
                     { produk_id: null, jumlah: 1, max_stok: 9999, harga_satuan: 0, stok_tersedia: 0, nama_produk: '' }
                 ];
             },
-
-            getProdukById(id) {
-                return this.produkData.find(p => p.id == id);
-            },
-
+            getProdukById(id) { return this.produkData.find(p => p.id == id); },
             updateCartItem(index) {
                 const item = this.cartItems[index];
                 if (item.produk_id) {
@@ -167,95 +149,61 @@
                     item.jumlah = 1; 
                 }
             },
-
             addCartItem() {
                 this.cartItems.push({ produk_id: null, jumlah: 1, max_stok: 9999, harga_satuan: 0, stok_tersedia: 0, nama_produk: '' });
             },
-
             removeCartItem(index) {
                 if (this.cartItems.length > 1) {
                     this.cartItems.splice(index, 1);
                 }
             },
-
             calculateGrandTotal() {
                 return this.cartItems.reduce((sum, item) => sum + (item.jumlah * item.harga_satuan), 0);
             },
-            
             isProductDuplicate(produk_id, currentIndex) {
                 if (!produk_id) return false;
                 return this.cartItems.some((item, index) => index !== currentIndex && item.produk_id == produk_id);
             },
-            // --- END FUNCTIONALITY MULTI-ITEM (CREATE) ---
-
-
-            // --- FUNCTIONALITY SINGLE-ITEM (Edit/Detail) ---
             showDetail(penjualan) {
                 this.detailPenjualan = penjualan;
                 this.openDetail = true;
             },
-            
             showEdit(penjualan) {
                 const produk = this.produkData.find(p => p.id === penjualan.produk.id) || null; 
-                
-                if (!produk) {
-                    console.error('Produk tidak ditemukan atau sudah dihapus. Tidak dapat mengedit.');
-                    return;
-                }
-
+                if (!produk) { console.error('Produk tidak ditemukan atau sudah dihapus. Tidak dapat mengedit.'); return; }
                 this.editPenjualan = penjualan;
-
-                // Mengisi data form edit dari data Penjualan yang diklik
                 this.editForm.id = penjualan.id;
                 this.editForm.produk_id = penjualan.produk.id;
                 this.editForm.member_id = penjualan.member_id;
                 this.editForm.jumlah = penjualan.jumlah;
                 this.editForm.metode_pembayaran = penjualan.metode_pembayaran;
                 this.editForm.keterangan = penjualan.keterangan;
-                
-                // Data perhitungan stok/harga:
                 this.editForm.harga_satuan = produk.harga;
-                this.editForm.stok_awal = produk.stok + penjualan.jumlah; // Stok saat ini + jumlah item ini
+                this.editForm.stok_awal = produk.stok + penjualan.jumlah; 
                 this.editForm.jumlah_awal = penjualan.jumlah;
-                
                 this.openEdit = true;
             },
-            
             calculateEditTotal() {
-                if (this.editForm.jumlah && this.editForm.harga_satuan) {
-                    return this.editForm.jumlah * this.editForm.harga_satuan;
-                }
+                if (this.editForm.jumlah && this.editForm.harga_satuan) { return this.editForm.jumlah * this.editForm.harga_satuan; }
                 return 0;
             },
-            
             calculateMaxStockEdit() {
-                 return (this.editForm.stok_awal); // Stok maksimum yang diizinkan adalah stok asli (saat ini) + jumlah yang dijual di transaksi ini
+                 return (this.editForm.stok_awal); 
             },
-
-            // Helper untuk format tanggal
             formatDate(dateString) {
                 return new Date(dateString).toLocaleDateString('id-ID', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
+                    year: 'numeric', month: 'short', day: 'numeric'
                 });
             },
-            
-            // Helper untuk format mata uang
             formatRupiah(number) {
                 let num = parseInt(number);
                 if (isNaN(num)) return 'Rp 0';
                 return 'Rp ' + num.toLocaleString('id-ID');
             }
-            // --- END FUNCTIONALITY SINGLE-ITEM (Edit/Detail) ---
         }" 
         x-init="
-            // Inisialisasi memberSearchQuery jika ada old input
             memberSearchQuery = getMemberName(createForm.member_id);
-
-            // Inisialisasi data create jika ada old input dari validasi error
             @if(old('produks'))
-                // Mengisi ulang cartItems dari old input jika validasi gagal
                 cartItems = {{ Js::from(old('produks')) }}.map(item => {
                     const produk = getProdukById(item.produk_id);
                     return {
@@ -271,14 +219,13 @@
 
             window.penjualanData = {{ Js::from($daftar_penjualan) }};
 
-            // Logika untuk mengisi data edit jika modal edit dibuka karena validasi error
             if (openEdit) {
                 const failedPenjualan = window.penjualanData.data.find(p => p.id == editForm.id);
                 if (failedPenjualan) {
                     const produk = produkData.find(p => p.id === failedPenjualan.produk.id) || null;
                     if (produk) {
                         editForm.harga_satuan = produk.harga;
-                        editForm.stok_awal = produk.stok + failedPenjualan.jumlah; // Perhitungan stok awal yang benar
+                        editForm.stok_awal = produk.stok + failedPenjualan.jumlah; 
                         editForm.jumlah_awal = failedPenjualan.jumlah; 
                     }
                     editForm.member_id = '{{ old('member_id') }}' || failedPenjualan.member_id;
@@ -293,6 +240,7 @@
         "
         class="min-h-screen pb-20"
     > 
+        
         {{-- HEADER HALAMAN --}}
         <x-ui.section-header
             :title="$pageTitle"
@@ -301,59 +249,124 @@
         </x-ui.section-header>
 
         {{-- garis dibawah judul --}}
-        <div class="mt-2 h-px w-full bg-brand-borderSoft/70"></div>
+        <hr class="border-t border-brand-borderSoft mb-6 mt-2">
+        
+        {{-- FITUR PENCARIAN & FILTER + TOMBOL AKSI --}}
+        <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
 
-        <div class="mt-6 mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-            {{-- FITUR PENCARIAN & FILTER (Menggabungkan Client dan Server Filter) --}}
-            <div class="flex-grow flex flex-wrap items-center gap-3">
+            {{-- SEARCH BAR + FILTER (MENGGUNAKAN TAMPILAN CARD) --}}
+            <div class="relative w-full max-w-md z-30" x-data="{ 
+                showFilter: false, 
+                filterMetode: '{{ $filterMetode }}', 
+                filterProduk: '{{ $filterProduk }}',
                 
-                {{-- INPUT PENCARIAN INSTAN (Client-Side) --}}
-                <div class="relative w-full md:max-w-xs">
-                    <i data-lucide="search" class="w-4 h-4 text-text-muted absolute left-3 top-1/2 transform -translate-y-1/2"></i>
-                    <input type="text" 
-                        x-model.debounce.300ms="searchQuery" 
-                        placeholder="Cari produk atau pembeli..." 
-                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main pl-9 pr-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
-                </div>
-                
-                {{-- FORM FILTER DROPDOWN (Server-Side - karena memengaruhi paginasi) --}}
-                <form action="{{ route('admin.penjualan_produk.index') }}" method="GET" class="flex flex-wrap items-center gap-3">
-                    <input type="hidden" name="search" :value="searchQuery">
+                submitFilter() {
+                    this.$refs.filterForm.submit();
+                }
+            }">
+                <form action="{{ route('admin.penjualan_produk.index') }}" method="GET" x-ref="filterForm">
                     
-                    {{-- FILTER PRODUK (Server-Side) --}}
-                    <div class="relative">
-                        <select name="produk_id" onchange="this.form.submit()"
-                            class="custom-select w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
-                            <option value="">Semua Produk</option>
-                            @foreach ($produks as $produk)
-                                <option value="{{ $produk->id }}" {{ $filterProduk == $produk->id ? 'selected' : '' }}>
-                                    {{ $produk->nama }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <i data-lucide="chevron-down" class="w-4 h-4 text-text-muted absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none"></i>
+                    <input type="hidden" name="q" :value="searchQuery"> 
+
+                    {{-- Container Input Gabungan --}}
+                    <div class="flex items-center w-full rounded-full border border-brand-borderSoft bg-brand-card shadow-sm focus-within:ring-2 focus-within:ring-primary-dark/50 transition-all hover:border-brand-borderSoft/80">
+                        {{-- Icon Search --}}
+                        <div class="pl-4 text-text-muted">
+                            <i data-lucide="search" class="w-5 h-5"></i>
+                        </div>
+
+                        {{-- Input Text (Live Search) --}}
+                        <input
+                            type="text"
+                            x-model.debounce.150ms="searchQuery" 
+                            placeholder="Cari produk atau pembeli..."
+                            class="w-full bg-transparent border-none text-sm text-text-main placeholder:text-text-muted/50 focus:ring-0 py-3 pl-3 pr-2 rounded-l-full"
+                            autocomplete="off"
+                        >
+
+                        {{-- Divider Vertical --}}
+                        <div class="h-6 w-px bg-brand-borderSoft mx-1"></div>
+                        
+                        {{-- Tombol Filter Toggle --}}
+                        <button
+                            type="button"
+                            @click="showFilter = !showFilter"
+                            class="flex items-center gap-2 px-5 py-2 text-sm font-medium text-text-muted hover:text-text-main transition-colors mr-1 rounded-full hover:bg-brand-surface-50"
+                            :class="showFilter || filterMetode || filterProduk ? 'text-primary-dark bg-brand-surface-50' : ''"
+                            title="Filter Lanjutan"
+                        >
+                            <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                            <span class="hidden sm:inline">Filter</span>
+                        </button>
+
                     </div>
 
-                    {{-- FILTER METODE PEMBAYARAN (Server-Side) --}}
-                    <div class="relative">
-                        <select name="metode_pembayaran" onchange="this.form.submit()"
-                            class="custom-select w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
-                            <option value="">Semua Metode</option>
-                            @foreach ($metodePembayaranOptions as $option)
-                                <option value="{{ $option }}" {{ $filterMetode == $option ? 'selected' : '' }}>
-                                    {{ ucwords($option) }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <i data-lucide="chevron-down" class="w-4 h-4 text-text-muted absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none"></i>
+                    {{-- POPUP DROPDOWN FILTER (SERVER-SIDE) --}}
+                    <div
+                        x-show="showFilter"
+                        x-cloak
+                        @click.outside="showFilter = false"
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 translate-y-2"
+                        x-transition:enter-end="opacity-100 translate-y-0"
+                        x-transition:leave="transition ease-in duration-150"
+                        x-transition:leave-start="opacity-100 translate-y-0"
+                        x-transition:leave-end="opacity-0 translate-y-2"
+                        class="absolute top-full left-0 right-0 mt-3 bg-brand-card border border-brand-borderSoft rounded-2xl shadow-xl p-5"
+                    >
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center pb-2 border-b border-brand-borderSoft/50">
+                                <h4 class="text-sm font-semibold text-text-main">Filter Lanjutan</h4>
+                                <a href="{{ route('admin.penjualan_produk.index') }}" class="text-xs text-danger hover:underline">Reset</a>
+                            </div>
+                            
+                            {{-- Filter Produk --}}
+                            <div>
+                                <label class="block text-[10px] font-bold uppercase text-text-muted mb-1" for="filter_produk_id">Filter Produk</label>
+                                <div class="relative">
+                                    <select 
+                                        name="produk_id" 
+                                        id="filter_produk_id"
+                                        x-model="filterProduk"
+                                        class="custom-select w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark"
+                                    >
+                                        <option value="" {{ $filterProduk == '' ? 'selected' : '' }}>Semua Produk</option>
+                                        @foreach ($produks as $produk)
+                                            <option value="{{ $produk->id }}" {{ $filterProduk == $produk->id ? 'selected' : '' }}>
+                                                {{ $produk->nama }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <i data-lucide="chevron-down" class="w-4 h-4 text-text-muted absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none"></i>
+                                </div>
+                            </div>
+
+                            {{-- Filter Metode Pembayaran --}}
+                            <div>
+                                <label class="block text-[10px] font-bold uppercase text-text-muted mb-1" for="filter_metode">Metode Pembayaran</label>
+                                <div class="relative">
+                                    <select 
+                                        name="metode_pembayaran" 
+                                        id="filter_metode"
+                                        x-model="filterMetode"
+                                        class="custom-select w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark"
+                                    >
+                                        <option value="" {{ $filterMetode == '' ? 'selected' : '' }}>Semua Metode</option>
+                                        @foreach ($metodePembayaranOptions as $option)
+                                            <option value="{{ $option }}" {{ $filterMetode == $option ? 'selected' : '' }}>
+                                                {{ ucwords($option) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <i data-lucide="chevron-down" class="w-4 h-4 text-text-muted absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none"></i>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="w-full bg-primary-dark hover:bg-primary-dark/90 text-white text-sm font-medium py-2 rounded-lg transition shadow-md">
+                                Terapkan Filter
+                            </button>
+                        </div>
                     </div>
-                    
-                    {{-- TOMBOL RESET (Server-Side filter) --}}
-                    @if ($filterMetode || $filterProduk)
-                        <a href="{{ route('admin.penjualan_produk.index') }}" class="p-2 rounded-xl text-danger hover:bg-danger-soft/50 transition duration-150" title="Reset Filter">
-                            <i data-lucide="x-circle" class="w-5 h-5"></i>
-                        </a>
-                    @endif
                 </form>
             </div>
             
@@ -577,8 +590,11 @@
                             <tr>
                                 {{-- Disesuaikan menjadi 9 kolom (termasuk No) --}}
                                 <td colspan="9" class="p-6 text-center text-text-muted italic"> 
-                                    <span x-show="searchQuery">Tidak ada transaksi yang ditemukan dengan kriteria pencarian saat ini.</span>
-                                    <span x-show="!searchQuery">Belum ada riwayat transaksi penjualan.</span>
+                                    @if ($search || $filterMetode || $filterProduk)
+                                        Tidak ada transaksi yang ditemukan dengan kriteria filter/pencarian saat ini.
+                                    @else
+                                        Belum ada riwayat transaksi penjualan.
+                                    @endif
                                 </td>
                             </tr>
                         @endforelse
@@ -588,11 +604,12 @@
 
             <div class="mt-6">
                 {{-- PERUBAHAN: Menambahkan parameter filter ke tautan pagination --}}
-                {{ $daftar_penjualan->appends(['search' => $search, 'metode_pembayaran' => $filterMetode, 'produk_id' => $filterProduk])->links() }}
+                {{ $daftar_penjualan->appends(['q' => $search, 'metode_pembayaran' => $filterMetode, 'produk_id' => $filterProduk])->links() }}
             </div>
         </x-ui.card>
 
         {{-- MODAL CATAT PENJUALAN BARU (CREATE) --}}
+        {{-- ... (Kode Modal Create tidak berubah) ... --}}
         <div
             x-show="openCreate"
             x-cloak
@@ -605,7 +622,7 @@
             >
                 <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
                     <div>
-                        <h2 class="text-xl font-semibold text-text-main">Catat Penjualan Multi-Produk</h2>
+                        <h2 class="text-xl font-semibold text-text-main">Catat Penjualan Produk</h2>
                         <p class="text-sm text-text-muted mt-0.5">Satu transaksi untuk beberapa jenis produk.</p>
                     </div>
                     <button type="button" class="rounded-full p-1.5 hover:bg-brand-surface-50 transition" @click="openCreate = false; resetCreateForm()">
@@ -639,7 +656,6 @@
                                 {{-- MEMBER ID (SEARCHABLE DROPDOWN) --}}
                                 <div x-data="{ 
                                         isFocused: false, 
-                                        // Initialize memberSearchQuery using getMemberName helper
                                         init() { this.memberSearchQuery = this.getMemberName(this.createForm.member_id); }
                                     }" 
                                     @click.away="isFocused = false" 
@@ -663,8 +679,8 @@
                                         
                                         {{-- Icon Dropdown/Clear --}}
                                         <i data-lucide="chevron-down" 
-                                           class="w-4 h-4 text-text-muted absolute right-3 top-1/2 transform -translate-y-1/2 transition-transform duration-200"
-                                           x-bind:class="{'rotate-180': isFocused}">
+                                            class="w-4 h-4 text-text-muted absolute right-3 top-1/2 transform -translate-y-1/2 transition-transform duration-200"
+                                            x-bind:class="{'rotate-180': isFocused}">
                                         </i>
                                     </div>
 
@@ -680,18 +696,18 @@
                                             {{-- Opsi Umum --}}
                                             <li>
                                                 <a href="#" @click.prevent="selectMember('', 'Umum (Tidak Terdaftar)')" 
-                                                   class="block px-4 py-2 text-sm text-text-main hover:bg-brand-surface-50 font-semibold"
-                                                   x-bind:class="{ 'bg-primary-soft/50': createForm.member_id === '' }">
-                                                    -- Umum (Tidak Terdaftar) --
+                                                    class="block px-4 py-2 text-sm text-text-main hover:bg-brand-surface-50 font-semibold"
+                                                    x-bind:class="{ 'bg-primary-soft/50': createForm.member_id === '' }">
+                                                     -- Umum (Tidak Terdaftar) --
                                                 </a>
                                             </li>
 
                                             <template x-for="member in filteredMembers()" :key="member.id">
                                                 <li>
                                                     <a href="#" @click.prevent="selectMember(member.id, member.name)" 
-                                                       class="block px-4 py-2 text-sm text-text-main hover:bg-brand-surface-50"
-                                                       x-bind:class="{ 'bg-primary-soft/50': createForm.member_id == member.id }"
-                                                       x-text="member.name"></a>
+                                                        class="block px-4 py-2 text-sm text-text-main hover:bg-brand-surface-50"
+                                                        x-bind:class="{ 'bg-primary-soft/50': createForm.member_id == member.id }"
+                                                        x-text="member.name"></a>
                                                 </li>
                                             </template>
                                             <template x-if="filteredMembers().length === 0 && memberSearchQuery.length > 0">
@@ -827,6 +843,7 @@
         </div>
 
         {{-- MODAL DETAIL (TIDAK BERUBAH) --}}
+        {{-- ... (Kode Modal Detail) ... --}}
         <div
             x-show="openDetail"
             x-cloak
@@ -891,7 +908,7 @@
                             >
                                 <span class="text-sm text-text-muted">Harga Satuan:</span>
                                 <span class="text-sm font-medium text-text-main" 
-                                    x-text="formatRupiah(detailPenjualan.produk.harga)">
+                                    x-text="'Rp ' + formatRupiah(detailPenjualan.produk.harga)">
                                 </span>
                             </div>
 
@@ -916,7 +933,7 @@
                             <div class="flex justify-between items-center">
                                 <span class="text-lg font-bold text-text-main">Total Bayar:</span>
                                 <span class="text-xl font-extrabold text-success" 
-                                    x-text="formatRupiah(detailPenjualan.total_harga)">
+                                    x-text="'Rp ' + formatRupiah(detailPenjualan.total_harga)">
                                 </span>
                             </div>
                         </div>
@@ -937,6 +954,7 @@
         </div>
 
         {{-- MODAL EDIT PENJUALAN (UPDATE) --}}
+        {{-- ... (Kode Modal Edit tidak berubah) ... --}}
         <div
             x-show="openEdit"
             x-cloak
@@ -1034,7 +1052,7 @@
                                         </span>
                                     </p>
                                     <p class="text-lg font-bold text-success">Total Bayar Item Baru: 
-                                        <span x-text="formatRupiah(calculateEditTotal())"></span>
+                                        <span x-text="'Rp ' + formatRupiah(calculateEditTotal())"></span>
                                         <input type="hidden" name="total_harga" :value="calculateEditTotal()">
                                     </p>
                                 </div>
@@ -1063,7 +1081,6 @@
                                         <i data-lucide="chevron-down" class="w-4 h-4 text-text-muted absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none"></i>
                                     </div>
                                     @error('member_id')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
-                                    <p class="text-xs text-text-muted mt-1">Perubahan ini akan mengubah pembeli untuk semua item di batch transaksi ini.</p>
                                 </div>
 
                                 {{-- METODE PEMBAYARAN (EDIT) - Standard Select, Mengikuti Style Pembeli --}}
@@ -1079,7 +1096,7 @@
                                         >
                                             <option value="" disabled>-- Pilih Metode --</option>
                                             @foreach ($metodePembayaranOptions as $metode)
-                                                <option :value="'{{ $metode }}'">
+                                                <option :value="'{{ $metode }}'" :selected="editForm.metode_pembayaran === '{{ $metode }}'">
                                                     {{ $metode }}
                                                 </option>
                                             @endforeach
@@ -1087,7 +1104,6 @@
                                         <i data-lucide="chevron-down" class="w-4 h-4 text-text-muted absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none"></i>
                                     </div>
                                     @error('metode_pembayaran')<p class="text-xs text-danger mt-1">{{ $message }}</p>@enderror
-                                    <p class="text-xs text-text-muted mt-1">Perubahan ini akan mengubah metode pembayaran untuk semua item di batch transaksi ini.</p>
                                 </div>
                                 
                                 {{-- KETERANGAN --}}
@@ -1096,7 +1112,7 @@
                                     <textarea 
                                         id="keterangan_modal_edit" 
                                         name="keterangan" 
-                                        rows="2"
+                                        rows="6"
                                         x-model="editForm.keterangan"
                                         class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('keterangan') border-danger ring-danger-soft @enderror"
                                     ></textarea>

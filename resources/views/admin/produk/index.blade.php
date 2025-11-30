@@ -2,17 +2,22 @@
 @php
     use Illuminate\Support\Str; 
     use Illuminate\Support\Facades\Storage; 
-    use Illuminate\Support\Js; // <-- Pastikan ini diaktifkan
     use Carbon\Carbon;
+    
     $pageTitle = $pageTitle ?? 'Manajemen Produk';
     $kategoriOptions = ['minuman', 'suplemen', 'lainnya'];
     
-    // Ambil parameter pencarian dan filter dari request (Hanya untuk initial state)
-    // Nilai ini akan dimasukkan ke Alpine.js
-    $search = request('search', ''); 
+    // Ambil parameter pencarian dan filter dari request (Untuk digunakan di View dan Form)
+    $search = request('q', ''); 
     $filterKategori = request('kategori', ''); 
+    $startDate = request('start_date', ''); 
+    $endDate = request('end_date', ''); 
+    $sort = request('sort', 'newest'); 
     
+    // Logic lama untuk modal create saat error
     $openCreateOnLoad = ($errors->any() && old('_method') !== 'PUT') ? 'true' : 'false';
+
+    // Data untuk pagination
     $currentPage = $produks->currentPage() ?? 1;
     $perPage = $produks->perPage() ?? 15;
 @endphp
@@ -37,8 +42,10 @@
     <div x-data="{ 
         openCreate: {{ $openCreateOnLoad }}, 
         createImageUrl: null,
-        search: '{{ $search }}', // <--- STATE BARU UNTUK PENCARIAN CLIENT-SIDE
-        filterKategori: '{{ $filterKategori }}', // STATE KATEGORI DIBIARKAN DULU
+        
+        // === STATE BARU UNTUK CLIENT-SIDE SEARCH ===
+        // Menggunakan 'q' dari request agar input terisi saat reload/setelah filter
+        searchQuery: '{{ $search }}', 
         
         resetCreateForm() {
             this.$refs.createForm.reset();
@@ -51,53 +58,134 @@
         <x-ui.section-header
             :title="$pageTitle"
             subtitle="Daftar produk aktif dan pengelolaan datanya."
-        >
-        </x-ui.section-header>
+        />
         {{-- garis dibawah judul --}}
-        <div class="mt-2 h-px w-full bg-brand-borderSoft/70"></div>
+        <hr class="border-t border-brand-borderSoft mb-6">
         
-        {{-- ============================================== --}}
-        {{-- FITUR PENCARIAN & FILTER KATEGORI (CLIENT-SIDE) --}}
-        {{-- ============================================== --}}
-        <div class="mt-6 mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-            {{-- FORM PENCARIAN DAN FILTER --}}
-            {{-- Hapus action & method GET karena kita tidak ingin reload, tetapi kita akan membuat field kategori submit saat diganti --}}
-            <div class="flex-grow flex items-center gap-3">
-                {{-- INPUT PENCARIAN (Client-Side) --}}
-                <div class="relative w-full md:max-w-xs">
-                    <i data-lucide="search" class="w-4 h-4 text-text-muted absolute left-3 top-1/2 transform -translate-y-1/2"></i>
-                    <input type="text" 
-                        x-model.debounce.300ms="search" {{-- <-- Langsung update state Alpine 300ms setelah mengetik --}}
-                        placeholder="Cari produk..." 
-                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main pl-9 pr-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
-                </div>
-                
-                {{-- FILTER KATEGORI (Dipertahankan di form) --}}
-                {{-- Gunakan x-model agar filtering kategori juga dilakukan di client-side melalui x-show di <tr> --}}
-                <select x-model="filterKategori"
-                    class="rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
-                    <option value="">Semua Kategori</option>
-                    @foreach ($kategoriOptions as $option)
-                        <option value="{{ $option }}">
-                            {{ ucwords($option) }}
-                        </option>
-                    @endforeach
-                </select>
-                
-                {{-- TOMBOL RESET (Menggunakan Alpine.js untuk reset state) --}}
-                <button type="button" 
-                    x-show="search || filterKategori" 
-                    @click="search = ''; filterKategori = ''" {{-- <-- Reset state Alpine --}}
-                    class="p-2 rounded-xl text-danger hover:bg-danger-soft/50 transition duration-150" 
-                    title="Reset Pencarian dan Filter">
-                    <i data-lucide="x-circle" class="w-5 h-5"></i>
-                </button>
+        {{-- ROW: SEARCH BAR (KIRI) & TOMBOL AKSI (KANAN) --}}
+        <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+            {{-- SEARCH BAR + FILTER --}}
+            {{-- Form ini bertanggung jawab untuk mengirim query (termasuk filter) untuk reload halaman --}}
+            <div class="relative w-full max-w-md z-30" x-data="{ showFilter: false }">
+                <form action="{{ route('admin.produk.index') }}" method="GET">
+                    {{-- Input Hidden untuk filter yang sudah terisi saat filter lanjutan terbuka --}}
+                    <input type="hidden" name="kategori" value="{{ $filterKategori }}">
+                    <input type="hidden" name="start_date" value="{{ $startDate }}">
+                    <input type="hidden" name="end_date" value="{{ $endDate }}">
+                    <input type="hidden" name="sort" value="{{ $sort }}">
+
+                    {{-- Container Input Gabungan --}}
+                    <div class="flex items-center w-full rounded-full border border-brand-borderSoft bg-brand-card shadow-sm focus-within:ring-2 focus-within:ring-primary-dark/50 transition-all hover:border-brand-borderSoft/80">
+                        {{-- Icon Search --}}
+                        <div class="pl-4 text-text-muted">
+                            <i data-lucide="search" class="w-5 h-5"></i>
+                        </div>
+
+                        {{-- Input Text --}}
+                        <input
+                            type="text"
+                            name="q"
+                            x-model.debounce.300ms="searchQuery" {{-- Sinkronisasi value dengan state Alpine --}}
+                            value="{{ $search }}" 
+                            placeholder="Cari nama produk / deskripsi..."
+                            class="w-full bg-transparent border-none text-sm text-text-main placeholder:text-text-muted/50 focus:ring-0 py-3 pl-3 pr-2 rounded-l-full"
+                            autocomplete="off"
+                        >
+
+                        {{-- Divider Vertical --}}
+                        <div class="h-6 w-px bg-brand-borderSoft mx-1"></div>
+                        
+                        {{-- Tombol Filter Toggle --}}
+                        <button
+                            type="button"
+                            @click="showFilter = !showFilter"
+                            class="flex items-center gap-2 px-5 py-2 text-sm font-medium text-text-muted hover:text-text-main transition-colors mr-1 rounded-full hover:bg-brand-surface-50"
+                            :class="showFilter || {{ $filterKategori || $startDate || $endDate }} ? 'text-gold-600 bg-brand-surface-50' : ''"
+                        >
+                            <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                            <span class="hidden sm:inline">Filter</span>
+                        </button>
+
+                        {{-- Hidden Submit (untuk enter key) --}}
+                        <button type="submit" class="hidden"></button>
+                    </div>
+
+                    {{-- POPUP DROPDOWN FILTER --}}
+                    <div
+                        x-show="showFilter"
+                        x-cloak
+                        @click.outside="showFilter = false"
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 translate-y-2"
+                        x-transition:enter-end="opacity-100 translate-y-0"
+                        x-transition:leave="transition ease-in duration-150"
+                        x-transition:leave-start="opacity-100 translate-y-0"
+                        x-transition:leave-end="opacity-0 translate-y-2"
+                        class="absolute top-full left-0 right-0 mt-3 bg-brand-card border border-brand-borderSoft rounded-2xl shadow-xl p-5"
+                    >
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center pb-2 border-b border-brand-borderSoft/50">
+                                <h4 class="text-sm font-semibold text-text-main">Filter Lanjutan</h4>
+                                {{-- Link reset akan mengarahkan ke URL index tanpa query params --}}
+                                <a href="{{ route('admin.produk.index') }}" class="text-xs text-danger hover:underline">Reset</a>
+                            </div>
+                            
+                            {{-- Filter Kategori --}}
+                            <div>
+                                <label class="block text-[10px] font-bold uppercase text-text-muted mb-1" for="filter_kategori">Kategori</label>
+                                <select 
+                                    name="kategori" 
+                                    id="filter_kategori"
+                                    class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark"
+                                >
+                                    <option value="" {{ $filterKategori == '' ? 'selected' : '' }}>Semua Kategori</option>
+                                    @foreach ($kategoriOptions as $option)
+                                        <option value="{{ $option }}" {{ $filterKategori == $option ? 'selected' : '' }}>
+                                            {{ ucwords($option) }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            {{-- Filter Urutan --}}
+                            <div>
+                                <label class="block text-[10px] font-bold uppercase text-text-muted mb-1" for="filter_sort">Urutan</label>
+                                <select 
+                                    name="sort" 
+                                    id="filter_sort"
+                                    class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark"
+                                >
+                                    <option value="newest" {{ $sort == 'newest' ? 'selected' : '' }}>Terbaru (Default)</option>
+                                    <option value="oldest" {{ $sort == 'oldest' ? 'selected' : '' }}>Terlama</option>
+                                    <option value="name_asc" {{ $sort == 'name_asc' ? 'selected' : '' }}>Nama (A-Z)</option>
+                                    <option value="name_desc" {{ $sort == 'name_desc' ? 'selected' : '' }}>Nama (Z-A)</option>
+                                    <option value="price_asc" {{ $sort == 'price_asc' ? 'selected' : '' }}>Harga Termurah</option>
+                                    <option value="price_desc" {{ $sort == 'price_desc' ? 'selected' : '' }}>Harga Termahal</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="w-full bg-primary-dark hover:bg-primary-dark/90 text-white text-sm font-medium py-2 rounded-lg transition shadow-md">
+                                Terapkan Filter
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
-            
-            {{-- TOMBOL TAMBAH PRODUK --}}
-            <x-ui.button-primary type="button" @click="resetCreateForm(); openCreate = true">
-                <i data-lucide="plus" class="w-5 h-5 mr-1"></i> Tambah Produk Baru
-            </x-ui.button-primary>
+
+            {{-- TOMBOL AKSI KANAN --}}
+            <div class="flex items-center gap-2 justify-end">
+                <x-ui.button-primary type="button" @click="resetCreateForm(); openCreate = true">
+                    <i data-lucide="plus" class="w-5 h-5 mr-1"></i> Tambah Produk Baru
+                </x-ui.button-primary>
+
+                {{-- Tambahkan tombol Riwayat jika ada halaman riwayat/stok --}}
+                {{-- <a href="{{ route('admin.produk.history') }}"> --}}
+                {{-- <x-ui.button-secondary> --}}
+                {{-- <i data-lucide="history" class="w-4 h-4 mr-1"></i> Riwayat Stok --}}
+                {{-- </x-ui.button-secondary> --}}
+                {{-- </a> --}}
+            </div>
         </div>
         
         {{-- CARD TABEL PRODUK --}}
@@ -107,17 +195,17 @@
             class="border-brand-borderSoft"
         >
             <div>
-                <table class="w-full border-collapse min-w-[900px] text-sm"> 
+                <table class="w-full border-collapse min-w-[900px] text-sm"> {{-- Lebar minimal disesuaikan --}}
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
                             <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[3%] min-w-[30px]">No.</th>
                             <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[7%] min-w-[70px]">Foto</th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[21%] min-w-[180px]">Nama Produk</th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[12%] min-w-[100px]">Kategori</th>
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[18%] min-w-[150px]">Nama Produk</th>
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%] min-w-[100px]">Kategori</th>
                             <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[12%]">Harga</th>
                             <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[7%]">Stok</th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[24%] min-w-[250px]">Deskripsi</th>
-                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[14%] min-w-[120px]">Aksi</th>
+                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[25%] min-w-[200px]">Deskripsi</th>
+                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[18%] min-w-[150px]">Aksi</th> {{-- Lebar aksi ditambah --}}
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-brand-borderSoft/80">
@@ -130,27 +218,20 @@
                                     ? (old('foto_preview') ?? $currentFotoUrl) 
                                     : $currentFotoUrl;
                                 $openEditOnLoad = ($errors->any() && old('produk_id') == $produk->id && old('_method') === 'PUT') ? 'true' : 'false';
+                                
+                                // Gabungkan data yang dapat dicari menjadi satu string huruf kecil
+                                $searchable_text = strtolower($produk->nama . ' ' . $produk->kategori . ' ' . $produk->deskripsi);
                             @endphp
                             
-                            {{-- LOGIKA CLIENT-SIDE FILTERING BARU DENGAN X-SHOW --}}
+                            {{-- Baris produk. Menggunakan x-show untuk client-side filtering --}}
                             <tr
                                 class="hover:bg-brand-surface-50 transition-colors duration-150"
-                                x-show="
-                                    // Filter Pencarian (Nama OR Deskripsi)
-                                    (!search || 
-                                     @js(strtolower($produk->nama)).includes(search.toLowerCase()) ||
-                                     @js(strtolower($produk->deskripsi ?? '')).includes(search.toLowerCase())
-                                    ) 
-                                    &&
-                                    // Filter Kategori (Jika filterKategori diisi)
-                                    (!filterKategori || @js($produk->kategori) === filterKategori)
-                                "
+                                x-show="!searchQuery || '{{ $searchable_text }}'.includes(searchQuery.toLowerCase())"
                                 x-data="{ 
                                     openDetail: false, 
                                     openEdit: {{ $openEditOnLoad }}, 
                                     imageUrl: '{{ $initialImageUrl }}',
                                     originalImageUrl: '{{ $currentFotoUrl }}',
-                                    // ... (Data & fungsi resetEditForm tetap sama) ...
                                     originalData: {
                                         nama: '{{ $produk->nama }}',
                                         kategori: '{{ $produk->kategori }}',
@@ -158,7 +239,6 @@
                                         deskripsi: '{{ $produk->deskripsi ?? '' }}'
                                     },
                                     resetEditForm() {
-                                        // ... (Logic reset form tetap sama) ...
                                         document.getElementById('nama_{{ $produk->id }}').value = this.originalData.nama;
                                         document.getElementById('kategori_{{ $produk->id }}').value = this.originalData.kategori;
                                         
@@ -191,12 +271,12 @@
                                         onerror="this.onerror=null; this.src='https://placehold.co/100x100/3A2D2A/F5E6D6?text=No+Foto';"
                                     >
                                 </td>
-                                <td class="p-3 align-middle w-[21%] min-w-[180px]">
+                                <td class="p-3 align-middle w-[18%] min-w-[150px]">
                                     <div class="text-sm font-semibold text-text-main line-clamp-1">
                                         {{ $produk->nama }}
                                     </div>
                                 </td>
-                                <td class="p-3 align-middle w-[12%] min-w-[100px]">
+                                <td class="p-3 align-middle w-[10%] min-w-[100px]">
                                     <div class="text-xs font-medium text-primary-dark">
                                         {{ ucwords($produk->kategori) }}
                                     </div>
@@ -211,15 +291,15 @@
                                         {{ $produk->stok }}
                                     </div>
                                 </td>
-                                <td class="p-3 align-middle w-[24%] min-w-[250px]">
+                                <td class="p-3 align-middle w-[25%] min-w-[200px]">
                                     <div class="text-xs text-text-muted max-w-full line-clamp-1">
                                         {{ $produk->deskripsi ? Str::limit($produk->deskripsi, 80) : '-' }}
                                     </div>
                                 </td>
-                                <td class="p-3 align-middle w-[14%] min-w-[120px]">
+                                <td class="p-3 align-middle w-[18%] min-w-[150px]">
                                     <div class="flex items-center justify-center gap-1.5 h-full">
                                         
-                                        {{-- DETAIL, EDIT, DELETE BUTTONS & MODALS (TIDAK BERUBAH) --}}
+                                        {{-- DETAIL --}}
                                         <div x-data="{ viewing: false }" class="relative flex flex-col items-center justify-start h-full">
                                             <button 
                                                 type="button"
@@ -243,6 +323,8 @@
                                                 Detail
                                             </span>
                                         </div>
+                                        
+                                        {{-- EDIT --}}
                                         <div x-data="{ editing: false }" class="relative flex flex-col items-center justify-start h-full">
                                             <button 
                                                 type="button"
@@ -266,6 +348,8 @@
                                                 Edit
                                             </span>
                                         </div>
+                                        
+                                        {{-- DELETE --}}
                                         <form
                                             id="delete-product-{{ $produk->id }}"
                                             action="{{ route('admin.produk.destroy', $produk) }}"
@@ -299,6 +383,7 @@
                                                 </span>
                                             </div>
                                         </form>
+                                        
                                         {{-- MODAL DETAIL --}}
                                         <div
                                             x-show="openDetail"
@@ -392,7 +477,8 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        {{-- MODAL EDIT --}}
+                                        
+                                        {{-- MODAL EDIT (Tidak Berubah) --}}
                                         <div
                                             x-show="openEdit"
                                             x-cloak
@@ -554,25 +640,47 @@
                         @empty
                             <tr>
                                 <td colspan="8" class="p-6 text-center text-text-muted italic"> 
-                                    <template x-if="search || filterKategori">
-                                        <span>Tidak ada produk yang ditemukan.</span>
-                                    </template>
-                                    <template x-if="!search && !filterKategori">
-                                        <span>Belum ada data produk yang tersimpan.</span>
-                                    </template>
+                                    <span x-show="searchQuery">Tidak ada produk yang ditemukan dengan pencarian '{{ $search }}' pada halaman ini.</span>
+                                    <span x-show="!searchQuery">
+                                        @if ($filterKategori || $startDate || $endDate)
+                                            Tidak ada produk yang ditemukan dengan filter tersebut.
+                                        @else
+                                            Belum ada data produk yang tersimpan.
+                                        @endif
+                                    </span>
+                                </td>
+                            </tr>
+                            {{-- Tambahkan baris di luar loop untuk menangani kasus pencarian live --}}
+                            <tr x-show="searchQuery && document.querySelectorAll('tbody tr[x-show]:not([style*=\'display: none\'])').length === 0" x-cloak>
+                                <td colspan="8" class="p-6 text-center text-text-muted italic">
+                                    Tidak ada produk yang cocok dengan pencarian di halaman ini.
                                 </td>
                             </tr>
                         @endforelse
+                        {{-- Logik Empty State Khusus Alpine (jika hasil pencarian live kosong) --}}
+                        <template x-if="searchQuery && document.querySelectorAll('tbody tr:not([x-cloak])').length > 0 && Array.from(document.querySelectorAll('tbody tr[x-show]')).every(tr => tr.style.display === 'none')">
+                            <tr>
+                                <td colspan="8" class="p-6 text-center text-text-muted italic">
+                                    Tidak ada produk yang cocok dengan pencarian di halaman ini.
+                                </td>
+                            </tr>
+                        </template>
                     </tbody>
                 </table>
             </div>
             {{-- PAGINATION --}}
-            {{-- NOTE: Pagination di sini hanya akan memuat data di halaman berikutnya, tetapi filtering tetap dilakukan di client. Jika Anda mencari di halaman 1, dan hasilnya ada di halaman 2, Anda harus pindah ke halaman 2 untuk melihat hasilnya. --}}
             <div class="mt-6">
-                {{ $produks->appends(['search' => $search, 'kategori' => $filterKategori])->links() }}
+                {{ $produks->appends([
+                    'q' => request('q'), 
+                    'kategori' => $filterKategori,
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'sort' => $sort,
+                ])->links() }}
             </div>
         </x-ui.card>
-        {{-- MODAL TAMBAH PRODUK (CREATE) --}}
+        
+        {{-- MODAL TAMBAH PRODUK (CREATE) - Tidak Berubah --}}
         <div
             x-show="openCreate"
             x-cloak
@@ -716,6 +824,7 @@
                 </div>
             </div>
         </div>
+        
         {{-- SCRIPT & STYLE (TIDAK BERUBAH) --}}
         <script>
             function formatRupiahInput(input) {
@@ -790,6 +899,7 @@
             .custom-scrollbar::-webkit-scrollbar-thumb {
                 background: #D4A757; /* gold-500 */
                 border-radius: 999px;
+                
             }
             .custom-scrollbar::-webkit-scrollbar-thumb:hover {
                 background: #A67C39; /* gold-700 */
