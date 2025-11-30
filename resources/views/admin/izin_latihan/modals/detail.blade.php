@@ -159,11 +159,20 @@
                             <p class="text-xs text-text-muted mb-4">
                                 Aksi persetujuan penuh dilakukan melalui formulir persetujuan.
                             </p>
-                            <a href="{{ route('admin.izin_latihan.approve.form', $izin) }}">
-                                <x-ui.button-primary class="w-full justify-center">
-                                    Proses Persetujuan Sekarang
-                                </x-ui.button-primary>
-                            </a>
+                            {{-- Tombol Proses Persetujuan di dalam modal DETAIL --}}
+                        <x-ui.button-primary
+                            type="button"
+                            class="w-full justify-center"
+                            @click="
+                                // tutup modal detail untuk izin ini
+                                openDetailId = null;
+
+                                // buka modal approve untuk izin yang sama
+                                openApproveId = {{ $izin->id }};
+                            "
+                        >
+                            Proses Persetujuan Sekarang
+                        </x-ui.button-primary>
                         </div>
                     @endif
                 </div>
