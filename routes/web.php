@@ -116,6 +116,12 @@ Route::middleware(['auth', 'admin'])
                 'stok_produk' => 'stokProduk', 
             ]);
 
+        // **TAMBAHKAN RUTE KHUSUS RIWAYAT DI BAWAH RESOURCE**
+        Route::prefix('stok_produk')->name('stok_produk.')->group(function () {
+            Route::get('stok_produk/riwayat', [StokProdukController::class, 'history'])->name('history');
+            Route::get('/riwayat/{stokProduk}/detail', [StokProdukController::class, 'showHistoryDetail'])->name('history.detail');
+        });        
+        
         // =========================================================
         // RUTE MANAJEMEN COACH
         // =========================================================
