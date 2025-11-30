@@ -16,6 +16,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
 </head>
 <body class="min-h-screen bg-brand-bg text-text-main antialiased">
     <div class="min-h-screen flex bg-brand-bg">
@@ -46,8 +47,6 @@
         });
     </script>
 
-    {{-- ALPINE.JS GLOBAL UNTUK ADMIN --}}
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
     <script>
         document.addEventListener('alpine:init', () => {
@@ -63,5 +62,6 @@
     </script>
 
     @stack('scripts')
+    @livewireScripts
 </body>
 </html>
