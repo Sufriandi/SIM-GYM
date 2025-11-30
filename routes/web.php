@@ -10,11 +10,11 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\IzinLatihanController;
 use App\Http\Controllers\Admin\InventarisAlatController;
-use App\Http\Controllers\Admin\PenjualanProdukController; 
+use App\Http\Controllers\Admin\PenjualanProdukController;
 use App\Http\Controllers\Admin\ProdukController;
 use App\Http\Controllers\Admin\StokProdukController;
 use App\Http\Controllers\Admin\CoachController;
-// use App\Http\Controllers\Admin\MemberController;
+use App\Http\Controllers\Admin\MemberController; // ← TAMBAH INI
 
 // Controller Member
 use App\Http\Controllers\Member\DashboardController as MemberDashboardController;
@@ -28,6 +28,7 @@ use App\Http\Controllers\Member\ProdukGymController;
 | 1. RUTE PUBLIK / GUEST
 |--------------------------------------------------------------------------
 */
+
 Route::get('/', [HomeController::class, 'index'])->name('home');
 // Tambahkan rute publik lainnya di sini (misal: /tentang-kami)
 
@@ -48,7 +49,6 @@ Route::get('/dashboard', function () {
 
     // Asumsikan default adalah member
     return redirect()->route('member.dashboard');
-
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 
@@ -78,7 +78,6 @@ Route::middleware(['auth', 'admin'])
         Route::get('dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
         // ================== INVENTARIS ALAT ==================
-        // Paksa nama parameter jadi {inventaris} supaya konsisten
         Route::resource('inventaris', InventarisAlatController::class)
             ->parameters([
                 'inventaris' => 'inventaris',
@@ -93,40 +92,46 @@ Route::middleware(['auth', 'admin'])
             Route::post('/{izinLatihan}/approve', [IzinLatihanController::class, 'approveIzin'])->name('approve');
             Route::post('/{id}/reject', [IzinLatihanController::class, 'reject'])->name('reject');
 
-            // 🔴 Tambahkan di sini, perhatikan name()-nya
             Route::post('/store-manual', [IzinLatihanController::class, 'storeManual'])
                 ->name('store.manual');
         });
 
-      
         // =========================================================
         // RUTE MANAJEMEN PRODUK
         // =========================================================
 
-        // 1. Rute Penjualan Produk (Hanya index, create, store, show, destroy)
+        // 1. Penjualan produk
         Route::resource('penjualan_produk', PenjualanProdukController::class)
             ->only(['index', 'store', 'show', 'update', 'destroy']);
 
-        // 2. RUTE Master Data Produk (CRUD Penuh)
+        // 2. Master produk
         Route::resource('produk', ProdukController::class);
 
-        // 3. RUTE MANAJEMEN STOK PRODUK (BARU DITAMBAH)
+        // 3. Manajemen stok produk
         Route::resource('stok_produk', StokProdukController::class)
             ->parameters([
-                'stok_produk' => 'stokProduk', 
+                'stok_produk' => 'stokProduk',
             ]);
 
-        // **TAMBAHKAN RUTE KHUSUS RIWAYAT DI BAWAH RESOURCE**
+        // Riwayat stok (dibenerin path-nya)
         Route::prefix('stok_produk')->name('stok_produk.')->group(function () {
-            Route::get('stok_produk/riwayat', [StokProdukController::class, 'history'])->name('history');
+            Route::get('/riwayat', [StokProdukController::class, 'history'])->name('history');
             Route::get('/riwayat/{stokProduk}/detail', [StokProdukController::class, 'showHistoryDetail'])->name('history.detail');
-        });        
-        
+        });
+
         // =========================================================
         // RUTE MANAJEMEN COACH
         // =========================================================
-        Route::resource('coaches',CoachController::class);
+        Route::resource('coaches', CoachController::class);
 
+        // =========================================================
+        // RUTE MANAJEMEN MEMBER
+        // =========================================================
+        Route::resource('members', MemberController::class);
+        // -> index  : admin.members.index  (GET /admin/members)
+        // -> store  : admin.members.store
+        // -> update : admin.members.update
+        // -> destroy: admin.members.destroy
     });
 
 /*
@@ -142,7 +147,7 @@ Route::middleware(['auth', 'member'])
         // Dashboard (Nama rute: member.dashboard)
         Route::get('dashboard', [MemberDashboardController::class, 'index'])->name('dashboard');
 
-        // Izin Latihan Group (MemberIzinLatihanController)
+        // Izin Latihan (Member)
         Route::prefix('izin-latihan')->name('izin_latihan.')->group(function () {
             Route::get('/', [MemberIzinLatihanController::class, 'index'])->name('index');
             Route::get('/riwayat', [MemberIzinLatihanController::class, 'history'])->name('history');
@@ -155,10 +160,8 @@ Route::middleware(['auth', 'member'])
             ->only(['index', 'store'])
             ->names('produk_gym');
 
-        // Daftar coach (member bisa melihat list coach)
+        // Daftar coach (member)
         Route::get('coach', [MemberCoachController::class, 'index'])->name('coach.index');
-
-
 
         // // Rute Pelengkapan Profil (jika diperlukan)
         // Route::get('/profile/lengkapi', [MemberProfileController::class, 'showCompletionForm'])->name('profile.complete.show');
@@ -172,4 +175,4 @@ Route::middleware(['auth', 'member'])
 | 6. RUTE AUTENTIKASI (Bawaan Breeze)
 |--------------------------------------------------------------------------
 */
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

@@ -24,93 +24,99 @@ class IzinLatihanController extends Controller
      * Sekaligus mengirim daftar member (hanya role "user") untuk dropdown tambah izin manual.
      */
     public function index(Request $request)
-{
-    $pageTitle = 'Permintaan Izin Baru';
+    {
+        $pageTitle = 'Permintaan Izin Baru';
 
-    /*
-    |--------------------------------------------------------------------------
-    | QUERY DASAR: Hanya izin pending
-    |--------------------------------------------------------------------------
-    */
-    $query = IzinLatihan::with('member')
-        ->where('status', 'pending');
+        /*
+        |--------------------------------------------------------------------------
+        | QUERY DASAR: Hanya izin pending
+        |--------------------------------------------------------------------------
+        */
+        $query = IzinLatihan::with(['member.user'])
+            ->where('status', 'pending');
 
-    /*
-    |--------------------------------------------------------------------------
-    | SEARCH (q = nama member / username)
-    |--------------------------------------------------------------------------
-    */
-    if ($request->filled('q')) {
-    $search = trim($request->q);
+        /*
+        |--------------------------------------------------------------------------
+        | SEARCH (q = nama member / username user)
+        |--------------------------------------------------------------------------
+        */
+        if ($request->filled('q')) {
+            $search = trim($request->q);
 
-    $query->whereHas('member', function ($q2) use ($search) {
-        $q2->where('nama', 'like', $search . '%')
-           ->orWhere('username', 'like', $search . '%');
-    });
-}
+            $query->where(function ($q) use ($search) {
+                // cari berdasarkan nama member
+                $q->whereHas('member', function ($q2) use ($search) {
+                    $q2->where('nama', 'like', $search . '%');
+                });
 
-    
+                // atau username user (relasi member->user)
+                $q->orWhereHas('member.user', function ($q3) use ($search) {
+                    $q3->where('username', 'like', $search . '%');
+                });
+            });
+        }
 
-    /*
-    |--------------------------------------------------------------------------
-    | SORTING
-    |--------------------------------------------------------------------------
-    */
-    $sort = $request->sort ?? 'newest';
+        /*
+        |--------------------------------------------------------------------------
+        | SORTING
+        |--------------------------------------------------------------------------
+        */
+        $sort = $request->sort ?? 'newest';
 
-switch ($sort) {
-    case 'oldest':
-        $query->orderBy('created_at', 'asc');
-        break;
+        switch ($sort) {
+            case 'oldest':
+                $query->orderBy('created_at', 'asc');
+                break;
 
-    case 'days_max':
-        $query->orderBy('jumlah_hari', 'desc')
-              ->orderBy('created_at', 'desc'); // tie breaker
-        break;
+            case 'days_max':
+                $query->orderBy('jumlah_hari', 'desc')
+                    ->orderBy('created_at', 'desc'); // tie breaker
+                break;
 
-    case 'days_min':
-        $query->orderBy('jumlah_hari', 'asc')
-              ->orderBy('created_at', 'desc');
-        break;
+            case 'days_min':
+                $query->orderBy('jumlah_hari', 'asc')
+                    ->orderBy('created_at', 'desc');
+                break;
 
-    case 'newest':
-    default:
-        $query->orderBy('created_at', 'desc');
-        break;
-}
+            case 'newest':
+            default:
+                $query->orderBy('created_at', 'desc');
+                break;
+        }
 
-$query->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc');
+        // baris ini sebenarnya double, tapi kalau mau dipertahankan:
+        $query->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc');
 
-    /*
-    |--------------------------------------------------------------------------
-    | FINAL RESULT (paginasi dengan query string agar filter tidak hilang)
-    |--------------------------------------------------------------------------
-    */
-    $daftar_izin = $query->paginate(15)->withQueryString();
+        /*
+        |--------------------------------------------------------------------------
+        | FINAL RESULT (paginasi dengan query string agar filter tidak hilang)
+        |--------------------------------------------------------------------------
+        */
+        $daftar_izin = $query->paginate(15)->withQueryString();
 
-    /*
-    |--------------------------------------------------------------------------
-    | DAFTAR MEMBER UNTUK MODAL TAMBAH MANUAL
-    |--------------------------------------------------------------------------
-    */
-    $membersForSelect = Member::with('user')
-        ->whereHas('user', function ($q) {
-            $q->where('role', 'user');
-        })
-        ->orderBy('nama')
-        ->get(['id', 'nama', 'username', 'user_id']);
+        /*
+        |--------------------------------------------------------------------------
+        | DAFTAR MEMBER UNTUK MODAL TAMBAH MANUAL
+        |--------------------------------------------------------------------------
+        */
+        $membersForSelect = Member::with(['user:id,username'])
+            ->whereHas('user', function ($q) {
+                $q->where('role', 'member');
+            })
+            ->orderBy('nama')
+            ->get(['id', 'nama', 'user_id']); // ⬅️ username dihapus, karena adanya di tabel users
 
-    /*
-    |--------------------------------------------------------------------------
-    | RETURN VIEW
-    |--------------------------------------------------------------------------
-    */
-    return view('admin.izin_latihan.index', compact(
-        'daftar_izin',
-        'pageTitle',
-        'membersForSelect',
-    ));
-}
+        /*
+        |--------------------------------------------------------------------------
+        | RETURN VIEW
+        |--------------------------------------------------------------------------
+        */
+        return view('admin.izin_latihan.index', compact(
+            'daftar_izin',
+            'pageTitle',
+            'membersForSelect',
+        ));
+    }
 
     /**
      * Admin menambahkan izin manual (member izin di tempat, tidak lewat akun member).
@@ -122,89 +128,89 @@ $query->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc');
      * - bukti_alasan   (opsional)
      * - keterangan     (opsional, DISIMPAN ke kolom 'alasan')
      *
-     * Di database izin_latihan tetap memakai kolom user_id
-     * yang diambil dari $member->user_id.
+     * Di database izin_latihan sekarang memakai kolom member_id.
      * Izin manual langsung berstatus "disetujui".
      */
     public function storeManual(Request $request)
-{
-    // 1. VALIDASI + CUSTOM MESSAGE
-    $validated = $request->validateWithBag('izin_manual', 
-        [
-            'member_id'     => 'required|exists:members,id',
-            'jumlah_hari'   => 'required|integer|min:1|max:30',
-            'tanggal_mulai' => 'required|date',
-            'bukti_alasan'  => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:2048',
-            'keterangan'    => 'nullable|string|max:5000',
-        ],
-        [
-            'member_id.required'     => 'Silakan pilih member terlebih dahulu.',
-            'member_id.exists'       => 'Member yang dipilih tidak ditemukan.',
-            'jumlah_hari.required'   => 'Jumlah hari wajib diisi.',
-            'jumlah_hari.integer'    => 'Jumlah hari harus berupa angka.',
-            'jumlah_hari.min'        => 'Jumlah hari minimal 1 hari.',
-            'jumlah_hari.max'        => 'Jumlah hari maksimal 30 hari.',
-            'tanggal_mulai.required' => 'Tanggal mulai wajib diisi.',
-            'tanggal_mulai.date'     => 'Format tanggal mulai tidak valid.',
-            'bukti_alasan.max'       => 'Ukuran file maksimal 2MB.',
-            'bukti_alasan.mimes'     => 'Format file harus JPG, JPEG, PNG, PDF, DOC, atau DOCX.',
-        ]
-    );
+    {
+        // 1. VALIDASI + CUSTOM MESSAGE
+        $validated = $request->validateWithBag(
+            'izin_manual',
+            [
+                'member_id'     => 'required|exists:members,id',
+                'jumlah_hari'   => 'required|integer|min:1|max:30',
+                'tanggal_mulai' => 'required|date',
+                'bukti_alasan'  => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:2048',
+                'keterangan'    => 'nullable|string|max:5000',
+            ],
+            [
+                'member_id.required'     => 'Silakan pilih member terlebih dahulu.',
+                'member_id.exists'       => 'Member yang dipilih tidak ditemukan.',
+                'jumlah_hari.required'   => 'Jumlah hari wajib diisi.',
+                'jumlah_hari.integer'    => 'Jumlah hari harus berupa angka.',
+                'jumlah_hari.min'        => 'Jumlah hari minimal 1 hari.',
+                'jumlah_hari.max'        => 'Jumlah hari maksimal 30 hari.',
+                'tanggal_mulai.required' => 'Tanggal mulai wajib diisi.',
+                'tanggal_mulai.date'     => 'Format tanggal mulai tidak valid.',
+                'bukti_alasan.max'       => 'Ukuran file maksimal 2MB.',
+                'bukti_alasan.mimes'     => 'Format file harus JPG, JPEG, PNG, PDF, DOC, atau DOCX.',
+            ]
+        );
 
-    // pastikan integer beneran (bukan string)
-    $jumlahHari = (int) $validated['jumlah_hari'];
+        // pastikan integer beneran (bukan string)
+        $jumlahHari = (int) $validated['jumlah_hari'];
 
-    // 2. AMBIL MEMBER
-    $member = Member::findOrFail($validated['member_id']);
+        // 2. AMBIL MEMBER
+        $member = Member::findOrFail($validated['member_id']);
 
-    // 3. HITUNG TANGGAL MULAI & SELESAI
-    $tanggalMulai   = Carbon::parse($validated['tanggal_mulai'])->startOfDay();
-    $tanggalSelesai = (clone $tanggalMulai)->addDays($jumlahHari);
+        // 3. HITUNG TANGGAL MULAI & SELESAI
+        $tanggalMulai   = Carbon::parse($validated['tanggal_mulai'])->startOfDay();
+        $tanggalSelesai = (clone $tanggalMulai)->addDays($jumlahHari);
 
-    // 4. SIMPAN FILE BUKTI (JIKA ADA)
-    $buktiPath = null;
-    if ($request->hasFile('bukti_alasan')) {
-        // Disimpan ke: storage/app/public/uploads/bukti_izin
-        $buktiPath = $request->file('bukti_alasan')
-            ->store('uploads/bukti_izin', 'public');
+        // 4. SIMPAN FILE BUKTI (JIKA ADA)
+        $buktiPath = null;
+        if ($request->hasFile('bukti_alasan')) {
+            // Disimpan ke: storage/app/public/uploads/bukti_izin
+            $buktiPath = $request->file('bukti_alasan')
+                ->store('uploads/bukti_izin', 'public');
+        }
+
+        // 5. SIAPKAN TEKS ALASAN (TRIM SPASI & ENTER DI DEPAN/BELAKANG)
+        $alasanText = isset($validated['keterangan'])
+            ? trim($validated['keterangan'])
+            : '';
+
+        // 6. BUAT RECORD IZIN (LANGSUNG DISETUJUI)
+        $izin = IzinLatihan::create([
+            'member_id'             => $member->id,               // ⬅️ sekarang pakai member_id
+            'jumlah_hari'           => $jumlahHari,
+            'tanggal_mulai'         => $tanggalMulai->toDateString(),
+            'tanggal_selesai'       => $tanggalSelesai->toDateString(),
+            'status'                => 'disetujui',
+            'durasi_izin_disetujui' => $jumlahHari,
+            'bukti_alasan'          => $buktiPath,
+            'alasan'                => $alasanText !== '' ? $alasanText : '[Ditambahkan manual oleh admin]',
+            'keterangan_admin'      => 'Izin manual ditambahkan dan langsung disetujui oleh Admin.',
+            'tanggal_persetujuan'   => now(),
+        ]);
+
+        // 7. PERPANJANG TANGGAL AKHIR MEMBERSHIP MEMBER
+        if ($member->tanggal_akhir) {
+            $akhirLama = Carbon::parse($member->tanggal_akhir)->startOfDay();
+            $akhirBaru = $akhirLama->addDays($jumlahHari);
+        } else {
+            $akhirBaru = (clone $tanggalSelesai);
+        }
+
+        $member->update([
+            'tanggal_akhir' => $akhirBaru->toDateString(),
+        ]);
+
+        // 8. SELESAI
+        return redirect()
+            ->route('admin.izin_latihan.index')
+            ->with('success', 'Izin manual berhasil ditambahkan dan langsung disetujui, membership member ikut diperpanjang.');
     }
-
-    // 5. SIAPKAN TEKS ALASAN (TRIM SPASI & ENTER DI DEPAN/BELAKANG)
-    $alasanText = isset($validated['keterangan'])
-        ? trim($validated['keterangan'])
-        : '';
-
-    // 6. BUAT RECORD IZIN (LANGSUNG DISETUJUI)
-    $izin = IzinLatihan::create([
-        'user_id'               => $member->user_id,
-        'jumlah_hari'           => $jumlahHari,
-        'tanggal_mulai'         => $tanggalMulai->toDateString(),
-        'tanggal_selesai'       => $tanggalSelesai->toDateString(),
-        'status'                => 'disetujui',
-        'durasi_izin_disetujui' => $jumlahHari,
-        'bukti_alasan'          => $buktiPath,
-        'alasan'                => $alasanText !== '' ? $alasanText : '[Ditambahkan manual oleh admin]',
-        'keterangan_admin'      => 'Izin manual ditambahkan dan langsung disetujui oleh Admin.',
-        'tanggal_persetujuan'   => now(),
-    ]);
-
-    // 7. PERPANJANG TANGGAL AKHIR MEMBERSHIP MEMBER
-    if ($member->tanggal_akhir) {
-        $akhirLama = Carbon::parse($member->tanggal_akhir)->startOfDay();
-        $akhirBaru = $akhirLama->addDays($jumlahHari);
-    } else {
-        $akhirBaru = (clone $tanggalSelesai);
-    }
-
-    $member->update([
-        'tanggal_akhir' => $akhirBaru->toDateString(),
-    ]);
-
-    // 8. SELESAI
-    return redirect()
-        ->route('admin.izin_latihan.index')
-        ->with('success', 'Izin manual berhasil ditambahkan dan langsung disetujui, membership member ikut diperpanjang.');
-}
 
     /**
      * Menampilkan riwayat izin yang telah disetujui atau ditolak.
@@ -213,7 +219,7 @@ $query->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc');
     {
         $pageTitle = 'Riwayat Persetujuan Izin';
 
-        $riwayat_izin = IzinLatihan::with('member')
+        $riwayat_izin = IzinLatihan::with(['member.user'])
             ->whereIn('status', ['disetujui', 'ditolak'])
             ->orderBy('tanggal_persetujuan', 'desc')
             ->paginate(15);
@@ -223,13 +229,12 @@ $query->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc');
 
     /**
      * Menampilkan detail satu izin latihan untuk ditinjau oleh Admin (tanpa aksi).
-     * (Saat ini kamu sudah pakai modal di index, route ini boleh saja jarang dipakai.)
      */
     public function show($id)
     {
         $pageTitle = 'Detail Izin Member';
 
-        $izin = IzinLatihan::with('member')->findOrFail($id);
+        $izin = IzinLatihan::with(['member.user'])->findOrFail($id);
 
         return view('admin.izin_latihan.detail', compact('izin', 'pageTitle'));
     }
@@ -246,7 +251,7 @@ $query->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc');
         }
 
         $pageTitle = 'Formulir Persetujuan Izin';
-        $izin = $izinLatihan;
+        $izin = $izinLatihan->load(['member.user']);
 
         return view('admin.izin_latihan.approve_form', compact('izin', 'pageTitle'));
     }
@@ -312,7 +317,6 @@ $query->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc');
             return redirect()
                 ->route('admin.izin_latihan.index')
                 ->with('success', $message);
-
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -325,7 +329,7 @@ $query->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc');
      */
     public function reject(Request $request, $id)
     {
-        $izin = IzinLatihan::with('member')->findOrFail($id);
+        $izin = IzinLatihan::with(['member.user'])->findOrFail($id);
 
         if ($izin->status === 'pending') {
             $izin->status = 'ditolak';

@@ -7,9 +7,7 @@
     $pageTitle = $pageTitle ?? 'Permintaan Izin Baru';
 
     // Modal create otomatis terbuka kalau error di bag 'izin_manual'
-$openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any()
-    ? 'true'
-    : 'false';
+    $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any() ? 'true' : 'false';
 
     /**
      * Sumber data member untuk searchable dropdown di modal
@@ -17,16 +15,20 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
     $sourceMembers = isset($membersForSelect)
         ? $membersForSelect
         : Member::with('user')
-            ->whereHas('user', fn($q) => $q->where('role', 'user'))
+            ->whereHas('user', fn($q) => $q->where('role', 'member'))
             ->orderBy('nama')
             ->get(['id', 'nama', 'username', 'user_id']);
 
-    $memberOptions = $sourceMembers->map(fn($m) => [
-        'id'    => $m->id,
-        'label' => $m->nama . ' (' . $m->username . ')',
-    ])->toArray();
+    $memberOptions = $sourceMembers
+        ->map(function ($m) {
+            return [
+                'id' => $m->id,
+                'label' => trim($m->nama . ($m->user?->username ? ' (' . $m->user->username . ')' : '')),
+            ];
+        })
+        ->toArray();
 
-    $oldMemberId    = old('member_id');
+    $oldMemberId = old('member_id');
     $oldMemberLabel = '';
 
     if ($oldMemberId) {
@@ -35,11 +37,7 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
     }
 @endphp
 
-<x-layouts.admin
-    :title="$pageTitle . ' – BETA GYM'"
-    :page-title="$pageTitle"
-    page-subtitle="Permintaan izin yang belum diproses."
->
+<x-layouts.admin :title="$pageTitle . ' – BETA GYM'" :page-title="$pageTitle" page-subtitle="Permintaan izin yang belum diproses.">
     {{-- FLASH MESSAGE --}}
     {{-- SUCCESS sengaja TIDAK ditampilkan di sini karena sudah pakai toast global --}}
     @if (session('error'))
@@ -49,19 +47,18 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
     @endif
 
     {{-- MAIN WRAPPER (ALPINE ROOT) --}}
-<div
-    x-data="{
+    <div x-data="{
         // === STATE UTAMA ===
         openCreate: {{ $openCreateOnLoad }},
         openDetailId: null,
         openApproveId: null,
-
+    
         // Search realtime (frontend)
         searchTerm: @js(request('q')),
-
+    
         // === STATE MODAL CREATE ===
         members: @js($memberOptions),
-
+    
         create: {
             memberSearch: @js($oldMemberLabel),
             memberId: @js($oldMemberId),
@@ -69,53 +66,53 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
             tanggalMulai: '{{ old('tanggal_mulai', now()->toDateString()) }}',
             keterangan: @js(old('keterangan')),
         },
-
+    
         dropdownOpen: false,
-
+    
         fileUrl: null,
         fileName: '',
         fileType: '',
-
+    
         // === FUNCTIONS ===
         openCreateModal() {
             this.resetCreateForm();
             this.openCreate = true;
         },
-
+    
         closeCreateModal() {
             this.openCreate = false;
             this.resetCreateForm();
         },
-
+    
         resetCreateForm() {
             this.create.memberSearch = '';
-            this.create.memberId     = null;
-            this.create.jumlahHari   = 1;
+            this.create.memberId = null;
+            this.create.jumlahHari = 1;
             this.create.tanggalMulai = '{{ now()->toDateString() }}';
-            this.create.keterangan   = '';
-
+            this.create.keterangan = '';
+    
             this.dropdownOpen = false;
-
-            this.fileUrl  = null;
+    
+            this.fileUrl = null;
             this.fileName = '';
             this.fileType = '';
-
+    
             if (this.$refs.buktiInput) {
                 this.$refs.buktiInput.value = null;
             }
         },
-
+    
         matchMember(m) {
             if (!this.create.memberSearch) return true;
             return m.label.toLowerCase().includes(this.create.memberSearch.toLowerCase());
         },
-
+    
         selectMember(m) {
-            this.create.memberId     = m.id;
+            this.create.memberId = m.id;
             this.create.memberSearch = m.label;
-            this.dropdownOpen        = false;
+            this.dropdownOpen = false;
         },
-
+    
         handleFileChange(e) {
             const file = e.target.files[0];
             if (!file) {
@@ -124,11 +121,11 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
                 this.fileType = '';
                 return;
             }
-
+    
             this.fileName = file.name;
-            const mime  = file.type || '';
+            const mime = file.type || '';
             const lower = file.name.toLowerCase();
-
+    
             if (mime.startsWith('image/')) {
                 this.fileType = 'image';
             } else if (mime === 'application/pdf' || lower.endsWith('.pdf')) {
@@ -136,7 +133,7 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
             } else {
                 this.fileType = 'other';
             }
-
+    
             if (this.fileType === 'image' || this.fileType === 'pdf') {
                 const reader = new FileReader();
                 reader.onload = (ev) => {
@@ -147,9 +144,8 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
                 this.fileUrl = null;
             }
         },
-    }"
-    x-on:open-izin-manual.window="openCreateModal()"
-    x-effect="
+    }" x-on:open-izin-manual.window="openCreateModal()"
+        x-effect="
         const main = document.querySelector('main');
         const html = document.documentElement;
         const body = document.body;
@@ -174,121 +170,105 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
                 }
             });
         }
-    "
->
+    ">
 
-        <x-ui.section-header
-            :title="$pageTitle"
-            subtitle="Permintaan izin yang belum diproses."
-        />
+        <x-ui.section-header :title="$pageTitle" subtitle="Permintaan izin yang belum diproses." />
 
         <hr class="border-t border-brand-borderSoft mb-6">
 
         {{-- SEARCH + FILTER + ACTION --}}
-<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
 
-    {{-- SEARCH + FILTER --}}
-    <div
-        class="relative w-full max-w-md"
-        x-data="{
-            showFilter: false,
-        }"
-    >
-        <form action="{{ route('admin.izin_latihan.index') }}" method="GET" x-ref="searchForm">
-            {{-- Wrapper Input --}}
-            <div class="flex items-center w-full rounded-full border border-brand-borderSoft bg-brand-card shadow-sm h-[42px]">
-                <div class="pl-4 text-text-muted">
-                    <i data-lucide="search" class="w-5 h-5"></i>
-                </div>
+            {{-- SEARCH + FILTER --}}
+            <div class="relative w-full max-w-md" x-data="{
+                showFilter: false,
+            }">
+                <form action="{{ route('admin.izin_latihan.index') }}" method="GET" x-ref="searchForm">
+                    {{-- Wrapper Input --}}
+                    <div
+                        class="flex items-center w-full rounded-full border border-brand-borderSoft bg-brand-card shadow-sm h-[42px]">
+                        <div class="pl-4 text-text-muted">
+                            <i data-lucide="search" class="w-5 h-5"></i>
+                        </div>
 
-                <input
-                    type="text"
-                    name="q"
-                    x-model="searchTerm"
-                    placeholder="Cari nama member..."
-                    class="w-full bg-transparent border-none text-sm text-text-main placeholder:text-text-muted/50 focus:ring-0 py-2 pl-3 pr-2 rounded-l-full"
-                    @keydown.enter.prevent
-                >
+                        <input type="text" name="q" x-model="searchTerm" placeholder="Cari nama member..."
+                            class="w-full bg-transparent border-none text-sm text-text-main placeholder:text-text-muted/50 focus:ring-0 py-2 pl-3 pr-2 rounded-l-full"
+                            @keydown.enter.prevent>
 
-                <div class="h-6 w-px bg-brand-borderSoft mx-1"></div>
+                        <div class="h-6 w-px bg-brand-borderSoft mx-1"></div>
 
-                {{-- BUTTON FILTER --}}
-                <button
-                    type="button"
-                    @click="showFilter = !showFilter"
-                    class="flex items-center gap-2 px-5 py-2 text-sm font-medium text-text-muted hover:text-text-main mr-1 rounded-full hover:bg-brand-surface-50"
-                >
-                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
-                    <span class="hidden sm:inline">Filter</span>
-                </button>
-            </div>
-
-            {{-- FILTER DROPDOWN --}}
-            <div
-                x-show="showFilter"
-                x-cloak
-                @click.outside="showFilter = false"
-                class="absolute top-[48px] left-0 w-full bg-brand-card border border-brand-borderSoft rounded-2xl shadow-xl p-5 z-10"
-            >
-                <div class="space-y-4">
-                    <div class="flex justify-between items-center pb-2 border-b border-brand-borderSoft/50">
-                        <h4 class="text-sm font-semibold text-text-main">Filter & Urutan</h4>
-                        <a href="{{ route('admin.izin_latihan.index') }}" class="text-xs text-danger hover:underline">
-                            Reset
-                        </a>
+                        {{-- BUTTON FILTER --}}
+                        <button type="button" @click="showFilter = !showFilter"
+                            class="flex items-center gap-2 px-5 py-2 text-sm font-medium text-text-muted hover:text-text-main mr-1 rounded-full hover:bg-brand-surface-50">
+                            <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                            <span class="hidden sm:inline">Filter</span>
+                        </button>
                     </div>
 
-                    {{-- URUTKAN BERDASARKAN --}}
-                    <div>
-                        <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">
-                            Urutkan berdasarkan
-                        </label>
-                        <select
-                            name="sort"
-                            class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2"
-                        >
-                            <option value="newest" {{ request('sort', 'newest') == 'newest' ? 'selected' : '' }}>
-                                Waktu pengajuan · Terbaru
-                            </option>
-                            <option value="oldest" {{ request('sort') == 'oldest' ? 'selected' : '' }}>
-                                Waktu pengajuan · Terlama
-                            </option>
-                            <option value="days_max" {{ request('sort') == 'days_max' ? 'selected' : '' }}>
-                                Hari diajukan · Terbanyak
-                            </option>
-                            <option value="days_min" {{ request('sort') == 'days_min' ? 'selected' : '' }}>
-                                Hari diajukan · Tersedikit
-                            </option>
-                        </select>
+                    {{-- FILTER DROPDOWN --}}
+                    <div x-show="showFilter" x-cloak @click.outside="showFilter = false"
+                        class="absolute top-[48px] left-0 w-full bg-brand-card border border-brand-borderSoft rounded-2xl shadow-xl p-5 z-10">
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center pb-2 border-b border-brand-borderSoft/50">
+                                <h4 class="text-sm font-semibold text-text-main">Filter & Urutan</h4>
+                                <a href="{{ route('admin.izin_latihan.index') }}"
+                                    class="text-xs text-danger hover:underline">
+                                    Reset
+                                </a>
+                            </div>
 
-                        <p class="text-[10px] text-text-muted mt-1">
-                            Pilih apakah ingin lihat izin terbaru, terlama, atau berdasarkan banyaknya hari yang diajukan.
-                        </p>
+                            {{-- URUTKAN BERDASARKAN --}}
+                            <div>
+                                <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">
+                                    Urutkan berdasarkan
+                                </label>
+                                <select name="sort"
+                                    class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2">
+                                    <option value="newest"
+                                        {{ request('sort', 'newest') == 'newest' ? 'selected' : '' }}>
+                                        Waktu pengajuan · Terbaru
+                                    </option>
+                                    <option value="oldest" {{ request('sort') == 'oldest' ? 'selected' : '' }}>
+                                        Waktu pengajuan · Terlama
+                                    </option>
+                                    <option value="days_max" {{ request('sort') == 'days_max' ? 'selected' : '' }}>
+                                        Hari diajukan · Terbanyak
+                                    </option>
+                                    <option value="days_min" {{ request('sort') == 'days_min' ? 'selected' : '' }}>
+                                        Hari diajukan · Tersedikit
+                                    </option>
+                                </select>
+
+                                <p class="text-[10px] text-text-muted mt-1">
+                                    Pilih apakah ingin lihat izin terbaru, terlama, atau berdasarkan banyaknya hari yang
+                                    diajukan.
+                                </p>
+                            </div>
+
+                            <button type="submit"
+                                class="w-full bg-primary-dark text-white text-sm font-medium py-2 rounded-lg">
+                                Terapkan
+                            </button>
+                        </div>
                     </div>
-
-                    <button type="submit" class="w-full bg-primary-dark text-white text-sm font-medium py-2 rounded-lg">
-                        Terapkan
-                    </button>
-                </div>
+                </form>
             </div>
-        </form>
-    </div>
 
-    {{-- ACTION BUTTONS --}}
-    <div class="flex items-center gap-2">
-        <x-ui.button-primary type="button" @click="openCreateModal()">
-            <i data-lucide="plus" class="w-5 h-5 mr-1"></i>
-            Tambah Manual
-        </x-ui.button-primary>
+            {{-- ACTION BUTTONS --}}
+            <div class="flex items-center gap-2">
+                <x-ui.button-primary type="button" @click="openCreateModal()">
+                    <i data-lucide="plus" class="w-5 h-5 mr-1"></i>
+                    Tambah Manual
+                </x-ui.button-primary>
 
-        <a href="{{ route('admin.izin_latihan.history') }}">
-            <x-ui.button-secondary>
-                <i data-lucide="history" class="w-4 h-4 mr-1"></i>
-                Riwayat
-            </x-ui.button-secondary>
-        </a>
-    </div>
-</div>
+                <a href="{{ route('admin.izin_latihan.history') }}">
+                    <x-ui.button-secondary>
+                        <i data-lucide="history" class="w-4 h-4 mr-1"></i>
+                        Riwayat
+                    </x-ui.button-secondary>
+                </a>
+            </div>
+        </div>
 
 
         {{-- TABLE --}}
@@ -310,25 +290,30 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
                 <table class="w-full border-collapse text-xs md:text-sm md:min-w-[800px]">
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
-                            <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[6%]">
+                            <th
+                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[6%]">
                                 No
                             </th>
                             <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
                                 Member
                             </th>
-                            <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                            <th
+                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
                                 Hari Diajukan
                             </th>
-                            <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                            <th
+                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
                                 Tgl Mulai
                             </th>
-                            <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                            <th
+                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
                                 Status
                             </th>
                             <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
                                 Alasan
                             </th>
-                            <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                            <th
+                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
                                 Aksi
                             </th>
                         </tr>
@@ -336,18 +321,16 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
 
                     <tbody class="divide-y divide-brand-borderSoft/80">
                         @forelse ($daftar_izin as $izin)
-                           <tr
-            x-data="{
-                memberName: @js($izin->member?->nama ?? ''),
-                memberUsername: @js($izin->member?->username ?? ''),
-            }"
-            x-show="
+                            <tr x-data="{
+                                memberName: @js($izin->member?->nama ?? ''),
+                                memberUsername: @js($izin->member?->username ?? ''),
+                            }"
+                                x-show="
                 !searchTerm
                 || memberName.toLowerCase().startsWith(searchTerm.toLowerCase())
                 || memberUsername.toLowerCase().startsWith(searchTerm.toLowerCase())
             "
-            class="hover:bg-brand-surface-50 transition-colors duration-150 h-24"
-        >
+                                class="hover:bg-brand-surface-50 transition-colors duration-150 h-24">
                                 <td class="p-3 text-center align-middle text-xs text-text-muted">
                                     {{ $loop->iteration + ($daftar_izin->currentPage() - 1) * $daftar_izin->perPage() }}
                                 </td>
@@ -382,7 +365,8 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
                                 </td>
 
                                 <td class="p-3 text-left align-middle max-w-[220px]">
-                                    <div class="text-xs text-text-muted line-clamp-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                                    <div
+                                        class="text-xs text-text-muted line-clamp-1 overflow-hidden text-ellipsis whitespace-nowrap">
                                         {{ $izin->alasan ? Str::limit($izin->alasan, 80) : '-' }}
                                     </div>
                                 </td>
@@ -391,11 +375,8 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
                                     <div class="flex items-center justify-center gap-4 h-full">
                                         {{-- DETAIL --}}
                                         <div class="relative group flex items-center justify-center">
-                                            <button
-                                                type="button"
-                                                @click="openDetailId = {{ $izin->id }}"
-                                                class="p-2 rounded-full text-info hover:bg-info-soft/50 transition-colors duration-150"
-                                            >
+                                            <button type="button" @click="openDetailId = {{ $izin->id }}"
+                                                class="p-2 rounded-full text-info hover:bg-info-soft/50 transition-colors duration-150">
                                                 <i data-lucide="eye" class="w-6 h-6"></i>
                                             </button>
 
@@ -403,8 +384,7 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
                                                 class="pointer-events-none absolute top-full mt-1 left-1/2 -translate-x-1/2
                                                        text-[10px] font-medium text-info
                                                        opacity-0 group-hover:opacity-100
-                                                       transition-opacity duration-150"
-                                            >
+                                                       transition-opacity duration-150">
                                                 Detail
                                             </span>
                                         </div>
@@ -412,11 +392,8 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
                                         @if ($izin->member)
                                             {{-- SETUJUI (BUKA MODAL APPROVE) --}}
                                             <div class="relative group flex items-center justify-center">
-                                                <button
-                                                    type="button"
-                                                    @click="openApproveId = {{ $izin->id }}"
-                                                    class="p-2 rounded-full text-success hover:bg-success-soft/50 transition-colors duration-150"
-                                                >
+                                                <button type="button" @click="openApproveId = {{ $izin->id }}"
+                                                    class="p-2 rounded-full text-success hover:bg-success-soft/50 transition-colors duration-150">
                                                     <i data-lucide="circle-check" class="w-6 h-6"></i>
                                                 </button>
 
@@ -424,25 +401,20 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
                                                     class="pointer-events-none absolute top-full mt-1 left-1/2 -translate-x-1/2
                                                            text-[10px] font-medium text-success
                                                            opacity-0 group-hover:opacity-100
-                                                           transition-opacity duration-150"
-                                                >
+                                                           transition-opacity duration-150">
                                                     Setujui
                                                 </span>
                                             </div>
 
                                             {{-- TOLAK --}}
                                             <div class="relative group flex items-center justify-center">
-                                                <form
-                                                    id="reject-form-{{ $izin->id }}"
+                                                <form id="reject-form-{{ $izin->id }}"
                                                     action="{{ route('admin.izin_latihan.reject', $izin->id) }}"
-                                                    method="POST"
-                                                >
+                                                    method="POST">
                                                     @csrf
-                                                    <button
-                                                        type="button"
+                                                    <button type="button"
                                                         class="p-2 rounded-full text-danger hover:bg-danger-soft/50 transition-colors duration-150"
-                                                        onclick="confirmReject({{ $izin->id }}, '{{ $izin->member?->nama ?? 'Member' }}')"
-                                                    >
+                                                        onclick="confirmReject({{ $izin->id }}, '{{ $izin->member?->nama ?? 'Member' }}')">
                                                         <i data-lucide="circle-x" class="w-6 h-6"></i>
                                                     </button>
                                                 </form>
@@ -451,8 +423,7 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
                                                     class="pointer-events-none absolute top-full mt-1 left-1/2 -translate-x-1/2
                                                            text-[10px] font-medium text-danger
                                                            opacity-0 group-hover:opacity-100
-                                                           transition-opacity duration-150"
-                                                >
+                                                           transition-opacity duration-150">
                                                     Tolak
                                                 </span>
                                             </div>
@@ -483,69 +454,48 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
         {{-- ============================ --}}
         {{-- MODAL TAMBAH IZIN MANUAL     --}}
         {{-- ============================ --}}
-        <div
-    x-show="openCreate"
-    x-cloak
-    x-transition
-    class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
-    @click.self="closeCreateModal()"
-    @wheel.prevent
-    @touchmove.prevent
->
+        <div x-show="openCreate" x-cloak x-transition
+            class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
+            @click.self="closeCreateModal()" @wheel.prevent @touchmove.prevent>
 
             <div
-                class="relative w-full max-w-4xl rounded-3xl shadow-2xl border border-brand-borderSoft bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell"
-            >
+                class="relative w-full max-w-4xl rounded-3xl shadow-2xl border border-brand-borderSoft bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell">
                 {{-- HEADER MODAL --}}
                 <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
                     <div>
                         <h2 class="text-xl font-semibold text-text-main">Tambah Izin Manual</h2>
                         <p class="text-sm text-text-muted mt-0.5">Catat izin yang diajukan langsung di tempat.</p>
                     </div>
-                    <button
-                        type="button"
-                        class="rounded-full p-1.5 hover:bg-brand-surface-50 transition"
-                        @click="closeCreateModal()"
-                    >
+                    <button type="button" class="rounded-full p-1.5 hover:bg-brand-surface-50 transition"
+                        @click="closeCreateModal()">
                         <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
                     </button>
                 </div>
 
                 {{-- ISI MODAL --}}
                 <div class="px-6 pb-6 pt-4 max-h-[85vh] overflow-y-auto custom-scrollbar">
-                    <form
-                        method="POST"
-                        action="{{ route('admin.izin_latihan.store.manual') }}"
-                        enctype="multipart/form-data"
-                        class="space-y-5"
-                    >
+                    <form method="POST" action="{{ route('admin.izin_latihan.store.manual') }}"
+                        enctype="multipart/form-data" class="space-y-5">
                         @csrf
 
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {{-- PANEL KIRI: PREVIEW FILE --}}
                             <div class="md:col-span-1">
-                                <div class="rounded-2xl border border-brand-borderSoft/70 bg-brand-card p-4 flex flex-col gap-3">
-                                    <div class="w-full aspect-square border-2 border-dashed border-brand-borderSoft rounded-lg overflow-hidden flex items-center justify-center bg-brand-surface-50">
+                                <div
+                                    class="rounded-2xl border border-brand-borderSoft/70 bg-brand-card p-4 flex flex-col gap-3">
+                                    <div
+                                        class="w-full aspect-square border-2 border-dashed border-brand-borderSoft rounded-lg overflow-hidden flex items-center justify-center bg-brand-surface-50">
                                         {{-- IMAGE --}}
-                                        <img
-                                            x-show="fileUrl && fileType === 'image'"
-                                            :src="fileUrl"
-                                            alt="Preview Bukti Izin"
-                                            class="object-cover w-full h-full"
-                                        >
+                                        <img x-show="fileUrl && fileType === 'image'" :src="fileUrl"
+                                            alt="Preview Bukti Izin" class="object-cover w-full h-full">
                                         {{-- PDF --}}
-                                        <embed
-                                            x-show="fileUrl && fileType === 'pdf'"
-                                            :src="fileUrl"
-                                            type="application/pdf"
-                                            class="w-full h-full"
-                                        />
+                                        <embed x-show="fileUrl && fileType === 'pdf'" :src="fileUrl"
+                                            type="application/pdf" class="w-full h-full" />
                                         {{-- OTHER DOC --}}
-                                        <div
-                                            x-show="fileName && fileType === 'other'"
-                                            class="flex flex-col items-center justify-center p-4 text-center"
-                                        >
-                                            <div class="w-10 h-10 rounded-full border border-brand-borderSoft flex items-center justify-center mb-2">
+                                        <div x-show="fileName && fileType === 'other'"
+                                            class="flex flex-col items-center justify-center p-4 text-center">
+                                            <div
+                                                class="w-10 h-10 rounded-full border border-brand-borderSoft flex items-center justify-center mb-2">
                                                 <span class="text-[11px] font-semibold text-text-main">
                                                     DOC
                                                 </span>
@@ -556,10 +506,7 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
                                             </p>
                                         </div>
                                         {{-- PLACEHOLDER --}}
-                                        <span
-                                            x-show="!fileName"
-                                            class="text-xs text-text-muted text-center p-2"
-                                        >
+                                        <span x-show="!fileName" class="text-xs text-text-muted text-center p-2">
                                             Gambar & PDF ditampilkan di sini. Dokumen lain akan menampilkan nama file.
                                         </span>
                                     </div>
@@ -578,44 +525,30 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
                                         <div class="space-y-2">
                                             <x-ui.label for="member_search">Member</x-ui.label>
                                             <div class="relative">
-                                                <input
-                                                    type="text"
-                                                    id="member_search"
-                                                    x-model="create.memberSearch"
-                                                    @focus="dropdownOpen = true"
+                                                <input type="text" id="member_search"
+                                                    x-model="create.memberSearch" @focus="dropdownOpen = true"
                                                     @input="dropdownOpen = true"
-                                                    placeholder="Cari nama / username member..."
-                                                    autocomplete="off"
-                                                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
-                                                >
+                                                    placeholder="Cari nama / username member..." autocomplete="off"
+                                                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
                                                 <input type="hidden" name="member_id" :value="create.memberId ?? ''">
 
                                                 {{-- DROPDOWN --}}
-                                                <div
-                                                    x-show="dropdownOpen"
-                                                    x-cloak
-                                                    class="absolute z-50 mt-1 w-full max-h-52 overflow-y-auto rounded-xl border border-brand-borderSoft bg-brand-shell shadow-lg custom-scrollbar"
-                                                >
+                                                <div x-show="dropdownOpen" x-cloak
+                                                    class="absolute z-50 mt-1 w-full max-h-52 overflow-y-auto rounded-xl border border-brand-borderSoft bg-brand-shell shadow-lg custom-scrollbar">
                                                     <template x-for="m in members" :key="m.id">
-                                                        <button
-                                                            type="button"
-                                                            x-show="matchMember(m)"
+                                                        <button type="button" x-show="matchMember(m)"
                                                             class="w-full text-left px-3 py-2 text-sm text-text-main hover:bg-brand-surface-50"
-                                                            @click="selectMember(m)"
-                                                            x-text="m.label"
-                                                        ></button>
+                                                            @click="selectMember(m)" x-text="m.label"></button>
                                                     </template>
-                                                    <div
-                                                        x-show="members.filter(m => matchMember(m)).length === 0"
-                                                        class="px-3 py-2 text-xs text-text-muted"
-                                                    >
+                                                    <div x-show="members.filter(m => matchMember(m)).length === 0"
+                                                        class="px-3 py-2 text-xs text-text-muted">
                                                         Member tidak ditemukan.
                                                     </div>
                                                 </div>
                                             </div>
                                             @error('member_id', 'izin_manual')
-    <p class="text-xs text-danger mt-1">{{ $message }}</p>
-@enderror
+                                                <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                                            @enderror
                                             <p class="text-[11px] text-text-muted">
                                                 Ketik sebagian nama / username lalu klik salah satu hasil.
                                             </p>
@@ -624,13 +557,8 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
                                         {{-- JUMLAH HARI --}}
                                         <div>
                                             <x-ui.label for="jumlah_hari_create">Jumlah Hari</x-ui.label>
-                                            <input
-                                                type="number"
-                                                id="jumlah_hari_create"
-                                                name="jumlah_hari"
-                                                x-model.number="create.jumlahHari"
-                                                min="1"
-                                                max="30"
+                                            <input type="number" id="jumlah_hari_create" name="jumlah_hari"
+                                                x-model.number="create.jumlahHari" min="1" max="30"
                                                 required
                                                 class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
                                                 oninput="
@@ -649,8 +577,7 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
                                                     else if (this.validity.rangeUnderflow || this.validity.rangeOverflow) {
                                                         this.setCustomValidity('Jumlah hari minimal 1 dan maksimal 30.');
                                                     }
-                                                "
-                                            >
+                                                ">
                                             @error('jumlah_hari', 'izin_manual')
                                                 <p class="text-xs text-danger mt-1">{{ $message }}</p>
                                             @enderror
@@ -662,14 +589,9 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
                                         {{-- TANGGAL MULAI --}}
                                         <div>
                                             <x-ui.label for="tanggal_mulai_create">Tanggal Mulai</x-ui.label>
-                                            <input
-                                                type="date"
-                                                id="tanggal_mulai_create"
-                                                name="tanggal_mulai"
-                                                x-model="create.tanggalMulai"
-                                                required
-                                                class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
-                                            >
+                                            <input type="date" id="tanggal_mulai_create" name="tanggal_mulai"
+                                                x-model="create.tanggalMulai" required
+                                                class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
                                             @error('tanggal_mulai', 'izin_manual')
                                                 <p class="text-xs text-danger mt-1">{{ $message }}</p>
                                             @enderror
@@ -678,15 +600,10 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
                                         {{-- BUKTI / FILE --}}
                                         <div class="space-y-2">
                                             <x-ui.label for="bukti_alasan_create">Bukti / File (opsional)</x-ui.label>
-                                            <input
-                                                type="file"
-                                                id="bukti_alasan_create"
-                                                name="bukti_alasan"
-                                                accept="image/*,.pdf,.doc,.docx"
-                                                x-ref="buktiInput"
+                                            <input type="file" id="bukti_alasan_create" name="bukti_alasan"
+                                                accept="image/*,.pdf,.doc,.docx" x-ref="buktiInput"
                                                 class="block w-full text-sm text-text-main file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gold-600 file:text-white hover:file:bg-gold-700"
-                                                @change="handleFileChange($event)"
-                                            >
+                                                @change="handleFileChange($event)">
                                             @error('bukti_alasan', 'izin_manual')
                                                 <p class="text-xs text-danger mt-1">{{ $message }}</p>
                                             @enderror
@@ -699,14 +616,9 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
                                     {{-- KETERANGAN -> DISIMPAN KE KOLOM "alasan" --}}
                                     <div>
                                         <x-ui.label for="keterangan_create">Keterangan</x-ui.label>
-                                        <textarea
-                                            id="keterangan_create"
-                                            name="keterangan"
-                                            rows="3"
-                                            x-model="create.keterangan"
+                                        <textarea id="keterangan_create" name="keterangan" rows="3" x-model="create.keterangan"
                                             class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
-                                            placeholder="Contoh: Izin karena sakit, melampirkan surat dokter."
-                                        ></textarea>
+                                            placeholder="Contoh: Izin karena sakit, melampirkan surat dokter."></textarea>
                                         @error('keterangan', 'izin_manual')
                                             <p class="text-xs text-danger mt-1">{{ $message }}</p>
                                         @enderror
@@ -766,6 +678,8 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
     </script>
 
     <style>
-        [x-cloak] { display: none !important; }
+        [x-cloak] {
+            display: none !important;
+        }
     </style>
 </x-layouts.admin>

@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -14,19 +13,27 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Akun Admin
-        User::factory()->create([
-            'name'     => 'admin',
-            'email'    => 'admin@sim.gym',
-            'password' => Hash::make('password'),
-            'role'     => 'admin',
-        ]);
+        User::updateOrCreate(
+            ['email' => 'admin@sim.gym'], // key untuk pencarian
+            [
+                'name'     => 'Admin BETA GYM',
+                'username' => 'admin',          // jelas & gampang diingat
+                'no_hp'    => '6304230002',   // optional, bisa dipakai login juga
+                'password' => 'password',       // akan di-hash otomatis oleh cast
+                'role'     => 'admin',
+            ]
+        );
 
-        // Akun Member (otomatis bikin record di tabel members lewat event created di model User)
-        User::factory()->create([
-            'name'     => 'Member',
-            'email'    => 'member@sim.gym',
-            'password' => Hash::make('password'),
-            'role'     => 'user',
-        ]);
+        // Akun Member Demo
+        User::updateOrCreate(
+            ['email' => 'member@sim.gym'],
+            [
+                'name'     => 'Member Demo',
+                'username' => 'memberdemo',
+                'no_hp'    => '6304230003',
+                'password' => 'password',       // plain text, di-hash oleh model
+                'role'     => 'member',
+            ]
+        );
     }
 }

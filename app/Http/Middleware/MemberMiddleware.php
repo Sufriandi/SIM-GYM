@@ -22,7 +22,7 @@ class MemberMiddleware
         }
 
         // 2. Cek apakah role user adalah 'member'
-        if (Auth::user()->role === 'user') {
+        if (Auth::user()->role === 'member') {
             // Jika ya, lanjutkan ke request
             return $next($request);
         }
