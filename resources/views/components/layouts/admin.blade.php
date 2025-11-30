@@ -6,7 +6,7 @@
 ])
 
 <!DOCTYPE html>
-<html lang="id" class="h-full">
+<html lang="id" class="h-full overflow-x-hidden">
 <head>
     <meta charset="utf-8">
     <title>{{ $title }}</title>
@@ -17,18 +17,18 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="h-full bg-brand-bg text-text-main antialiased overflow-hidden">
-    <div class="h-screen flex bg-brand-bg">
-        {{-- SIDEBAR (FIXED) --}}
+<body class="min-h-screen bg-brand-bg text-text-main antialiased">
+    <div class="min-h-screen flex bg-brand-bg">
+        {{-- SIDEBAR (FIXED / DI DALAM KOMPONEN) --}}
         <x-admin.sidebar />
 
         {{-- WRAPPER KANAN (NAVBAR + CONTENT) --}}
-        <div class="flex-1 flex flex-col md:pl-64">
-            {{-- NAVBAR (FIXED) --}}
+        <div class="flex-1 flex flex-col md:pl-64 min-w-0">
+            {{-- NAVBAR (FIXED / STICKY DI DALAM KOMPONEN) --}}
             <x-admin.navbar :page-title="$pageTitle" :page-subtitle="$pageSubtitle" />
 
-            {{-- CONTENT (SCROLLABLE) --}}
-            <main class="flex-1 mt-20 px-4 lg:px-8 pb-8 overflow-y-auto custom-scrollbar">
+            {{-- CONTENT (SCROLLABLE, TANPA HORIZONTAL OVERFLOW) --}}
+            <main class="flex-1 mt-20 px-4 lg:px-8 pb-8 overflow-y-auto overflow-x-hidden custom-scrollbar">
                 {{ $slot }}
             </main>
         </div>

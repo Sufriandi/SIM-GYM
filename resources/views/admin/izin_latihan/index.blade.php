@@ -6,8 +6,10 @@
 
     $pageTitle = $pageTitle ?? 'Permintaan Izin Baru';
 
-    // Modal create otomatis terbuka kalau ada error validasi
-    $openCreateOnLoad = $errors->any() ? 'true' : 'false';
+    // Modal create otomatis terbuka kalau error di bag 'izin_manual'
+$openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any()
+    ? 'true'
+    : 'false';
 
     /**
      * Sumber data member untuk searchable dropdown di modal
@@ -15,23 +17,18 @@
     $sourceMembers = isset($membersForSelect)
         ? $membersForSelect
         : Member::with('user')
-            ->whereHas('user', function ($q) {
-                $q->where('role', 'user');
-            })
+            ->whereHas('user', fn($q) => $q->where('role', 'user'))
             ->orderBy('nama')
             ->get(['id', 'nama', 'username', 'user_id']);
 
-    $memberOptions = $sourceMembers
-        ->map(function ($m) {
-            return [
-                'id'    => $m->id,
-                'label' => $m->nama . ' (' . $m->username . ')',
-            ];
-        })
-        ->toArray();
+    $memberOptions = $sourceMembers->map(fn($m) => [
+        'id'    => $m->id,
+        'label' => $m->nama . ' (' . $m->username . ')',
+    ])->toArray();
 
     $oldMemberId    = old('member_id');
     $oldMemberLabel = '';
+
     if ($oldMemberId) {
         $found = collect($memberOptions)->firstWhere('id', (int) $oldMemberId);
         $oldMemberLabel = $found['label'] ?? '';
@@ -46,195 +43,295 @@
     {{-- FLASH MESSAGE --}}
     @if (session('success'))
         <div class="bg-primary-soft border border-primary text-primary-dark px-4 py-3 rounded relative mb-4">
-            <span class="block sm:inline">{{ session('success') }}</span>
+            <span>{{ session('success') }}</span>
         </div>
     @endif
     @if (session('error'))
         <div class="bg-danger-soft border border-danger text-danger px-4 py-3 rounded relative mb-4">
-            <span class="block sm:inline">{{ session('error') }}</span>
+            <span>{{ session('error') }}</span>
         </div>
     @endif
 
-    {{-- STATE UTAMA UNTUK MODAL CREATE + DETAIL + APPROVE --}}
-    <div
-        x-data="{
-            openCreate: {{ $openCreateOnLoad }},
-            openDetailId: null,  // ID izin yang sedang dibuka detailnya
-            openApproveId: null, // ID izin yang sedang dibuka approve form-nya
-        }"
-        x-on:open-izin-manual.window="openCreate = true"
-        x-on:close-izin-manual.window="openCreate = false"
-    >
-        {{-- HEADER HALAMAN --}}
+    {{-- MAIN WRAPPER (ALPINE ROOT) --}}
+<div
+    x-data="{
+        // === STATE UTAMA ===
+        openCreate: {{ $openCreateOnLoad }},
+        openDetailId: null,
+        openApproveId: null,
+
+        // Search realtime (frontend)
+        searchTerm: @js(request('q')),
+
+        // === STATE MODAL CREATE ===
+        members: @js($memberOptions),
+
+        create: {
+            memberSearch: @js($oldMemberLabel),
+            memberId: @js($oldMemberId),
+            jumlahHari: {{ json_encode(old('jumlah_hari', 1)) }},
+            tanggalMulai: '{{ old('tanggal_mulai', now()->toDateString()) }}',
+            keterangan: @js(old('keterangan')),
+        },
+
+        dropdownOpen: false,
+
+        fileUrl: null,
+        fileName: '',
+        fileType: '',
+
+        // === FUNCTIONS ===
+        openCreateModal() {
+            this.resetCreateForm();
+            this.openCreate = true;
+        },
+
+        closeCreateModal() {
+            this.openCreate = false;
+            this.resetCreateForm();
+        },
+
+        resetCreateForm() {
+            this.create.memberSearch = '';
+            this.create.memberId     = null;
+            this.create.jumlahHari   = 1;
+            this.create.tanggalMulai = '{{ now()->toDateString() }}';
+            this.create.keterangan   = '';
+
+            this.dropdownOpen = false;
+
+            this.fileUrl  = null;
+            this.fileName = '';
+            this.fileType = '';
+
+            if (this.$refs.buktiInput) {
+                this.$refs.buktiInput.value = null;
+            }
+        },
+
+        matchMember(m) {
+            if (!this.create.memberSearch) return true;
+            return m.label.toLowerCase().includes(this.create.memberSearch.toLowerCase());
+        },
+
+        selectMember(m) {
+            this.create.memberId     = m.id;
+            this.create.memberSearch = m.label;
+            this.dropdownOpen        = false;
+        },
+
+        handleFileChange(e) {
+            const file = e.target.files[0];
+            if (!file) {
+                this.fileUrl = null;
+                this.fileName = '';
+                this.fileType = '';
+                return;
+            }
+
+            this.fileName = file.name;
+            const mime  = file.type || '';
+            const lower = file.name.toLowerCase();
+
+            if (mime.startsWith('image/')) {
+                this.fileType = 'image';
+            } else if (mime === 'application/pdf' || lower.endsWith('.pdf')) {
+                this.fileType = 'pdf';
+            } else {
+                this.fileType = 'other';
+            }
+
+            if (this.fileType === 'image' || this.fileType === 'pdf') {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    this.fileUrl = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                this.fileUrl = null;
+            }
+        },
+    }"
+    x-on:open-izin-manual.window="openCreateModal()"
+    x-effect="
+        const main = document.querySelector('main');
+        const html = document.documentElement;
+        const body = document.body;
+        const locked = openCreate || openDetailId || openApproveId;
+
+        const targets = [html, body, main].filter(Boolean);
+
+        if (locked) {
+            targets.forEach((el) => {
+                if (el.dataset.prevOverflowY === undefined) {
+                    el.dataset.prevOverflowY = el.style.overflowY || '';
+                }
+                el.style.overflowY = 'hidden';
+            });
+        } else {
+            targets.forEach((el) => {
+                if (el.dataset.prevOverflowY !== undefined) {
+                    el.style.overflowY = el.dataset.prevOverflowY;
+                    delete el.dataset.prevOverflowY;
+                } else {
+                    el.style.removeProperty('overflow-y');
+                }
+            });
+        }
+    "
+>
+
         <x-ui.section-header
             :title="$pageTitle"
             subtitle="Permintaan izin yang belum diproses."
         />
 
-        {{-- GARIS PEMBATAS --}}
         <hr class="border-t border-brand-borderSoft mb-6">
 
-        {{-- ROW: SEARCH BAR (KIRI) & TOMBOL AKSI (KANAN) --}}
-        <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {{-- SEARCH + FILTER + ACTION --}}
+<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
 
-            {{-- SEARCH BAR + FILTER --}}
-            <div class="relative w-full max-w-md z-30" x-data="{ showFilter: false }">
-                <form action="{{ route('admin.izin_latihan.index') }}" method="GET">
-                    {{-- Container Input Gabungan --}}
-                    <div class="flex items-center w-full rounded-full border border-brand-borderSoft bg-brand-card shadow-sm focus-within:ring-2 focus-within:ring-primary-dark/50 transition-all hover:border-brand-borderSoft/80">
-                        {{-- Icon Search --}}
-                        <div class="pl-4 text-text-muted">
-                            <i data-lucide="search" class="w-5 h-5"></i>
-                        </div>
+    {{-- SEARCH + FILTER --}}
+    <div
+        class="relative w-full max-w-md"
+        x-data="{
+            showFilter: false,
+        }"
+    >
+        <form action="{{ route('admin.izin_latihan.index') }}" method="GET" x-ref="searchForm">
+            {{-- Wrapper Input --}}
+            <div class="flex items-center w-full rounded-full border border-brand-borderSoft bg-brand-card shadow-sm h-[42px]">
+                <div class="pl-4 text-text-muted">
+                    <i data-lucide="search" class="w-5 h-5"></i>
+                </div>
 
-                        {{-- Input Text --}}
-                        <input
-                            type="text"
-                            name="q"
-                            value="{{ request('q') }}"
-                            placeholder="Cari nama member..."
-                            class="w-full bg-transparent border-none text-sm text-text-main placeholder:text-text-muted/50 focus:ring-0 py-3 pl-3 pr-2 rounded-l-full"
-                            autocomplete="off"
-                        >
+                <input
+                    type="text"
+                    name="q"
+                    x-model="searchTerm"
+                    placeholder="Cari nama member..."
+                    class="w-full bg-transparent border-none text-sm text-text-main placeholder:text-text-muted/50 focus:ring-0 py-2 pl-3 pr-2 rounded-l-full"
+                    @keydown.enter.prevent
+                >
 
-                        {{-- Divider Vertical --}}
-                        <div class="h-6 w-px bg-brand-borderSoft mx-1"></div>
+                <div class="h-6 w-px bg-brand-borderSoft mx-1"></div>
 
-                        {{-- Tombol Filter Toggle --}}
-                        <button
-                            type="button"
-                            @click="showFilter = !showFilter"
-                            class="flex items-center gap-2 px-5 py-2 text-sm font-medium text-text-muted hover:text-text-main transition-colors mr-1 rounded-full hover:bg-brand-surface-50"
-                            :class="showFilter ? 'text-gold-600 bg-brand-surface-50' : ''"
-                        >
-                            <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
-                            <span class="hidden sm:inline">Filter</span>
-                        </button>
-
-                        {{-- Hidden Submit (untuk enter key) --}}
-                        <button type="submit" class="hidden"></button>
-                    </div>
-
-                    {{-- POPUP DROPDOWN FILTER --}}
-                    <div
-                        x-show="showFilter"
-                        x-cloak
-                        @click.outside="showFilter = false"
-                        x-transition:enter="transition ease-out duration-200"
-                        x-transition:enter-start="opacity-0 translate-y-2"
-                        x-transition:enter-end="opacity-100 translate-y-0"
-                        x-transition:leave="transition ease-in duration-150"
-                        x-transition:leave-start="opacity-100 translate-y-0"
-                        x-transition:leave-end="opacity-0 translate-y-2"
-                        class="absolute top-full left-0 right-0 mt-3 bg-brand-card border border-brand-borderSoft rounded-2xl shadow-xl p-5"
-                    >
-                        <div class="space-y-4">
-                            <div class="flex justify-between items-center pb-2 border-b border-brand-borderSoft/50">
-                                <h4 class="text-sm font-semibold text-text-main">Filter Lanjutan</h4>
-                                <a href="{{ route('admin.izin_latihan.index') }}" class="text-xs text-danger hover:underline">Reset</a>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-4">
-                                {{-- Filter Tanggal Mulai --}}
-                                <div>
-                                    <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">Dari Tanggal</label>
-                                    <input
-                                        type="date"
-                                        name="start_date"
-                                        value="{{ request('start_date') }}"
-                                        class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark"
-                                    >
-                                </div>
-                                {{-- Filter Tanggal Akhir --}}
-                                <div>
-                                    <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">Sampai Tanggal</label>
-                                    <input
-                                        type="date"
-                                        name="end_date"
-                                        value="{{ request('end_date') }}"
-                                        class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark"
-                                    >
-                                </div>
-                            </div>
-
-                            {{-- Filter Urutan --}}
-                            <div>
-                                <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">Urutan</label>
-                                <select name="sort" class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark">
-                                    <option value="newest" {{ request('sort') == 'newest' ? 'selected' : '' }}>Terbaru (Default)</option>
-                                    <option value="oldest" {{ request('sort') == 'oldest' ? 'selected' : '' }}>Terlama</option>
-                                </select>
-                            </div>
-
-                            <button type="submit" class="w-full bg-primary-dark hover:bg-primary-dark/90 text-white text-sm font-medium py-2 rounded-lg transition shadow-md">
-                                Terapkan Filter
-                            </button>
-                        </div>
-                    </div>
-                </form>
+                {{-- BUTTON FILTER --}}
+                <button
+                    type="button"
+                    @click="showFilter = !showFilter"
+                    class="flex items-center gap-2 px-5 py-2 text-sm font-medium text-text-muted hover:text-text-main mr-1 rounded-full hover:bg-brand-surface-50"
+                >
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Filter</span>
+                </button>
             </div>
 
-            {{-- TOMBOL AKSI KANAN --}}
-            <div class="flex items-center gap-2 justify-end">
-                <x-ui.button-primary type="button" @click="$dispatch('open-izin-manual')">
-                    <i data-lucide="plus" class="w-5 h-5 mr-1"></i>
-                    Tambah Manual
-                </x-ui.button-primary>
+            {{-- FILTER DROPDOWN --}}
+            <div
+                x-show="showFilter"
+                x-cloak
+                @click.outside="showFilter = false"
+                class="absolute top-[48px] left-0 w-full bg-brand-card border border-brand-borderSoft rounded-2xl shadow-xl p-5 z-10"
+            >
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center pb-2 border-b border-brand-borderSoft/50">
+                        <h4 class="text-sm font-semibold text-text-main">Filter & Urutan</h4>
+                        <a href="{{ route('admin.izin_latihan.index') }}" class="text-xs text-danger hover:underline">
+                            Reset
+                        </a>
+                    </div>
 
-                <a href="{{ route('admin.izin_latihan.history') }}">
-                    <x-ui.button-secondary>
-                        <i data-lucide="history" class="w-4 h-4 mr-1"></i>
-                        Riwayat
-                    </x-ui.button-secondary>
-                </a>
+                    {{-- URUTKAN BERDASARKAN --}}
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">
+                            Urutkan berdasarkan
+                        </label>
+                        <select
+                            name="sort"
+                            class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2"
+                        >
+                            <option value="newest" {{ request('sort', 'newest') == 'newest' ? 'selected' : '' }}>
+                                Waktu pengajuan · Terbaru
+                            </option>
+                            <option value="oldest" {{ request('sort') == 'oldest' ? 'selected' : '' }}>
+                                Waktu pengajuan · Terlama
+                            </option>
+                            <option value="days_max" {{ request('sort') == 'days_max' ? 'selected' : '' }}>
+                                Hari diajukan · Terbanyak
+                            </option>
+                            <option value="days_min" {{ request('sort') == 'days_min' ? 'selected' : '' }}>
+                                Hari diajukan · Tersedikit
+                            </option>
+                        </select>
+
+                        <p class="text-[10px] text-text-muted mt-1">
+                            Pilih apakah ingin lihat izin terbaru, terlama, atau berdasarkan banyaknya hari yang diajukan.
+                        </p>
+                    </div>
+
+                    <button type="submit" class="w-full bg-primary-dark text-white text-sm font-medium py-2 rounded-lg">
+                        Terapkan
+                    </button>
+                </div>
             </div>
-        </div>
+        </form>
+    </div>
 
-        {{-- CARD UTAMA: TABEL PERMINTAAN IZIN PENDING --}}
-        <x-ui.card
-            class="border-brand-borderSoft"
-        >
-            {{-- Slot Header Card (Optional) --}}
+    {{-- ACTION BUTTONS --}}
+    <div class="flex items-center gap-2">
+        <x-ui.button-primary type="button" @click="openCreateModal()">
+            <i data-lucide="plus" class="w-5 h-5 mr-1"></i>
+            Tambah Manual
+        </x-ui.button-primary>
+
+        <a href="{{ route('admin.izin_latihan.history') }}">
+            <x-ui.button-secondary>
+                <i data-lucide="history" class="w-4 h-4 mr-1"></i>
+                Riwayat
+            </x-ui.button-secondary>
+        </a>
+    </div>
+</div>
+
+
+        {{-- TABLE --}}
+        <x-ui.card class="border-brand-borderSoft">
             <div class="px-6 py-4 border-b border-brand-borderSoft flex items-center justify-between">
                 <div>
                     <h3 class="text-lg font-bold text-text-main">Daftar Permintaan Izin</h3>
                     <p class="text-xs text-text-muted mt-0.5">Semua permintaan izin yang masih menunggu tindakan.</p>
                 </div>
-                {{-- Badge Total --}}
+
                 <div class="bg-brand-surface-50 border border-brand-borderSoft px-3 py-1 rounded-full">
-                    <span class="text-xs font-semibold text-text-main">{{ $daftar_izin->total() }} Pending</span>
+                    <span class="text-xs font-semibold text-text-main">
+                        {{ $daftar_izin->total() }} Pending
+                    </span>
                 </div>
             </div>
 
-            <div class="w-full">
-                <table class="w-full border-collapse text-xs md:text-sm md:min-w-[900px]">
+            <div class="w-full overflow-x-auto custom-scrollbar">
+                <table class="w-full border-collapse text-xs md:text-sm md:min-w-[800px]">
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
-                            {{-- NO --}}
                             <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[6%]">
                                 No
                             </th>
-                            {{-- MEMBER --}}
                             <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
                                 Member
                             </th>
-                            {{-- HARI DIAJUKAN --}}
                             <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
                                 Hari Diajukan
                             </th>
-                            {{-- TGL MULAI --}}
                             <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
                                 Tgl Mulai
                             </th>
-                            {{-- STATUS --}}
                             <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
                                 Status
                             </th>
-                            {{-- ALASAN --}}
                             <th class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted">
                                 Alasan
                             </th>
-                            {{-- AKSI --}}
                             <th class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted">
                                 Aksi
                             </th>
@@ -243,14 +340,22 @@
 
                     <tbody class="divide-y divide-brand-borderSoft/80">
                         @forelse ($daftar_izin as $izin)
-                            {{-- h-24 → baris sedikit lebih tinggi supaya tooltip tidak nempel garis --}}
-                            <tr class="hover:bg-brand-surface-50 transition-colors duration-150 h-24">
-                                {{-- NO (global pagination) --}}
+                           <tr
+            x-data="{
+                memberName: @js($izin->member?->nama ?? ''),
+                memberUsername: @js($izin->member?->username ?? ''),
+            }"
+            x-show="
+                !searchTerm
+                || memberName.toLowerCase().startsWith(searchTerm.toLowerCase())
+                || memberUsername.toLowerCase().startsWith(searchTerm.toLowerCase())
+            "
+            class="hover:bg-brand-surface-50 transition-colors duration-150 h-24"
+        >
                                 <td class="p-3 text-center align-middle text-xs text-text-muted">
                                     {{ $loop->iteration + ($daftar_izin->currentPage() - 1) * $daftar_izin->perPage() }}
                                 </td>
 
-                                {{-- MEMBER --}}
                                 <td class="p-3 text-left align-middle">
                                     <div class="text-sm {{ $izin->member ? 'text-text-main' : 'text-danger italic' }}">
                                         {{ $izin->member?->nama ?? '[Member Dihapus]' }}
@@ -262,35 +367,30 @@
                                     @endif
                                 </td>
 
-                                {{-- HARI DIAJUKAN --}}
                                 <td class="p-3 text-center align-middle">
                                     <span class="text-sm font-semibold text-text-main">
                                         {{ $izin->jumlah_hari }} Hari
                                     </span>
                                 </td>
 
-                                {{-- TANGGAL MULAI --}}
                                 <td class="p-3 text-center align-middle">
                                     <span class="text-sm text-text-muted">
                                         {{ \Carbon\Carbon::parse($izin->tanggal_mulai)->format('d M Y') }}
                                     </span>
                                 </td>
 
-                                {{-- STATUS --}}
                                 <td class="p-3 text-center align-middle">
                                     <x-ui.badge variant="warning">
                                         Pending
                                     </x-ui.badge>
                                 </td>
 
-                                {{-- ALASAN (1 baris, truncate, kalau kosong jadi '-') --}}
                                 <td class="p-3 text-left align-middle max-w-[220px]">
                                     <div class="text-xs text-text-muted line-clamp-1 overflow-hidden text-ellipsis whitespace-nowrap">
                                         {{ $izin->alasan ? Str::limit($izin->alasan, 80) : '-' }}
                                     </div>
                                 </td>
 
-                                {{-- AKSI --}}
                                 <td class="px-3 py-4 align-middle w-[16%] min-w-[140px]">
                                     <div class="flex items-center justify-center gap-4 h-full">
                                         {{-- DETAIL --}}
@@ -371,7 +471,7 @@
                         @empty
                             <tr>
                                 <td colspan="7" class="p-6 text-center text-text-muted italic">
-                                    Tidak ada permintaan izin baru yang perlu diproses.
+                                    Tidak ada permintaan izin baru.
                                 </td>
                             </tr>
                         @endforelse
@@ -379,7 +479,6 @@
                 </table>
             </div>
 
-            {{-- PAGINATION (compact) --}}
             <div class="mt-6">
                 {{ $daftar_izin->onEachSide(1)->links() }}
             </div>
@@ -389,83 +488,17 @@
         {{-- MODAL TAMBAH IZIN MANUAL     --}}
         {{-- ============================ --}}
         <div
-            x-show="openCreate"
-            x-cloak
-            x-transition
-            class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
-            @click.self="$dispatch('close-izin-manual')"
-        >
+    x-show="openCreate"
+    x-cloak
+    x-transition
+    class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
+    @click.self="closeCreateModal()"
+    @wheel.prevent
+    @touchmove.prevent
+>
+
             <div
                 class="relative w-full max-w-4xl rounded-3xl shadow-2xl border border-brand-borderSoft bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell"
-                x-data="{
-                    // member searchable
-                    members: @js($memberOptions),
-                    search: @js($oldMemberLabel),
-                    selectedId: @js($oldMemberId),
-                    dropdownOpen: false,
-
-                    // file preview
-                    fileUrl: null,
-                    fileName: '',
-                    fileType: '',
-
-                    matchMember(m) {
-                        if (!this.search) return true;
-                        return m.label.toLowerCase().includes(this.search.toLowerCase());
-                    },
-
-                    selectMember(m) {
-                        this.selectedId = m.id;
-                        this.search = m.label;
-                        this.dropdownOpen = false;
-                    },
-
-                    handleFileChange(e) {
-                        const file = e.target.files[0];
-                        if (!file) {
-                            this.fileUrl = null;
-                            this.fileName = '';
-                            this.fileType = '';
-                            return;
-                        }
-
-                        this.fileName = file.name;
-                        const mime = file.type || '';
-                        const lower = file.name.toLowerCase();
-
-                        if (mime.startsWith('image/')) {
-                            this.fileType = 'image';
-                        } else if (mime === 'application/pdf' || lower.endsWith('.pdf')) {
-                            this.fileType = 'pdf';
-                        } else {
-                            this.fileType = 'other';
-                        }
-
-                        if (this.fileType === 'image' || this.fileType === 'pdf') {
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                                this.fileUrl = ev.target.result;
-                            };
-                            reader.readAsDataURL(file);
-                        } else {
-                            this.fileUrl = null;
-                        }
-                    },
-
-                    resetForm() {
-                        this.search = '';
-                        this.selectedId = null;
-                        this.dropdownOpen = false;
-                        this.fileUrl = null;
-                        this.fileName = '';
-                        this.fileType = '';
-                    },
-
-                    closeModal() {
-                        this.resetForm();
-                        this.$dispatch('close-izin-manual');
-                    }
-                }"
             >
                 {{-- HEADER MODAL --}}
                 <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
@@ -476,7 +509,7 @@
                     <button
                         type="button"
                         class="rounded-full p-1.5 hover:bg-brand-surface-50 transition"
-                        @click="closeModal()"
+                        @click="closeCreateModal()"
                     >
                         <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
                     </button>
@@ -552,14 +585,14 @@
                                                 <input
                                                     type="text"
                                                     id="member_search"
-                                                    x-model="search"
+                                                    x-model="create.memberSearch"
                                                     @focus="dropdownOpen = true"
                                                     @input="dropdownOpen = true"
                                                     placeholder="Cari nama / username member..."
                                                     autocomplete="off"
                                                     class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
                                                 >
-                                                <input type="hidden" name="member_id" :value="selectedId ?? ''">
+                                                <input type="hidden" name="member_id" :value="create.memberId ?? ''">
 
                                                 {{-- DROPDOWN --}}
                                                 <div
@@ -584,9 +617,9 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            @error('member_id')
-                                                <p class="text-xs text-danger mt-1">{{ $message }}</p>
-                                            @enderror
+                                            @error('member_id', 'izin_manual')
+    <p class="text-xs text-danger mt-1">{{ $message }}</p>
+@enderror
                                             <p class="text-[11px] text-text-muted">
                                                 Ketik sebagian nama / username lalu klik salah satu hasil.
                                             </p>
@@ -599,17 +632,35 @@
                                                 type="number"
                                                 id="jumlah_hari_create"
                                                 name="jumlah_hari"
-                                                value="{{ old('jumlah_hari', 1) }}"
+                                                x-model.number="create.jumlahHari"
                                                 min="1"
                                                 max="30"
                                                 required
                                                 class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
+                                                oninput="
+                                                    // setiap ngetik, reset pesan custom
+                                                    this.setCustomValidity('');
+                                                "
+                                                oninvalid="
+                                                    // reset dulu
+                                                    this.setCustomValidity('');
+
+                                                    // kalau kosong
+                                                    if (this.validity.valueMissing) {
+                                                        this.setCustomValidity('Jumlah hari wajib diisi.');
+                                                    }
+                                                    // kalau di bawah min atau di atas max
+                                                    else if (this.validity.rangeUnderflow || this.validity.rangeOverflow) {
+                                                        this.setCustomValidity('Jumlah hari minimal 1 dan maksimal 30.');
+                                                    }
+                                                "
                                             >
-                                            @error('jumlah_hari')
+                                            @error('jumlah_hari', 'izin_manual')
                                                 <p class="text-xs text-danger mt-1">{{ $message }}</p>
                                             @enderror
                                         </div>
                                     </div>
+
 
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {{-- TANGGAL MULAI --}}
@@ -619,11 +670,11 @@
                                                 type="date"
                                                 id="tanggal_mulai_create"
                                                 name="tanggal_mulai"
-                                                value="{{ old('tanggal_mulai', now()->toDateString()) }}"
+                                                x-model="create.tanggalMulai"
                                                 required
                                                 class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
                                             >
-                                            @error('tanggal_mulai')
+                                            @error('tanggal_mulai', 'izin_manual')
                                                 <p class="text-xs text-danger mt-1">{{ $message }}</p>
                                             @enderror
                                         </div>
@@ -636,10 +687,11 @@
                                                 id="bukti_alasan_create"
                                                 name="bukti_alasan"
                                                 accept="image/*,.pdf,.doc,.docx"
+                                                x-ref="buktiInput"
                                                 class="block w-full text-sm text-text-main file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gold-600 file:text-white hover:file:bg-gold-700"
                                                 @change="handleFileChange($event)"
                                             >
-                                            @error('bukti_alasan')
+                                            @error('bukti_alasan', 'izin_manual')
                                                 <p class="text-xs text-danger mt-1">{{ $message }}</p>
                                             @enderror
                                             <p class="text-[11px] text-text-muted mt-1">
@@ -655,10 +707,11 @@
                                             id="keterangan_create"
                                             name="keterangan"
                                             rows="3"
+                                            x-model="create.keterangan"
                                             class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
                                             placeholder="Contoh: Izin karena sakit, melampirkan surat dokter."
-                                        >{{ old('keterangan') }}</textarea>
-                                        @error('keterangan')
+                                        ></textarea>
+                                        @error('keterangan', 'izin_manual')
                                             <p class="text-xs text-danger mt-1">{{ $message }}</p>
                                         @enderror
                                     </div>
@@ -667,7 +720,7 @@
                         </div>
 
                         <div class="flex items-center justify-end gap-2 pt-3">
-                            <x-ui.button-secondary type="button" @click="closeModal()">
+                            <x-ui.button-secondary type="button" @click="closeCreateModal()">
                                 Batal
                             </x-ui.button-secondary>
                             <x-ui.button-primary type="submit">

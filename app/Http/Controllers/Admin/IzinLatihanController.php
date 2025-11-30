@@ -23,30 +23,94 @@ class IzinLatihanController extends Controller
      * Menampilkan daftar permintaan izin yang HANYA berstatus 'pending'.
      * Sekaligus mengirim daftar member (hanya role "user") untuk dropdown tambah izin manual.
      */
-    public function index()
-    {
-        $pageTitle = 'Permintaan Izin Baru';
+    public function index(Request $request)
+{
+    $pageTitle = 'Permintaan Izin Baru';
 
-        // Daftar izin pending
-        $daftar_izin = IzinLatihan::with('member')
-            ->where('status', 'pending')
-            ->orderBy('created_at', 'asc')
-            ->paginate(15);
+    /*
+    |--------------------------------------------------------------------------
+    | QUERY DASAR: Hanya izin pending
+    |--------------------------------------------------------------------------
+    */
+    $query = IzinLatihan::with('member')
+        ->where('status', 'pending');
 
-        // Daftar member untuk dropdown (hanya user dengan role = 'user', sesuaikan kalau pakai 'member')
-        $membersForSelect = Member::with('user')
-            ->whereHas('user', function ($q) {
-                $q->where('role', 'user');
-            })
-            ->orderBy('nama')
-            ->get(['id', 'nama', 'username', 'user_id']);
+    /*
+    |--------------------------------------------------------------------------
+    | SEARCH (q = nama member / username)
+    |--------------------------------------------------------------------------
+    */
+    if ($request->filled('q')) {
+    $search = trim($request->q);
 
-        return view('admin.izin_latihan.index', compact(
-            'daftar_izin',
-            'pageTitle',
-            'membersForSelect',
-        ));
-    }
+    $query->whereHas('member', function ($q2) use ($search) {
+        $q2->where('nama', 'like', $search . '%')
+           ->orWhere('username', 'like', $search . '%');
+    });
+}
+
+    
+
+    /*
+    |--------------------------------------------------------------------------
+    | SORTING
+    |--------------------------------------------------------------------------
+    */
+    $sort = $request->sort ?? 'newest';
+
+switch ($sort) {
+    case 'oldest':
+        $query->orderBy('created_at', 'asc');
+        break;
+
+    case 'days_max':
+        $query->orderBy('jumlah_hari', 'desc')
+              ->orderBy('created_at', 'desc'); // tie breaker
+        break;
+
+    case 'days_min':
+        $query->orderBy('jumlah_hari', 'asc')
+              ->orderBy('created_at', 'desc');
+        break;
+
+    case 'newest':
+    default:
+        $query->orderBy('created_at', 'desc');
+        break;
+}
+
+$query->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc');
+
+    /*
+    |--------------------------------------------------------------------------
+    | FINAL RESULT (paginasi dengan query string agar filter tidak hilang)
+    |--------------------------------------------------------------------------
+    */
+    $daftar_izin = $query->paginate(15)->withQueryString();
+
+    /*
+    |--------------------------------------------------------------------------
+    | DAFTAR MEMBER UNTUK MODAL TAMBAH MANUAL
+    |--------------------------------------------------------------------------
+    */
+    $membersForSelect = Member::with('user')
+        ->whereHas('user', function ($q) {
+            $q->where('role', 'user');
+        })
+        ->orderBy('nama')
+        ->get(['id', 'nama', 'username', 'user_id']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | RETURN VIEW
+    |--------------------------------------------------------------------------
+    */
+    return view('admin.izin_latihan.index', compact(
+        'daftar_izin',
+        'pageTitle',
+        'membersForSelect',
+    ));
+}
 
     /**
      * Admin menambahkan izin manual (member izin di tempat, tidak lewat akun member).
@@ -64,14 +128,28 @@ class IzinLatihanController extends Controller
      */
     public function storeManual(Request $request)
 {
-    // 1. VALIDASI
-    $validated = $request->validate([
-        'member_id'     => 'required|exists:members,id',
-        'jumlah_hari'   => 'required|integer|min:1|max:30',
-        'tanggal_mulai' => 'required|date',
-        'bukti_alasan'  => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:2048',
-        'keterangan'    => 'nullable|string|max:5000', // disimpan ke kolom "alasan"
-    ]);
+    // 1. VALIDASI + CUSTOM MESSAGE
+    $validated = $request->validateWithBag('izin_manual', 
+        [
+            'member_id'     => 'required|exists:members,id',
+            'jumlah_hari'   => 'required|integer|min:1|max:30',
+            'tanggal_mulai' => 'required|date',
+            'bukti_alasan'  => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:2048',
+            'keterangan'    => 'nullable|string|max:5000',
+        ],
+        [
+            'member_id.required'     => 'Silakan pilih member terlebih dahulu.',
+            'member_id.exists'       => 'Member yang dipilih tidak ditemukan.',
+            'jumlah_hari.required'   => 'Jumlah hari wajib diisi.',
+            'jumlah_hari.integer'    => 'Jumlah hari harus berupa angka.',
+            'jumlah_hari.min'        => 'Jumlah hari minimal 1 hari.',
+            'jumlah_hari.max'        => 'Jumlah hari maksimal 30 hari.',
+            'tanggal_mulai.required' => 'Tanggal mulai wajib diisi.',
+            'tanggal_mulai.date'     => 'Format tanggal mulai tidak valid.',
+            'bukti_alasan.max'       => 'Ukuran file maksimal 2MB.',
+            'bukti_alasan.mimes'     => 'Format file harus JPG, JPEG, PNG, PDF, DOC, atau DOCX.',
+        ]
+    );
 
     // pastikan integer beneran (bukan string)
     $jumlahHari = (int) $validated['jumlah_hari'];

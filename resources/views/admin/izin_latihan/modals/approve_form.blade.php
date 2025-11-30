@@ -27,10 +27,10 @@
     @click.self="openApproveId = null"
 >
     <div
-        class="relative w-full max-w-6xl rounded-3xl shadow-2xl border border-brand-borderSoft
-               bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell
-               overflow-hidden flex flex-col"
-    >
+    class="relative w-full max-w-6xl max-h-[90vh] rounded-3xl shadow-2xl border border-brand-borderSoft
+           bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell
+           overflow-hidden flex flex-col"
+>
         {{-- HEADER MODAL --}}
         <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
             <div>
@@ -53,8 +53,8 @@
         </div>
 
         {{-- ISI MODAL --}}
-        <div class="p-6 pb-5">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+        <div class="px-6 pb-5 pt-4 overflow-y-auto custom-scrollbar">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
 
                 {{-- =========================== --}}
                 {{-- KOLOM KIRI: DATA + ALASAN + BUKTI --}}
