@@ -41,11 +41,7 @@ $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any(
     page-subtitle="Permintaan izin yang belum diproses."
 >
     {{-- FLASH MESSAGE --}}
-    @if (session('success'))
-        <div class="bg-primary-soft border border-primary text-primary-dark px-4 py-3 rounded relative mb-4">
-            <span>{{ session('success') }}</span>
-        </div>
-    @endif
+    {{-- SUCCESS sengaja TIDAK ditampilkan di sini karena sudah pakai toast global --}}
     @if (session('error'))
         <div class="bg-danger-soft border border-danger text-danger px-4 py-3 rounded relative mb-4">
             <span>{{ session('error') }}</span>
