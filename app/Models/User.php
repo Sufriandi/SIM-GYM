@@ -19,7 +19,9 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'username',
         'email',
+        'no_hp',
         'password',
         'role',
     ];
@@ -54,25 +56,19 @@ class User extends Authenticatable
         parent::boot();
 
         static::created(function ($user) {
-            // Kolom unik seperti 'no_hp', 'alamat', 'tanggal_mulai', dll., diabaikan di sini
-            // dan akan diisi di proses Onboarding.
             Member::create([
                 'user_id' => $user->id,
                 'nama' => $user->name,
-                'username' => explode('@', $user->email)[0],
-                'email' => $user->email,
-                'password' => $user->password,
+                'tanggal_daftar' => now(),
                 'status' => 'aktif',
-                'tanggal_daftar' => now()->toDateString(), // Mengisi tanggal daftar default
-                // Kolom lain otomatis NULL karena tidak dimasukkan
             ]);
         });
     }
 
+
     // Relasi: User memiliki 1 member
     public function member()
     {
-        // Terhubung ke 'user_id' di tabel 'members'
-        return $this->hasOne(Member::class, 'user_id');
+        return $this->hasOne(Member::class);
     }
 }

@@ -13,11 +13,8 @@ class Member extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'nama',
-        'username',
-        'email',
-        'password',
-        'no_hp',
         'alamat',
         'jenis_kelamin',
         'tanggal_daftar',
@@ -25,7 +22,7 @@ class Member extends Model
         'tanggal_akhir',
         'foto',
         'status',
-        'user_id',
+        'qr_code_token',
     ];
 
     // protected static function boot()
@@ -71,7 +68,7 @@ class Member extends Model
     //     });
     // }
     // Relasi: Member dimiliki oleh 1 user
-    public function user()
+   public function user()
     {
         return $this->belongsTo(User::class);
     }
