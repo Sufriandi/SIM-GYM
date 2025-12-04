@@ -1,186 +1,154 @@
-{{-- resources/views/admin/izin_latihan/modals/detail.blade.php --}}
-@php
-    use Illuminate\Support\Facades\Storage;
-@endphp
-
-@props(['izin'])
-
+{{-- MODAL DETAIL INVENTARIS --}}
 <div
-    x-show="openDetailId === {{ $izin->id }}"
+    x-show="openDetail"
     x-cloak
     x-transition
     class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
-    @click.self="openDetailId = null"
-    @keydown.escape.window="openDetailId = null"
+    @click.self="openDetail = false"
+    @keydown.escape.window="openDetail = false"
 >
     <div
         class="relative w-full max-w-5xl rounded-3xl shadow-2xl border border-brand-borderSoft
                bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell
                max-h-[90vh] overflow-y-auto custom-scrollbar"
     >
-        {{-- HEADER MODAL --}}
+        {{-- HEADER --}}
         <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
             <div>
-                <h2 class="text-xl font-semibold text-text-main">Detail Izin Member</h2>
+                <h2 class="text-xl font-semibold text-text-main">
+                    Detail Inventaris
+                </h2>
                 <p class="text-sm text-text-muted mt-0.5">
-                    Lihat informasi lengkap pengajuan izin latihan.
+                    Informasi lengkap alat dan kondisinya.
                 </p>
             </div>
-
-            <div class="flex items-center gap-3">
-                
-
-                <button
-                    type="button"
-                    class="rounded-full p-1.5 hover:bg-brand-surface-50 transition"
-                    @click="openDetailId = null"
-                >
-                    <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
-                </button>
-            </div>
+            <button
+                type="button"
+                class="rounded-full p-1.5 hover:bg-brand-surface-50 transition"
+                @click="openDetail = false"
+            >
+                <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
+            </button>
         </div>
 
         {{-- ISI MODAL --}}
         <div class="px-6 pb-6 pt-4">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {{-- KIRI: DATA PENGAJUAN & ALASAN --}}
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                {{-- KIRI: DATA ALAT & DESKRIPSI (disamakan dengan layout coach) --}}
                 <div class="lg:col-span-2 space-y-4">
-                    {{-- DATA PENGAJUAN --}}
-                    <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-5 py-4">
-                        <h3 class="text-base font-semibold text-text-main mb-1">
-                            Data Pengajuan Izin
+                    {{-- DATA ALAT --}}
+                    <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-5 py-3">
+                        <h3 class="text-sm font-semibold text-text-main mb-1">
+                            Data Alat
                         </h3>
-                        <p class="text-xs text-text-muted mb-4">
-                            Detail permintaan izin yang diajukan member.
+                        <p class="text-xs text-text-muted mb-3">
+                            Detail informasi alat yang terdaftar.
                         </p>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
-                                <p class="text-xs text-text-muted">Durasi Diajukan</p>
-                                <p class="text-lg font-semibold text-text-main">
-                                    {{ $izin->jumlah_hari }} Hari
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {{-- NAMA ALAT --}}
+                            <div class="min-w-0">
+                                <p class="text-[11px] text-text-muted mb-0.5">
+                                    Nama Alat
+                                </p>
+                                <p class="text-base font-semibold text-text-main break-words whitespace-normal leading-snug">
+                                    <span x-text="detailItem ? detailItem.nama : ''"></span>
                                 </p>
                             </div>
-                            <div>
-                                <p class="text-xs text-text-muted">Tanggal Mulai</p>
-                                <p class="text-lg text-text-main">
-                                    {{ \Carbon\Carbon::parse($izin->tanggal_mulai)->translatedFormat('d F Y') }}
+
+                            {{-- KONDISI (badge dengan titik, tetap dipertahankan) --}}
+                            <div class="min-w-0">
+                                <p class="text-[11px] text-text-muted mb-0.5">
+                                    Kondisi
                                 </p>
-                            </div>
-                            <div>
-                                <p class="text-xs text-text-muted">Tanggal Selesai</p>
-                                <p class="text-lg text-text-main">
-                                    {{ \Carbon\Carbon::parse($izin->tanggal_selesai)->translatedFormat('d F Y') }}
-                                </p>
+                                <div class="flex items-center">
+                                    <p
+                                        class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold"
+                                        :class="{
+                                            'bg-success-soft text-success-dark': detailItem && detailItem.kondisi === 'Baik',
+                                            'bg-warning-soft text-warning-dark': detailItem && detailItem.kondisi === 'Maintenance',
+                                            'bg-danger-soft text-danger-dark': detailItem && detailItem.kondisi === 'Rusak'
+                                        }"
+                                    >
+                                        <span
+                                            class="inline-block w-2 h-2 rounded-full mr-2"
+                                            :class="{
+                                                'bg-emerald-500': detailItem && detailItem.kondisi === 'Baik',
+                                                'bg-amber-500': detailItem && detailItem.kondisi === 'Maintenance',
+                                                'bg-rose-500': detailItem && detailItem.kondisi === 'Rusak'
+                                            }"
+                                        ></span>
+
+                                        <span x-text="detailItem ? detailItem.kondisi : ''"></span>
+                                    </p>
+                                </div>
                             </div>
                         </div>
-
-                        @if ($izin->member)
-                            <div class="mt-5 pt-4 border-t border-brand-borderSoft/70">
-                                <p class="text-xs text-text-muted">Akhir Membership</p>
-                                <p class="text-lg font-semibold text-gold-700">
-                                    {{ \Carbon\Carbon::parse($izin->member->tanggal_akhir)->translatedFormat('d F Y') }}
-                                </p>
-                            </div>
-                        @endif
                     </div>
 
-                    {{-- ALASAN MEMBER --}}
-                    <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-5 py-4">
-                        <h3 class="text-base font-semibold text-text-main mb-2">
-                            Alasan Pengajuan Member
+                    {{-- DESKRIPSI ALAT (kartu kedua, sama pola dengan Deskripsi / Keahlian Coach) --}}
+                    <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-5 py-3">
+                        <h3 class="text-sm font-semibold text-text-main mb-2">
+                            Deskripsi Alat
                         </h3>
 
-                        @php
-                            // Ambil teks asli
-                            $alasanRaw = $izin->alasan ?? '';
-
-                            // Trim spasi & newline di awal/akhir
-                            $alasanTrimmed = trim($alasanRaw);
-
-                            // Jika setelah trim masih ada isi, convert newline -> <br>, kalau kosong tampilkan '-'
-                            $alasanHtml = $alasanTrimmed !== ''
-                                ? nl2br(e($alasanTrimmed))
-                                : '-';
-                        @endphp
-
-                        <div class="mt-1 p-3 rounded-xl bg-brand-surface-50 border border-brand-borderSoft text-sm text-text-main min-h-[80px]">
-                            {!! $alasanHtml !!}
+                        <div
+                            class="mt-1 p-3 rounded-xl bg-brand-surface-50 border border-brand-borderSoft
+                                   text-sm text-text-main min-h-[80px] break-words whitespace-normal leading-relaxed"
+                        >
+                            <p class="leading-relaxed break-words">
+                                <span
+                                    x-text="
+                                        detailItem && detailItem.deskripsi
+                                            ? detailItem.deskripsi
+                                            : 'Belum ada deskripsi untuk alat ini.'
+                                    "
+                                ></span>
+                            </p>
                         </div>
                     </div>
                 </div>
 
-                {{-- KANAN: BUKTI & AKSI --}}
+                {{-- KANAN: FOTO ALAT (disamakan dengan kartu Foto Coach) --}}
                 <div class="space-y-4">
-                    {{-- BUKTI ALASAN --}}
-                    <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-5 py-4">
-                        <h3 class="text-base font-semibold text-text-main mb-3">
-                            Bukti Alasan
-                        </h3>
-
-                        @if ($izin->bukti_alasan)
-                            @php
-                                $url = Storage::url($izin->bukti_alasan);
-                                $isPdf = Str::endsWith(strtolower($izin->bukti_alasan), '.pdf');
-                            @endphp
-
-                            @if ($isPdf)
-                                <div class="w-full h-40 rounded-xl overflow-hidden border border-brand-borderSoft bg-brand-surface-50 mb-3">
-                                    <iframe src="{{ $url }}" class="w-full h-full" loading="lazy"></iframe>
-                                </div>
-                            @else
-                                <div class="w-full rounded-xl overflow-hidden border border-brand-borderSoft bg-brand-surface-50 mb-3">
-                                    <img
-                                        src="{{ $url }}"
-                                        alt="Bukti Izin"
-                                        class="w-full h-40 object-cover"
-                                    >
-                                </div>
-                            @endif
-
-                            <a href="{{ $url }}" target="_blank" class="block">
-                                <x-ui.button-primary class="w-full justify-center">
-                                    Buka Bukti di Tab Baru
-                                </x-ui.button-primary>
-                            </a>
-                        @else
-                            <p class="text-center text-text-muted italic py-6">
-                                Tidak ada bukti yang dilampirkan.
-                            </p>
-                        @endif
-                    </div>
-
-                    {{-- KOTAK INFO AKSI (HANYA PENDING) --}}
-                    @if ($izin->status === 'pending')
-                        <div class="rounded-2xl border border-warning bg-warning-soft/10 px-5 py-4">
-                            <h3 class="text-xs font-semibold tracking-wide text-warning uppercase mb-2">
-                                Menunggu Aksi Admin
+                    <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-4 py-3 flex flex-col gap-3">
+                        <div>
+                            <h3 class="text-base font-semibold text-text-main">
+                                Foto Alat
                             </h3>
-                            <p class="text-xs text-text-muted mb-4">
-                                Aksi persetujuan penuh dilakukan melalui formulir persetujuan.
+                            <p class="text-xs text-text-muted mt-0.5">
+                                Tampilan foto terbaru dari alat.
                             </p>
-                            {{-- Tombol Proses Persetujuan di dalam modal DETAIL --}}
-                        <x-ui.button-primary
-                            type="button"
-                            class="w-full justify-center"
-                            @click="
-                                // tutup modal detail untuk izin ini
-                                openDetailId = null;
-
-                                // buka modal approve untuk izin yang sama
-                                openApproveId = {{ $izin->id }};
-                            "
-                        >
-                            Proses Persetujuan Sekarang
-                        </x-ui.button-primary>
                         </div>
-                    @endif
+
+                        <div
+                            class="w-full h-64 rounded-2xl overflow-hidden bg-brand-surface-50
+                                   flex items-center justify-center
+                                   shadow-[0_12px_32px_rgba(0,0,0,0.18)]"
+                        >
+                            {{-- Kalau ada foto --}}
+                            <template x-if="detailItem && detailItem.foto">
+                                <img
+                                    :src="detailItem.foto"
+                                    alt="Foto alat"
+                                    class="max-w-full max-h-full object-contain"
+                                >
+                            </template>
+
+                            {{-- Kalau tidak ada foto --}}
+                            <template x-if="!detailItem || !detailItem.foto">
+                                <span class="text-[11px] text-text-muted">
+                                    Tidak ada foto
+                                </span>
+                            </template>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             {{-- FOOTER MOBILE: TOMBOL TUTUP --}}
             <div class="mt-6 flex justify-end lg:hidden">
-                <x-ui.button-secondary type="button" @click="openDetailId = null">
+                <x-ui.button-secondary type="button" @click="openDetail = false">
                     Tutup
                 </x-ui.button-secondary>
             </div>
