@@ -8,16 +8,9 @@
     $s = \Carbon\Carbon::parse($izin->tanggal_selesai);
     $d = $izin->created_at ? \Carbon\Carbon::parse($izin->created_at) : null;
 
-    // Judul & subtitle halaman
-    $pageTitle    = $pageTitle    ?? 'Detail Izin Membership';
-    $pageSubtitle = $pageSubtitle ?? 'Detail pengajuan izin tanggal ' . $m->translatedFormat('d M Y');
-
-    // Warna status (dipakai badge)
-    $statusColor = match ($izin->status) {
-        'disetujui' => 'success',
-        'ditolak'   => 'danger',
-        default     => 'warning',
-    };
+    // Title & subtitle
+    $pageTitle    = $pageTitle    ?? 'Detail Izin Member';
+    $pageSubtitle = $pageSubtitle ?? 'Lihat informasi lengkap pengajuan izin latihan.';
 
     // Cek bukti (file di kolom 'bukti_alasan')
     $buktiUrl = $izin->bukti_alasan ? Storage::url($izin->bukti_alasan) : null;
@@ -25,10 +18,13 @@
     $isPdf    = false;
 
     if ($izin->bukti_alasan) {
-        $ext = strtolower(pathinfo($izin->bukti_alasan, PATHINFO_EXTENSION));
+        $ext     = strtolower(pathinfo($izin->bukti_alasan, PATHINFO_EXTENSION));
         $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'webp']);
         $isPdf   = $ext === 'pdf';
     }
+
+    // Normalisasi alasan
+    $alasanTrimmed = trim($izin->alasan ?? '');
 @endphp
 
 <x-layouts.member
@@ -37,7 +33,7 @@
 >
     <div class="max-w-6xl mx-auto space-y-6">
 
-        {{-- HEADER HALAMAN (pola sama dengan admin) --}}
+        {{-- HEADER UTAMA --}}
         <x-ui.section-header
             :title="$pageTitle"
             :subtitle="$pageSubtitle"
@@ -45,7 +41,7 @@
 
         <hr class="border-t border-brand-borderSoft mb-2">
 
-        {{-- BARIS ATAS: BACK BUTTON SAJA --}}
+        {{-- TOMBOL KEMBALI --}}
         <div class="flex items-center justify-between mb-2">
             <x-ui.back-button
                 href="{{ route('member.izin_latihan.index') }}"
@@ -60,9 +56,9 @@
             </x-ui.toast>
         @endif
 
-        {{-- MAIN CARD (mirip modal detail admin) --}}
+        {{-- MAIN CARD TANPA BAYANG --}}
         <div
-            class="relative w-full rounded-3xl shadow-2xl border border-brand-borderSoft
+            class="relative w-full rounded-3xl border border-brand-borderSoft
                    bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell overflow-hidden"
         >
             {{-- HEADER CARD --}}
@@ -76,11 +72,11 @@
                         Detail Izin Member
                     </h2>
                     <p class="text-sm text-text-muted mt-0.5">
-                        Informasi lengkap pengajuan izin ini.
+                        Lihat informasi lengkap pengajuan izin latihan.
                     </p>
                 </div>
 
-                {{-- Blok Diajukan + Status (badge di dalam card) --}}
+                {{-- Info diajukan pada --}}
                 <div class="text-right space-y-1">
                     <p class="text-[10px] uppercase tracking-widest text-text-muted">
                         Diajukan pada
@@ -88,12 +84,6 @@
                     <p class="text-sm font-medium text-text-main">
                         {{ $d ? $d->translatedFormat('d F Y, H:i') : '-' }}
                     </p>
-                    <x-ui.badge
-                        :variant="$statusColor"
-                        class="inline-flex items-center justify-center px-3 py-1 text-[11px] font-semibold uppercase tracking-wide shadow-sm"
-                    >
-                        {{ strtoupper($izin->status) }}
-                    </x-ui.badge>
                 </div>
             </div>
 
@@ -101,15 +91,13 @@
             <div class="px-6 pb-8 pt-6">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                    {{-- ===================== --}}
-                    {{-- KOLOM KIRI (2/3 LEBAR) --}}
-                    {{-- ===================== --}}
+                    {{-- KOLOM KIRI: DATA & ALASAN --}}
                     <div class="lg:col-span-2 space-y-6">
 
-                        {{-- BLOK DATA PENGAJUAN --}}
+                        {{-- DATA PENGAJUAN --}}
                         <div
                             class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft
-                                   px-5 py-5 shadow-sm"
+                                   px-5 py-5"
                         >
                             <h3 class="text-base font-semibold text-text-main mb-1 flex items-center gap-2">
                                 <i data-lucide="calendar-range" class="w-4 h-4 text-gold-500"></i>
@@ -119,20 +107,18 @@
                                 class="text-xs text-text-muted mb-4 border-b border-brand-borderSoft/50 pb-2
                                        leading-relaxed"
                             >
-                                Rincian periode dan durasi izin yang Anda ajukan.
+                                Detail permintaan izin yang diajukan member.
                             </p>
 
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                 {{-- Durasi --}}
                                 <div>
                                     <p class="text-xs text-text-muted uppercase tracking-wider mb-1">
-                                        Durasi
+                                        Durasi Diajukan
                                     </p>
                                     <p class="text-xl font-heading font-bold text-text-main">
                                         {{ $izin->jumlah_hari }}
-                                        <span class="text-sm font-normal text-text-muted">
-                                            hari
-                                        </span>
+                                        <span class="text-sm font-normal text-text-muted">Hari</span>
                                     </p>
                                 </div>
 
@@ -164,31 +150,33 @@
                             </div>
                         </div>
 
-                        {{-- BLOK ALASAN MEMBER --}}
-                        <div
-                            class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft
-                                   px-5 py-5 shadow-sm"
-                        >
-                            <h3 class="text-base font-semibold text-text-main mb-2 flex items-center gap-2">
-                                <i data-lucide="align-left" class="w-4 h-4 text-gold-500"></i>
-                                Alasan Pengajuan
-                            </h3>
+                        {{-- ALASAN MEMBER --}}
+<div
+    class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft
+           px-5 py-5"
+>
+    <h3 class="text-base font-semibold text-text-main mb-1 flex items-center gap-2">
+        <i data-lucide="align-left" class="w-4 h-4 text-gold-500"></i>
+        Alasan Pengajuan Member
+    </h3>
 
-                            @php
-                                $alasanRaw     = $izin->alasan ?? '';
-                                $alasanTrimmed = trim($alasanRaw);
-                                $alasanHtml    = $alasanTrimmed !== '' ? nl2br(e($alasanTrimmed)) : '-';
-                            @endphp
+    @php
+        $alasanText = trim($izin->alasan ?? '');
+        if ($alasanText === '') {
+            $alasanText = '-';
+        }
+    @endphp
 
-                            <div
-                                class="mt-2 p-4 rounded-xl bg-brand-surface-50 border border-brand-borderSoft
-                                       text-sm text-text-main min-h-[80px] leading-relaxed"
-                            >
-                                {!! $alasanHtml !!}
-                            </div>
-                        </div>
+    <div
+        class="rounded-xl bg-brand-surface-50 border border-brand-borderSoft
+               px-4 py-2 text-sm text-text-main leading-snug
+               break-words whitespace-normal overflow-x-hidden"
+    >
+        {{ $alasanText }}
+    </div>
+</div>
 
-                        {{-- BLOK CATATAN ADMIN (OPSIONAL) --}}
+                        {{-- CATATAN ADMIN (opsional) --}}
                         @if($izin->keterangan_admin)
                             <div
                                 class="rounded-2xl border px-5 py-5
@@ -205,8 +193,8 @@
                                 </h3>
 
                                 <p
-                                    class="text-sm text-text-main italic p-3 rounded-xl
-                                           bg-brand-bg/50"
+                                    class="text-sm text-text-main italic px-4 py-2.5 rounded-xl
+                                           bg-brand-bg/50 break-words whitespace-pre-line"
                                 >
                                     "{{ $izin->keterangan_admin }}"
                                 </p>
@@ -214,15 +202,12 @@
                         @endif
                     </div>
 
-                    {{-- ===================== --}}
-                    {{-- KOLOM KANAN (1/3 LEBAR) --}}
-                    {{-- ===================== --}}
+                    {{-- KOLOM KANAN: BUKTI --}}
                     <div class="space-y-6">
 
-                        {{-- BLOK BUKTI ALASAN --}}
                         <div
                             class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft
-                                   px-5 py-5 shadow-sm"
+                                   px-5 py-5"
                         >
                             <h3 class="text-base font-semibold text-text-main mb-3 flex items-center gap-2">
                                 <i data-lucide="paperclip" class="w-4 h-4 text-gold-500"></i>
@@ -231,12 +216,11 @@
 
                             @if ($buktiUrl)
                                 @if ($isPdf)
-                                    {{-- Thumbnail PDF --}}
                                     <div
                                         class="w-full h-40 rounded-xl overflow-hidden border border-brand-borderSoft
-                                               bg-brand-surface-50 mb-3 group relative"
+                                               bg-brand-surface-50 mb-4 flex items-center justify-center"
                                     >
-                                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                        <div class="flex flex-col items-center justify-center">
                                             <i data-lucide="file-text" class="w-10 h-10 text-gold-500 mb-2"></i>
                                             <span class="text-xs text-text-muted font-bold">
                                                 Dokumen PDF
@@ -244,10 +228,9 @@
                                         </div>
                                     </div>
                                 @elseif ($isImage)
-                                    {{-- Thumbnail Gambar --}}
                                     <div
                                         class="w-full h-48 rounded-xl overflow-hidden border border-brand-borderSoft
-                                               bg-brand-surface-50 mb-3 group relative"
+                                               bg-brand-surface-50 mb-4 group relative"
                                     >
                                         <img
                                             src="{{ $buktiUrl }}"
@@ -268,12 +251,11 @@
                                     </div>
                                 @endif
 
-                                {{-- Tombol buka bukti (disamakan style-nya dengan admin modal) --}}
-                                <a href="{{ $buktiUrl }}" target="_blank" class="inline-flex">
-                                    <x-ui.button-secondary class="inline-flex items-center gap-2 text-xs md:text-sm">
-                                        <i data-lucide="external-link" class="w-3 h-3"></i>
-                                        <span>Buka bukti di tab baru</span>
-                                    </x-ui.button-secondary>
+                                <a href="{{ $buktiUrl }}" target="_blank" class="block">
+                                    <x-ui.button-primary class="w-full justify-center text-sm">
+                                        <i data-lucide="external-link" class="w-4 h-4 mr-2"></i>
+                                        Buka Bukti di Tab Baru
+                                    </x-ui.button-primary>
                                 </a>
                             @else
                                 <div
@@ -288,47 +270,7 @@
                             @endif
                         </div>
 
-                        {{-- BLOK AKSI (HANYA SAAT PENDING) --}}
-                        @if ($izin->status === 'pending')
-                            <div
-                                class="rounded-2xl border border-warning/30 bg-warning-soft/10
-                                       px-5 py-5"
-                            >
-                                <h3
-                                    class="text-xs font-bold tracking-wide text-warning uppercase mb-2
-                                           flex items-center gap-2"
-                                >
-                                    <i data-lucide="alert-triangle" class="w-3 h-3"></i>
-                                    Aksi Tersedia
-                                </h3>
-
-                                <p class="text-xs text-text-muted mb-4 leading-relaxed">
-                                    Salah input data atau bukti? Anda dapat membatalkan pengajuan ini
-                                    sebelum diproses oleh Admin.
-                                </p>
-
-                                <form
-                                    action="#"
-                                    method="POST"
-                                    onsubmit="return confirm('Yakin ingin membatalkan pengajuan ini? Data akan dihapus permanen.');"
-                                >
-                                    @csrf
-                                    @method('DELETE')
-
-                                    <button
-                                        type="submit"
-                                        class="w-full py-2.5 rounded-xl border border-danger/40
-                                               bg-danger text-white hover:bg-danger/90 hover:border-danger/90
-                                               transition-all duration-200 text-sm font-bold
-                                               flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
-                                    >
-                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                        Batalkan Pengajuan
-                                    </button>
-                                </form>
-                            </div>
-                        @endif
-
+                        {{-- Tidak ada blok aksi / pembatalan di sisi member --}}
                     </div>
                 </div>
             </div>

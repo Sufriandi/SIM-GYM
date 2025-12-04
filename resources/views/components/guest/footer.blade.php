@@ -47,7 +47,7 @@
                         <div class="mt-1 p-2 rounded-full bg-brand-surface-200/5 text-gold-500">
                             <i data-lucide="map-pin" class="w-4 h-4"></i>
                         </div>
-                        <span class="leading-relaxed">Jl. Senopati Raya No. 88,<br>Jakarta Selatan, 12190</span>
+                        <span class="leading-relaxed">Jl. pedekek No. 18,<br>Bengkalis, 1222</span>
                     </li>
                     <li class="flex items-center gap-4">
                         <div class="p-2 rounded-full bg-brand-surface-200/5 text-gold-500">

@@ -2,282 +2,424 @@
 
 @php
     use Illuminate\Support\Facades\Storage;
-    use Illuminate\Support\Js; 
-    use Illuminate\Support\Facades\Auth; 
+    use Illuminate\Support\Js;
+    use Illuminate\Support\Facades\Auth;
 
+    $pageTitle    = $pageTitle    ?? 'Marketplace Gym';
+    $pageSubtitle = 'Suplemen, gear, dan kebutuhan latihan terbaik untukmu.';
+
+    // Nomor WA admin dari controller
     $adminNumber = app(\App\Http\Controllers\Member\ProdukGymController::class)->getAdminNumber();
-    $search = $search ?? '';
-    $kategori = $kategori ?? 'all';
+
+    // State filter dari request
+    $search   = $search   ?? request('search', '');
+    $kategori = $kategori ?? request('kategori', 'all');
+    $sort     = request('sort', 'popular');
+
     $kategoriOptions = $kategoriOptions ?? ['minuman', 'suplemen', 'lainnya'];
 
-    // --- DATA MEMBER UNTUK WHATSAPP ---
-    $member = Auth::user();
-    $memberName = $member->name;
+    // Data member untuk identitas di WhatsApp
+    $member           = Auth::user();
+    $memberName       = $member->name ?? 'Member';
     $memberIdentifier = "{$memberName}";
-    // ------------------------------------
 @endphp
 
-<x-layouts.member 
-    :title="$pageTitle ?? 'Marketplace Produk'"
-    :page-title="$pageTitle ?? 'Produk Gym'"
-    page-subtitle="Pilih dan beli suplemen atau aksesoris gym favoritmu."
+<x-layouts.member
+    :pageTitle="$pageTitle"
+    :pageSubtitle="$pageSubtitle"
 >
-    
-    {{-- JUDUL HALAMAN MENGGUNAKAN X-UI.SECTION-HEADER (TETAP) --}}
-    <x-ui.section-header
-        :title="$pageTitle ?? 'Produk Gym'"
-        subtitle="Pilih dan beli suplemen atau aksesoris gym favoritmu."
-    />
+    <div class="max-w-7xl mx-auto space-y-8 pb-10">
 
-    {{-- PEMBATAS DI BAWAH SUBTITLE --}}
-    <hr class="border-t border-brand-borderSoft mb-6">
-    
-    {{-- TAMPILKAN PESAN FLASH (TETAP) --}}
-    @if (session('success'))
-        <div class="bg-success-soft border border-success text-success-dark px-4 py-3 rounded relative mb-4">
-            <span class="block sm:inline">{{ session('success') }}</span>
-        </div>
-    @endif
-    @if (session('error'))
-        <div class="bg-danger-soft border border-danger text-danger px-4 py-3 rounded relative mb-4">
-            <span class="block sm:inline">{{ session('error') }}</span>
-        </div>
-    @endif
-    
-    {{-- BARIS PENCARIAN & FILTER (TETAP) --}}
-    <div class="mb-6">
-        <form method="GET" action="{{ route('member.produk_gym.index') }}" class="flex flex-col md:flex-row items-end gap-3">
-            
-            {{-- INPUT PENCARIAN --}}
-            <div class="w-full md:w-3/5">
-                <x-ui.label for="search">Pencarian Produk</x-ui.label>
-                <div class="relative">
-                    <input type="search" id="search" name="search" placeholder="Cari nama produk atau deskripsi..."
-                            value="{{ $search }}"
-                            class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-4 py-2 pl-10 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent">
-                    <i data-lucide="search" class="w-4 h-4 text-text-muted absolute left-3 top-1/2 transform -translate-y-1/2"></i>
-                </div>
+        {{-- ========================================================= --}}
+        {{-- 1. HERO BANNER --}}
+        {{-- ========================================================= --}}
+        <div class="relative w-full rounded-3xl overflow-hidden shadow-card-strong bg-brand-nav">
+            {{-- Pattern --}}
+            <div class="absolute inset-0 opacity-10"
+                 style="background-image: radial-gradient(#D4A757 1px, transparent 1px); background-size: 20px 20px;">
             </div>
 
-            {{-- DROPDOWN FILTER KATEGORI --}}
-            <div class="w-full md:w-1/5">
-                <x-ui.label for="kategori">Filter Kategori</x-ui.label>
-                <select id="kategori" name="kategori" class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
-                    <option value="all" {{ $kategori === 'all' ? 'selected' : '' }}>Semua Kategori</option>
-                    @foreach ($kategoriOptions as $option)
-                        <option value="{{ $option }}" {{ $kategori === $option ? 'selected' : '' }}>
-                            {{ ucwords($option) }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-            
-            {{-- TOMBOL SUBMIT/RESET --}}
-            <div class="w-full md:w-1/5 flex gap-2 pt-1 md:pt-0">
-                
-                {{-- TOMBOL FILTER MERAH --}}
-                <button type="submit" class="w-1/2 md:w-auto flex-grow bg-red-600 text-white font-bold py-2 px-4 rounded-xl hover:bg-red-700 transition">
-                    Filter
-                </button>
-                
-                @if ($search || $kategori != 'all')
-                    <a href="{{ route('member.produk_gym.index') }}" class="w-1/2 md:w-auto flex-grow text-center bg-gray-200 text-brand-black font-bold py-2 px-4 rounded-xl hover:bg-gray-300 transition">
-                        Reset
-                    </a>
-                @endif
-            </div>
-        </form>
-    </div>
-    {{-- AKHIR BARIS PENCARIAN & FILTER --}}
-    
-    @if($produks->isEmpty())
-        <div class="p-8 bg-brand-card rounded-xl text-center text-text-muted">
-            <i data-lucide="package-x" class="w-8 h-8 mx-auto mb-3"></i>
-            <p>Maaf, tidak ditemukan produk yang sesuai dengan kriteria pencarian Anda.</p>
-        </div>
-    @else
-        <h3 class="text-xl font-semibold text-text-main mb-4">Daftar Produk Tersedia</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            @foreach ($produks as $produk)
-                @php
-                    $imageUrl = $produk->foto ? Storage::url($produk->foto) : 'https://placehold.co/400x300/3A2D2A/F5E6D6?text=GYM+PRODUCT';
-                @endphp
-                <div class="bg-brand-card border border-brand-borderSoft rounded-xl overflow-hidden shadow-lg transform hover:scale-[1.02] transition-all duration-300 flex flex-col">
-                    
-                    {{-- FOTO PRODUK --}}
-                    <div class="h-48 w-full overflow-hidden bg-brand-surface-50">
-                        <img 
-                            src="{{ $imageUrl }}" 
-                            alt="{{ $produk->nama }}" 
-                            class="w-full h-full object-cover"
-                            onerror="this.onerror=null; this.src='https://placehold.co/400x300/3A2D2A/F5E6D6?text=GYM+PRODUCT';"
-                        >
-                    </div>
-
-                    {{-- DETAIL PRODUK --}}
-                    <div class="p-4 flex flex-col flex-grow">
-                        <span class="text-xs font-medium text-gold-500 uppercase tracking-wider mb-1">{{ $produk->kategori }}</span>
-                        <h3 class="text-lg font-bold text-text-main mb-2">{{ $produk->nama }}</h3>
-                        
-                        <p class="text-2xl font-extrabold text-success mb-3">
-                            {{ 'Rp ' . number_format($produk->harga, 0, ',', '.') }}
-                        </p>
-                        
-                        <p class="text-xs text-text-muted mb-4 flex-grow">
-                            {{ Str::limit($produk->deskripsi, 60) }}
-                        </p>
-                        
-                        {{-- STOK & TOMBOL BELI --}}
-                        <div class="mt-auto">
-                            <p class="text-sm font-semibold mb-3 {{ $produk->stok > 5 ? 'text-primary' : 'text-danger' }}">
-                                Stok: {{ $produk->stok }} unit
-                            </p>
-                            
-                            @if ($produk->stok > 0)
-                                <button 
-                                    type="button" 
-                                    class="w-full bg-red-600 text-white font-bold py-2 rounded-lg hover:bg-red-700 transition-colors"
-                                    onclick="if(window.bukaModalProduk) window.bukaModalProduk({{ Js::from($produk->nama) }}, {{ $produk->harga }}, {{ Js::from($imageUrl) }})"
-                                >
-                                    Beli Sekarang
-                                </button>
-                            @else
-                                <button disabled class="w-full bg-gray-400 text-gray-700 font-bold py-2 rounded-lg">
-                                    Stok Habis
-                                </button>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            @endforeach
-        </div>
-
-        {{-- PAGINATION --}}
-        <div class="mt-8">
-            {{ $produks->appends(['search' => $search, 'kategori' => $kategori])->links() }}
-        </div>
-    @endif
-    
-    {{-- MODAL KONFIRMASI WHATSAPP --}}
-    <div 
-        x-data="modalData()"
-    >
-        <div
-            x-show="showConfirmModal"
-            x-cloak
-            x-transition
-            class="fixed inset-0 z-50 flex items-center justify-center px-4 py-4 bg-black/60 backdrop-blur-sm" 
-        >
-            <div
-                @click.away="showConfirmModal = false"
-                class="relative w-full max-w-md rounded-2xl shadow-2xl bg-brand-card border border-brand-borderSoft overflow-hidden" 
-            >
-                {{-- Judul Modal --}}
-                <div class="px-5 pt-5 pb-3 text-xl font-bold text-text-main border-b border-brand-borderSoft">
-                    Konfirmasi Pemesanan
-                </div>
-
-                {{-- Area Gambar --}}
-                <div class="h-48 w-full overflow-hidden bg-brand-surface-50 relative p-4 flex items-center justify-center border-b border-brand-borderSoft">
-                    <img :src="productImage" alt="Produk Preview" class="max-h-full max-w-full object-contain rounded-lg">
-                </div>
-
-                {{-- Konten Konfirmasi --}}
-                <div class="p-4 space-y-3">
-                    <h3 class="text-xl font-bold text-text-main mb-2">
-                        Pemesanan: <strong class="text-gold-500" x-text="productName"></strong>
-                    </h3>
-
-                    {{-- INPUT JUMLAH PEMBELIAN --}}
-                    <div>
-                        <label for="quantity" class="block text-sm font-medium text-text-main mb-2">Jumlah Unit Dipesan:</label>
-                        <div class="flex items-center space-x-2">
-                            <button 
-                                @click="productQuantity = Math.max(1, productQuantity - 1)" 
-                                :disabled="productQuantity <= 1"
-                                class="p-1.5 border border-brand-borderSoft rounded-lg bg-brand-shell text-text-main hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                                <i data-lucide="minus" class="w-4 h-4"></i>
-                            </button>
-                            <input 
-                                type="number" 
-                                id="quantity" 
-                                x-model.number="productQuantity" 
-                                min="1" 
-                                class="w-16 text-center rounded-lg border border-brand-borderSoft bg-brand-shell text-base font-bold text-text-main py-2 focus:outline-none focus:ring-2 focus:ring-gold-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none appearance-none"
-                                required
-                            >
-                            <button 
-                                @click="productQuantity += 1" 
-                                class="p-1.5 border border-brand-borderSoft rounded-lg bg-brand-shell text-text-main hover:bg-gray-200">
-                                <i data-lucide="plus" class="w-4 h-4"></i>
-                            </button>
-                        </div>
-                        <p class="mt-2 text-xs text-text-muted">Total Harga Estimasi: <strong x-text="'Rp ' + (productPrice * productQuantity).toLocaleString('id-ID')"></strong></p>
-                    </div>
-                    {{-- AKHIR INPUT JUMLAH PEMBELIAN --}}
-                    
-                    <p class="text-base text-text-main">
-                        Apakah Anda yakin ingin memesan <strong x-text="productQuantity"></strong> unit produk ini?
+            <div class="relative z-10 flex flex-col md:flex-row items-center justify-between p-8 md:p-10 gap-6">
+                <div class="space-y-4 max-w-lg">
+                    <span class="inline-block px-3 py-1 rounded-full bg-gold-500/15 text-gold-500 text-xs font-bold tracking-widest uppercase border border-gold-500/25">
+                        Official Store Member
+                    </span>
+                    <h2 class="text-3xl md:text-5xl font-display font-bold text-brand-white leading-tight">
+                        FUEL YOUR
+                        <br>
+                        <span class="text-transparent bg-clip-text bg-brand-gold">TRAINING.</span>
+                    </h2>
+                    <p class="text-brand-silver text-sm md:text-base">
+                        Dapatkan suplemen original dan gear berkualitas. Harga khusus dan stok prioritas untuk member aktif.
                     </p>
-                    
-                    <div class="text-sm text-text-muted bg-brand-shell p-3 rounded-lg border border-brand-borderSoft">
-                        <p>
-                            Anda akan diarahkan ke **WhatsApp Admin** untuk konfirmasi ketersediaan stok dan menyelesaikan pembayaran. Jumlah unit (<strong x-text="productQuantity"></strong>) akan tercantum di pesan.
-                        </p>
-                    </div>
                 </div>
-                
-                {{-- Footer Tombol Aksi --}}
-                <div class="px-5 py-3 flex justify-end gap-3 border-t border-brand-borderSoft bg-brand-shell">
-                    <button type="button" @click="showConfirmModal = false" 
-                            class="text-sm font-medium text-text-muted hover:text-text-main transition-colors py-2 px-3 rounded-lg">
-                        Batal
-                    </button>
-                    <a :href="generateWhatsappLink()" target="_blank" @click="showConfirmModal = false"
-                        class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg text-sm hover:bg-green-700 transition-colors flex items-center gap-2 shadow-lg shadow-green-900/40">
-                        <i data-lucide="message-square" class="w-4 h-4"></i>
-                        Pesan via WhatsApp
-                    </a>
+
+                <div class="hidden md:flex items-center justify-center text-gold-500/70">
+                    <i data-lucide="shopping-bag" class="w-32 h-32"></i>
                 </div>
             </div>
         </div>
+
+        {{-- ========================================================= --}}
+        {{-- 2. SEARCH + KATEGORI + SORT --}}
+        {{-- ========================================================= --}}
+        <div
+            x-data="{
+                activeKategori: '{{ $kategori }}',
+                showSort: false,
+                applyKategori(k) {
+                    this.activeKategori = k;
+                    const form = document.getElementById('produkFilterForm');
+                    if (form) form.submit();
+                }
+            }"
+            class="sticky top-20 z-30 bg-brand-bg/95 backdrop-blur-sm py-4 border-b border-brand-borderSoft/40"
+        >
+            <form
+                id="produkFilterForm"
+                action="{{ route('member.produk_gym.index') }}"
+                method="GET"
+                class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
+            >
+                <input type="hidden" name="kategori" x-model="activeKategori">
+
+                {{-- SEARCH --}}
+                <div class="relative w-full lg:max-w-xl flex-1">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i data-lucide="search" class="w-5 h-5 text-brand-textSoft"></i>
+                    </div>
+                    <input
+                        type="text"
+                        name="search"
+                        value="{{ $search }}"
+                        placeholder="Cari suplemen, whey, atau aksesoris…"
+                        class="block w-full pl-10 pr-4 py-3 bg-brand-card border border-brand-borderSoft rounded-2xl
+                               text-sm text-brand-text placeholder-brand-textSoft/60
+                               focus:ring-2 focus:ring-gold-500 focus:border-transparent
+                               shadow-sm transition-all"
+                    >
+                </div>
+
+                {{-- KATEGORI + SORT --}}
+                <div class="w-full lg:w-auto flex flex-wrap items-center gap-3 justify-between lg:justify-end">
+                    {{-- Kategori pills --}}
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button
+                            type="button"
+                            @click="applyKategori('all')"
+                            class="px-5 py-2 rounded-full text-xs font-bold border transition-all duration-200"
+                            :class="activeKategori === 'all'
+                                ? 'bg-brand-nav text-gold-500 border-brand-nav'
+                                : 'bg-brand-card text-brand-textSoft border-brand-borderSoft hover:border-gold-500 hover:text-brand-text'"
+                        >
+                            Semua
+                        </button>
+
+                        @foreach($kategoriOptions as $opt)
+                            <button
+                                type="button"
+                                @click="applyKategori('{{ $opt }}')"
+                                class="px-5 py-2 rounded-full text-xs font-bold border transition-all duration-200"
+                                :class="activeKategori === '{{ $opt }}'
+                                    ? 'bg-brand-nav text-gold-500 border-brand-nav'
+                                    : 'bg-brand-card text-brand-textSoft border-brand-borderSoft hover:border-gold-500 hover:text-brand-text'"
+                            >
+                                {{ ucfirst($opt) }}
+                            </button>
+                        @endforeach
+                    </div>
+
+                    {{-- Sort --}}
+                    <div class="relative">
+                        <button
+                            type="button"
+                            @click="showSort = !showSort"
+                            @click.outside="showSort = false"
+                            class="flex items-center gap-2 px-4 py-3 bg-brand-card border border-brand-borderSoft rounded-2xl
+                                   text-sm font-medium text-brand-text hover:bg-brand-surface-50 transition-colors"
+                        >
+                            <i data-lucide="arrow-up-down" class="w-4 h-4 text-gold-600"></i>
+                            <span>Urutkan</span>
+                        </button>
+
+                        <div
+                            x-show="showSort"
+                            x-cloak
+                            x-transition:enter="transition ease-out duration-100"
+                            x-transition:enter-start="opacity-0 scale-95"
+                            x-transition:enter-end="opacity-100 scale-100"
+                            class="absolute right-0 mt-2 w-48 bg-brand-card rounded-xl shadow-card-strong border border-brand-borderSoft z-40 overflow-hidden"
+                        >
+                            @php
+                                $sortOptions = [
+                                    'popular'   => 'Paling Populer',
+                                    'newest'    => 'Terbaru',
+                                    'price_low' => 'Harga Terendah',
+                                    'price_high'=> 'Harga Tertinggi',
+                                ];
+                            @endphp
+
+                            @foreach($sortOptions as $key => $label)
+                                <button
+                                    type="submit"
+                                    name="sort"
+                                    value="{{ $key }}"
+                                    class="w-full text-left px-4 py-3 text-xs font-medium transition-colors
+                                           {{ $sort === $key ? 'bg-brand-surface-50 text-gold-600' : 'text-brand-text hover:bg-brand-surface-100' }}"
+                                >
+                                    {{ $label }}
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        {{-- FLASH MESSAGE --}}
+        @if (session('success'))
+            <x-ui.toast type="success" class="mt-2">
+                {{ session('success') }}
+            </x-ui.toast>
+        @endif
+
+        @if (session('error'))
+            <x-ui.toast type="danger" class="mt-2">
+                {{ session('error') }}
+            </x-ui.toast>
+        @endif
+
+        {{-- ========================================================= --}}
+        {{-- 3. CONTENT --}}
+        {{-- ========================================================= --}}
+        @if($produks->isEmpty())
+            {{-- EMPTY STATE --}}
+            <div class="flex flex-col items-center justify-center py-20 text-center">
+                <div class="w-24 h-24 bg-brand-surface-100 rounded-full flex items-center justify-center mb-6 border border-brand-borderSoft">
+                    <i data-lucide="search-x" class="w-10 h-10 text-brand-textSoft"></i>
+                </div>
+                <h3 class="text-xl font-bold text-brand-text" style="text-shadow:none;">
+                    Produk Tidak Ditemukan
+                </h3>
+                <p class="text-brand-textSoft mt-2 max-w-md mx-auto">
+                    Coba ubah kata kunci atau pilih kategori yang berbeda.
+                </p>
+                <a
+                    href="{{ route('member.produk_gym.index') }}"
+                    class="mt-6 px-6 py-2 bg-brand-nav text-gold-500 text-sm font-bold rounded-full hover:bg-brand-sidebar transition-colors"
+                >
+                    Reset Filter
+                </a>
+            </div>
+        @else
+
+            {{-- A. PALING DICARI (SLIDER) – hanya jika tanpa search & kategori = all --}}
+            @php
+                $featuredProducts = $produks instanceof \Illuminate\Contracts\Pagination\Paginator
+                    ? $produks->take(5)
+                    : $produks->take(5);
+            @endphp
+
+            @if($featuredProducts->isNotEmpty() && $search === '' && $kategori === 'all')
+                <section
+                    x-data="{
+                        scrollNext() { const c = this.$refs.track; c.scrollBy({left: c.clientWidth*0.7, behavior:'smooth'}); },
+                        scrollPrev() { const c = this.$refs.track; c.scrollBy({left: -c.clientWidth*0.7, behavior:'smooth'}); },
+                    }"
+                    class="space-y-4"
+                >
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="flame" class="w-5 h-5 text-accent-500"></i>
+                        <h3 class="text-lg font-bold text-brand-text uppercase tracking-wide"
+                            style="text-shadow:none;">
+                            Paling Dicari
+                        </h3>
+                    </div>
+
+                    <div class="relative">
+                        <div
+                            x-ref="track"
+                            class="flex gap-4 overflow-x-auto pb-3 scroll-smooth custom-scrollbar"
+                        >
+                            @foreach($featuredProducts as $produk)
+                                @php
+                                    $imageUrl = $produk->foto
+                                        ? Storage::url($produk->foto)
+                                        : 'https://placehold.co/300x300/F5E6D6/A67C39?text=BETA+GYM';
+                                @endphp
+
+                                <article
+                                    class="min-w-[180px] md:min-w-[220px] bg-brand-card border border-brand-borderSoft rounded-2xl overflow-hidden
+                                           hover:border-gold-500 hover:shadow-md transition-all duration-200 flex flex-col cursor-pointer"
+                                    onclick="window.bukaModalProduk && window.bukaModalProduk({{ Js::from($produk->nama) }}, {{ $produk->harga }}, {{ Js::from($imageUrl) }})"
+                                >
+                                    <div class="relative aspect-[4/3] overflow-hidden bg-brand-surface-50">
+                                        <img
+                                            src="{{ $imageUrl }}"
+                                            alt="{{ $produk->nama }}"
+                                            class="w-full h-full object-cover transition-transform duration-500"
+                                            loading="lazy"
+                                        >
+                                        <span class="absolute top-2 right-2 bg-accent-500 text-white text-[10px] font-bold px-2 py-1 rounded-md">
+                                            HOT
+                                        </span>
+                                    </div>
+                                    <div class="p-3 space-y-1">
+                                        <h4 class="text-xs md:text-sm font-semibold text-brand-text line-clamp-1">
+                                            {{ $produk->nama }}
+                                        </h4>
+                                        <p class="text-sm md:text-base font-bold text-accent-600"
+                                           style="text-shadow:none;">
+                                            Rp{{ number_format($produk->harga, 0, ',', '.') }}
+                                        </p>
+                                    </div>
+                                </article>
+                            @endforeach
+                        </div>
+
+                        {{-- Arrows overlay (desktop & mobile) --}}
+                        <div class="pointer-events-none absolute inset-y-0 left-0 right-0 flex items-center justify-between">
+                            <button
+                                type="button"
+                                @click="scrollPrev()"
+                                class="pointer-events-auto ml-1 md:ml-2 w-8 h-8 md:w-9 md:h-9 rounded-full bg-brand-bg/90 border border-brand-borderSoft flex items-center justify-center text-brand-textSoft hover:bg-brand-surface-100 hover:text-brand-text transition-colors"
+                            >
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </button>
+                            <button
+                                type="button"
+                                @click="scrollNext()"
+                                class="pointer-events-auto mr-1 md:mr-2 w-8 h-8 md:w-9 md:h-9 rounded-full bg-brand-bg/90 border border-brand-borderSoft flex items-center justify-center text-brand-textSoft hover:bg-brand-surface-100 hover:text-brand-text transition-colors"
+                            >
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            @endif
+
+            {{-- B. GRID KATALOG LENGKAP --}}
+            <section class="space-y-4">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-lg font-bold text-brand-text uppercase tracking-wide"
+                        style="text-shadow:none;">
+                        {{ $kategori === 'all' ? 'Katalog Lengkap' : 'Kategori: ' . ucfirst($kategori) }}
+                    </h3>
+                    <span class="text-xs text-brand-textSoft bg-brand-surface-100 px-2 py-0.5 rounded-md font-bold border border-brand-borderSoft">
+                        {{ $produks->total() ?? $produks->count() }} Item
+                    </span>
+                </div>
+
+                {{-- Grid: semua card tinggi seragam --}}
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                    @foreach ($produks as $produk)
+                        @php
+                            $imageUrl     = $produk->foto ? Storage::url($produk->foto) : 'https://placehold.co/400x400/F5E6D6/A67C39?text=BETA+GYM';
+                            $isOutOfStock = $produk->stok <= 0;
+                            $isLowStock   = $produk->stok > 0 && $produk->stok <= 5;
+                        @endphp
+
+                        <article
+                            class="group relative bg-brand-card border border-brand-borderSoft rounded-2xl overflow-hidden
+                                   hover:shadow-card-strong hover:border-gold-500/60 transition-all duration-300 flex flex-col h-full"
+                        >
+                            {{-- IMAGE: ukuran fix --}}
+                            <div class="relative w-full aspect-[3/4] overflow-hidden bg-brand-surface-50">
+                                <img
+                                    src="{{ $imageUrl }}"
+                                    alt="{{ $produk->nama }}"
+                                    class="w-full h-full object-cover transition-transform duration-500 {{ $isOutOfStock ? 'grayscale opacity-70' : 'group-hover:scale-105' }}"
+                                    loading="lazy"
+                                >
+
+                                {{-- Badges stok --}}
+                                <div class="absolute top-2 left-2 flex flex-col gap-1">
+                                    @if($isOutOfStock)
+                                        <span class="px-2 py-1 bg-brand-nav/90 text-brand-white text-[10px] font-bold uppercase rounded-md">
+                                            Habis
+                                        </span>
+                                    @elseif($isLowStock)
+                                        <span class="px-2 py-1 bg-accent-500 text-white text-[10px] font-bold uppercase rounded-md">
+                                            Sisa {{ $produk->stok }}
+                                        </span>
+                                    @endif
+                                </div>
+
+                                {{-- Badge kategori (di gambar, bukan di atas nama) --}}
+                                <span class="absolute top-2 right-2 px-2 py-1 bg-brand-bg/90 text-brand-text text-[10px] font-bold rounded-md border border-brand-borderSoft">
+                                    {{ strtoupper($produk->kategori) }}
+                                </span>
+                            </div>
+
+                            {{-- CONTENT --}}
+                            <div class="p-3 md:p-4 flex flex-col flex-1">
+                                {{-- kategori di atas nama DIHAPUS sesuai permintaan --}}
+
+                                <h4 class="text-sm font-semibold text-brand-text leading-snug line-clamp-2 mb-2 min-h-[2.5em]">
+                                    {{ $produk->nama }}
+                                </h4>
+
+                                <div class="mt-auto pt-2 border-t border-brand-borderSoft/40">
+                                    {{-- Harga (tanpa bayangan / hover) --}}
+                                    <p class="text-base md:text-lg font-bold text-brand-text"
+                                       style="text-shadow:none;">
+                                        Rp{{ number_format($produk->harga, 0, ',', '.') }}
+                                    </p>
+
+                                    <div class="flex items-center gap-1 mt-1 opacity-80">
+                                        <i data-lucide="star" class="w-3 h-3 text-gold-500 fill-gold-500"></i>
+                                        <span class="text-[10px] text-brand-textSoft">4,9</span>
+                                        <span class="text-[10px] text-brand-borderStrong mx-1">•</span>
+                                        <span class="text-[10px] text-brand-textSoft">Terjual 10+</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- ACTION BUTTON: hover profesional --}}
+                            <div class="p-3 md:p-4 pt-0">
+                                <button
+                                    type="button"
+                                    onclick="window.bukaModalProduk && window.bukaModalProduk({{ Js::from($produk->nama) }}, {{ $produk->harga }}, {{ Js::from($imageUrl) }})"
+                                    @disabled($isOutOfStock)
+                                    class="w-full py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2
+                                           focus:outline-none transition-all duration-200
+                                           {{ $isOutOfStock
+                                                ? 'bg-brand-surface-200 text-brand-textSoft cursor-not-allowed'
+                                                : 'bg-red-600 text-white shadow-sm hover:bg-red-700 hover:shadow-lg hover:shadow-red-500/20 focus:ring-2 focus:ring-red-500/40 active:scale-95' }}"
+                                >
+                                    <i data-lucide="shopping-cart" class="w-3.5 h-3.5"></i>
+                                    {{ $isOutOfStock ? 'Stok Habis' : '+ Keranjang' }}
+                                </button>
+                            </div>
+                        </article>
+                    @endforeach
+                </div>
+
+                {{-- PAGINATION --}}
+                @if(method_exists($produks, 'links'))
+                    <div class="mt-8">
+                        {{ $produks->appends(['search' => $search, 'kategori' => $kategori, 'sort' => $sort])->links() }}
+                    </div>
+                @endif
+            </section>
+        @endif
     </div>
 
-    <script>
-        function modalData() {
-            return {
-                showConfirmModal: false,
-                productName: '',
-                productPrice: 0,
-                productImage: '',
-                productQuantity: 1,
-                adminNumber: '{{ $adminNumber }}',
-                memberIdentifier: {{ Js::from($memberIdentifier) }},
-                
-                init() {
-                    // Fungsi global untuk membuka modal
-                    window.bukaModalProduk = (name, price, image) => {
-                        this.productName = name;
-                        this.productPrice = price;
-                        this.productImage = image;
-                        this.productQuantity = 1;
-                        this.showConfirmModal = true;
-                    };
-                },
-                
-                generateWhatsappLink() {
-                    const message = encodeURIComponent(
-                        `Pemesanan Produk Gym :\n\n` + 
-                        `Identitas Pemesan: nama : ${this.memberIdentifier}\n\n` + 
-                        `Produk Dipesan:\n` +
-                        `Produk: ${this.productName}\n` +
-                        `Harga: Rp ${this.productPrice.toLocaleString('id-ID')}\n` +
-                        `Jumlah: ${this.productQuantity} unit\n\n` + 
-                        `Mohon konfirmasi ketersediaan stok dan total pembayaran.`
-                    );
-                    return `https://wa.me/${this.adminNumber}?text=${message}`;
-                }
-            }
+    {{-- MODAL KONFIRMASI WHATSAPP --}}
+    @include('member.produk_gym.modals.whatsapp_modal', [
+        'adminNumber'      => $adminNumber,
+        'memberIdentifier' => $memberIdentifier,
+    ])
+
+    {{-- CSS tambahan --}}
+    <style>
+        /* Hilangkan scrollbar horizontal tapi tetap bisa scroll untuk slider */
+        .custom-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
-    </script>
+        .custom-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
 </x-layouts.member>
