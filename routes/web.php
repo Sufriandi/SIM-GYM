@@ -14,7 +14,12 @@ use App\Http\Controllers\Admin\PenjualanProdukController;
 use App\Http\Controllers\Admin\ProdukController;
 use App\Http\Controllers\Admin\StokProdukController;
 use App\Http\Controllers\Admin\CoachController;
-use App\Http\Controllers\Admin\MemberController; // ← TAMBAH INI
+use App\Http\Controllers\Admin\MemberController;
+
+// Controller Membership (Admin)
+use App\Http\Controllers\Admin\MembershipController;
+use App\Http\Controllers\Admin\PaketMembershipController;
+use App\Http\Controllers\Admin\MembershipGroupController;
 
 // Controller Member
 use App\Http\Controllers\Member\DashboardController as MemberDashboardController;
@@ -30,7 +35,6 @@ use App\Http\Controllers\Member\ProdukGymController;
 */
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
-// Tambahkan rute publik lainnya di sini (misal: /tentang-kami)
 
 
 /*
@@ -47,7 +51,7 @@ Route::get('/dashboard', function () {
         return redirect()->route('admin.dashboard');
     }
 
-    // Asumsikan default adalah member
+    // default: member
     return redirect()->route('member.dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -74,7 +78,7 @@ Route::middleware(['auth', 'admin'])
     ->name('admin.')
     ->group(function () {
 
-        // Dashboard (Nama rute: admin.dashboard)
+        // Dashboard
         Route::get('dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
         // ================== INVENTARIS ALAT ==================
@@ -107,17 +111,18 @@ Route::middleware(['auth', 'admin'])
         // 2. Master produk
         Route::resource('produk', ProdukController::class);
 
+        // Riwayat stok
+        Route::prefix('stok_produk')->name('stok_produk.')->group(function () {
+            Route::get('/riwayat', [StokProdukController::class, 'history'])->name('history');
+            Route::get('/riwayat/{stokProduk}/detail', [StokProdukController::class, 'showHistoryDetail'])->name('history.detail');
+        });
+
+
         // 3. Manajemen stok produk
         Route::resource('stok_produk', StokProdukController::class)
             ->parameters([
                 'stok_produk' => 'stokProduk',
             ]);
-
-        // Riwayat stok (dibenerin path-nya)
-        Route::prefix('stok_produk')->name('stok_produk.')->group(function () {
-            Route::get('/riwayat', [StokProdukController::class, 'history'])->name('history');
-            Route::get('/riwayat/{stokProduk}/detail', [StokProdukController::class, 'showHistoryDetail'])->name('history.detail');
-        });
 
         // =========================================================
         // RUTE MANAJEMEN COACH
@@ -128,11 +133,28 @@ Route::middleware(['auth', 'admin'])
         // RUTE MANAJEMEN MEMBER
         // =========================================================
         Route::resource('members', MemberController::class);
-        // -> index  : admin.members.index  (GET /admin/members)
-        // -> store  : admin.members.store
-        // -> update : admin.members.update
-        // -> destroy: admin.members.destroy
+        // admin.members.index, admin.members.store, admin.members.update, admin.members.destroy
+
+        // =========================================================
+        // RUTE MANAJEMEN MEMBERSHIP
+        // =========================================================
+
+        // Penjualan / transaksi membership
+        Route::resource('memberships', MembershipController::class)
+            ->only(['index', 'store', 'show', 'destroy']);
+        // admin.memberships.index, admin.memberships.store, ...
+
+        // Master paket membership
+        Route::resource('paket_memberships', PaketMembershipController::class)
+            ->only(['index', 'store', 'update', 'destroy']);
+        // admin.paket_memberships.index, ...
+
+        // Membership group (anggota tambahan paket double/triple)
+        Route::resource('membership_groups', MembershipGroupController::class)
+            ->only(['index', 'store', 'destroy']);
+        // admin.membership_groups.index, ...
     });
+
 
 /*
 |--------------------------------------------------------------------------
@@ -144,7 +166,7 @@ Route::middleware(['auth', 'member'])
     ->name('member.')
     ->group(function () {
 
-        // Dashboard (Nama rute: member.dashboard)
+        // Dashboard
         Route::get('dashboard', [MemberDashboardController::class, 'index'])->name('dashboard');
 
         // Izin Latihan (Member)
@@ -165,10 +187,7 @@ Route::middleware(['auth', 'member'])
         // Daftar coach (member)
         Route::get('coach', [MemberCoachController::class, 'index'])->name('coach.index');
 
-        // // Rute Pelengkapan Profil (jika diperlukan)
-        // Route::get('/profile/lengkapi', [MemberProfileController::class, 'showCompletionForm'])->name('profile.complete.show');
-        // Route::post('/profile/lengkapi', [MemberProfileController::class, 'completeProfile'])->name('profile.complete.store');
-
+        // (opsional) rute pelengkapan profil bisa ditambahkan di sini
     });
 
 
