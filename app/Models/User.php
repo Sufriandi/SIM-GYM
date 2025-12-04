@@ -60,7 +60,6 @@ class User extends Authenticatable
                 'user_id' => $user->id,
                 'nama' => $user->name,
                 'tanggal_daftar' => now(),
-                'status' => 'aktif',
             ]);
         });
     }
