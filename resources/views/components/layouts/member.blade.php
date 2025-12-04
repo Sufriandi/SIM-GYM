@@ -1,108 +1,67 @@
 {{-- resources/views/components/layouts/member.blade.php --}}
 @props([
-    'pageTitle' => 'Dashboard Member',
+    'title' => 'BETA GYM – Area Member',
+    'pageTitle' => null,
     'pageSubtitle' => null,
 ])
 
-@php
-    $user = auth()->user();
-@endphp
-
 <!DOCTYPE html>
-<html lang="id" class="h-full">
+<html lang="id" class="h-full overflow-x-hidden">
 <head>
     <meta charset="utf-8">
+    <title>{{ $title }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $pageTitle }} • BETA GYM Member</title>
+
+    {{-- Favicon --}}
+    <link rel="icon" type="image/png" href="{{ asset('images/Logo.png') }}">
+
+    {{-- Lucide Icons --}}
+    <script src="https://unpkg.com/lucide@latest"></script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-
-    @stack('head')
 </head>
-<body class="h-full bg-brand-bg text-text-main antialiased">
+<body class="min-h-screen bg-brand-bg text-text-main antialiased">
+    <div class="min-h-screen flex bg-brand-bg">
+        {{-- SIDEBAR MEMBER (FIXED) --}}
+        <x-member.sidebar />
 
-<div class="h-screen flex flex-col bg-brand-bg">
+        {{-- WRAPPER KANAN: NAVBAR + CONTENT + FOOTER --}}
+        <div class="flex-1 flex flex-col md:pl-64 min-w-0">
+            {{-- NAVBAR MEMBER --}}
+            <x-member.navbar :page-title="$pageTitle" :page-subtitle="$pageSubtitle" />
 
-    {{-- NAVBAR MEMBER (fixed di atas) --}}
-    <x-member.navbar
-        :pageTitle="$pageTitle"
-        :pageSubtitle="$pageSubtitle"
-        :user="$user"
-    />
-
-    {{-- WRAPPER KONTEN + FOOTER (scroll di sini, mulai di bawah navbar) --}}
-    <div class="flex-1 mt-16 overflow-y-auto custom-scrollbar">
-        <div class="px-4 lg:px-8 pb-8">
-            <div class="max-w-6xl mx-auto mt-6 space-y-4">
+            {{-- KONTEN --}}
+            <main
+                class="flex-1 mt-20 px-4 lg:px-8 pb-10 overflow-y-auto overflow-x-hidden custom-scrollbar"
+            >
                 {{ $slot }}
-            </div>
+            </main>
 
-            {{-- FOOTER scroll bareng konten, bukan fix --}}
-            <x-member.footer />
+            {{-- FOOTER MEMBER (simple & center) --}}
+            <footer class="w-full border-t border-brand-borderSoft bg-brand-shell/70">
+                <div class="max-w-6xl mx-auto px-4 py-4 text-center text-[11px] text-text-muted space-y-1">
+                    <div>© {{ now()->year }} <span class="font-semibold">BETA GYM</span> · Area Member</div>
+                    <div>Jaga konsistensi latihan, kami urus administrasinya.</div>
+                </div>
+            </footer>
         </div>
     </div>
-</div>
 
-{{-- ============== JS GLOBAL ============== --}}
+    {{-- TOAST GLOBAL (kalau ada komponen UI kamu) --}}
+    <x-ui.toast />
 
-<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-
-<script src="https://unpkg.com/lucide@latest"></script>
-<script>
-    function renderLucide() {
-        if (window.lucide && typeof window.lucide.createIcons === 'function') {
-            window.lucide.createIcons();
-        }
-    }
-    document.addEventListener('DOMContentLoaded', renderLucide);
-    document.addEventListener('turbo:load', renderLucide);
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-@if (session('success') || session('error') || session('warning') || session('info') || session('danger'))
+    {{-- Init Lucide --}}
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const typeMap = {
-                success: 'success',
-                error: 'error',
-                danger: 'error',
-                warning: 'warning',
-                info: 'info',
-            };
-
-            @foreach (['success', 'error', 'danger', 'warning', 'info'] as $key)
-                @if (session($key))
-                    Swal.fire({
-                        toast: true,
-                        position: 'top-end',
-                        icon: typeMap['{{ $key }}'] ?? 'info',
-                        title: {!! json_encode(session($key)) !!},
-                        showConfirmButton: false,
-                        timer: 3500,
-                        timerProgressBar: true,
-                    });
-                @endif
-            @endforeach
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
         });
     </script>
-@endif
 
-{{-- Shadow kecil saat scroll (opsional) --}}
-<script>
-    document.addEventListener("scroll", () => {
-        const header = document.querySelector("header");
-        if (!header) return;
+    {{-- Alpine.js GLOBAL UNTUK MEMBER --}}
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
-        if (window.scrollY > 8) {
-            header.classList.add("shadow-header");
-        } else {
-            header.classList.remove("shadow-header");
-        }
-    });
-</script>
-
-@stack('scripts')
-
+    @stack('scripts')
 </body>
 </html>

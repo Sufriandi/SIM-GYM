@@ -12,6 +12,9 @@
     <title>{{ $title }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
+     {{-- Favicon --}}
+    <link rel="icon" type="image/png" href="{{ asset('images/Logo.png') }}">
+
     {{-- Lucide Icons --}}
     <script src="https://unpkg.com/lucide@latest"></script>
 
