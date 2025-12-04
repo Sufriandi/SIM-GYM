@@ -6,6 +6,13 @@
 >
     <div class="max-w-5xl mx-auto space-y-4 pt-2">
 
+        {{-- FLASH MESSAGE (error saja, success lewat toast global) --}}
+        @if(session('error'))
+            <x-ui.toast type="danger" class="mb-2">
+                {{ session('error') }}
+            </x-ui.toast>
+        @endif
+
         {{-- JUDUL + SUBTITLE --}}
         <x-ui.section-header
             :title="$pageTitle ?? 'Riwayat Pengajuan Izin Lengkap'"

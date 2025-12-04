@@ -1,23 +1,39 @@
 {{-- resources/views/member/izin_latihan/index.blade.php --}}
 
+@php
+    use Illuminate\Support\Str;
+
+    $pageTitle = $pageTitle ?? 'Izin Membership';
+
+    // Hitung total pending (bisa paginator atau collection biasa)
+    $totalPending = $daftar_izin instanceof \Illuminate\Pagination\AbstractPaginator
+        ? $daftar_izin->total()
+        : $daftar_izin->count();
+@endphp
+
 <x-layouts.member
-    :pageTitle="$pageTitle ?? 'Izin Sedang Diajukan'"
+    :pageTitle="$pageTitle"
     pageSubtitle="Daftar izin latihan yang statusnya masih pending."
 >
-    <div class="max-w-5xl mx-auto space-y-4">
+    <div class="max-w-6xl mx-auto space-y-4">
 
-        {{-- JUDUL + SUBTITLE --}}
+        {{-- FLASH MESSAGE (error saja, success pakai toast global) --}}
+        @if(session('error'))
+            <x-ui.toast type="danger" class="mb-2">
+                {{ session('error') }}
+            </x-ui.toast>
+        @endif
+
+        {{-- HEADER HALAMAN --}}
         <x-ui.section-header
-            :title="$pageTitle ?? 'Izin Sedang Diajukan'"
+            :title="$pageTitle"
             subtitle="Daftar izin latihan yang statusnya masih pending."
         />
 
-        {{-- PEMBATAS DI BAWAH SUBTITLE --}}
-        <hr class="border-t border-brand-borderSoft mb-4">
-
-        {{-- BARIS TOMBOL AKSI --}}
-        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-2">
-            <div class="text-sm text-text-muted">
+        {{-- DESKRIPSI SINGKAT + TOMBOL AKSI --}}
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div class="text-sm text-text-muted max-w-xl">
+                Kelola pengajuan izin latihan Anda di sini. Ajukan izin baru atau lihat riwayat lengkap.
             </div>
 
             <div class="flex flex-wrap items-center gap-3 md:justify-end">
@@ -40,23 +56,86 @@
         </div>
 
         {{-- CARD IZIN PENDING --}}
-        <x-ui.card
-            title="Izin Pending"
-            subtitle="Pengajuan izin yang sedang menunggu persetujuan Admin."
-            class="overflow-hidden"
-        >
-            <div class="overflow-x-auto custom-scrollbar">
-                <table class="w-full border-collapse text-sm">
+        <x-ui.card class="overflow-hidden">
+            {{-- HEADER CARD --}}
+            <div class="flex items-start justify-between gap-4 mb-4">
+                <div>
+                    <h2 class="text-lg sm:text-xl font-semibold text-text-main">
+                        Izin Pending
+                    </h2>
+                    <p class="text-sm text-text-muted">
+                        Pengajuan izin yang sedang menunggu persetujuan Admin.
+                    </p>
+                </div>
+
+                @if($totalPending > 0)
+                    <div
+                        class="inline-flex items-center justify-center px-4 py-1.5 rounded-full
+                               bg-brand-shell/80 border border-brand-borderSoft text-[13px]
+                               text-gold-700 font-semibold whitespace-nowrap"
+                    >
+                        {{ $totalPending }} izin pending
+                    </div>
+                @endif
+            </div>
+
+            {{-- TABEL IZIN (tanpa scroll horizontal) --}}
+            <div>
+                <table class="w-full table-auto text-sm">
                     <thead>
-                        <tr class="border-b border-brand-borderSoft bg-brand-shell/60">
-                            <th class="px-3 py-2 text-left  text-text-muted font-medium">Periode Izin</th>
-                            <th class="px-3 py-2 text-center text-text-muted font-medium">Durasi</th>
-                            <th class="px-3 py-2 text-center text-text-muted font-medium">Diajukan</th>
-                            <th class="px-3 py-2 text-center text-text-muted font-medium">Status</th>
+                        <tr class="border-y border-brand-borderSoft bg-brand-shell/60">
+                            {{-- PERIODE IZIN --}}
+                            <th
+                                class="pl-3 pr-2 py-3 text-center text-xs font-semibold tracking-wide
+                                       text-text-muted/90 uppercase whitespace-nowrap"
+                            >
+                                Periode Izin
+                            </th>
+
+                            {{-- DURASI (rapat ke kiri, kolom kecil) --}}
+                            <th
+                                class="px-1 py-3 text-center text-xs font-semibold tracking-wide
+                                       text-text-muted/90 uppercase whitespace-nowrap w-16"
+                            >
+                                Durasi
+                            </th>
+
+                            {{-- DIAJUKAN --}}
+                            <th
+                                class="px-2 py-3 text-center text-xs font-semibold tracking-wide
+                                       text-text-muted/90 uppercase whitespace-nowrap w-40"
+                            >
+                                Diajukan
+                            </th>
+
+                            {{-- STATUS --}}
+                            <th
+                                class="px-2 py-3 text-center text-xs font-semibold tracking-wide
+                                       text-text-muted/90 uppercase whitespace-nowrap w-32"
+                            >
+                                Status
+                            </th>
+
+                            {{-- ALASAN (fleksibel + truncate) --}}
+                            <th
+                                class="px-2 py-3 text-center text-xs font-semibold tracking-wide
+                                       text-text-muted/90 uppercase"
+                            >
+                                Alasan
+                            </th>
+
+                            {{-- DETAIL --}}
+                            <th
+                                class="px-2 py-3 text-center text-xs font-semibold tracking-wide
+                                       text-text-muted/90 uppercase whitespace-nowrap w-[110px]"
+                            >
+                                Detail
+                            </th>
                         </tr>
                     </thead>
 
-                    <tbody>
+                    {{-- SAMAIN DENGAN ADMIN: divide-y & hover:bg-brand-surface-50 --}}
+                    <tbody class="divide-y divide-brand-borderSoft/80">
                         @forelse($daftar_izin as $izin)
                             @php
                                 $mulai   = \Carbon\Carbon::parse($izin->tanggal_mulai);
@@ -64,32 +143,59 @@
                                 $buat    = $izin->created_at ? \Carbon\Carbon::parse($izin->created_at) : null;
                             @endphp
 
-                            <tr class="border-b border-brand-borderSoft/60 hover:bg-brand-shell/40 transition-colors">
-                                {{-- Periode --}}
-                                <td class="px-3 py-2 align-top">
-                                    <div class="text-text-main">
-                                        {{ $mulai->translatedFormat('d M Y') }} &mdash; {{ $selesai->translatedFormat('d M Y') }}
+                            <tr class="hover:bg-brand-surface-50 transition-colors duration-150">
+                                {{-- PERIODE IZIN --}}
+                                <td class="pl-3 pr-2 py-3 align-top whitespace-nowrap">
+                                    <div class="text-text-main font-medium">
+                                        {{ $mulai->translatedFormat('d M Y') }} —
+                                        {{ $selesai->translatedFormat('d M Y') }}
                                     </div>
                                 </td>
 
-                                {{-- Durasi --}}
-                                <td class="px-3 py-2 text-center align-top text-text-main font-semibold">
-                                    {{ $izin->jumlah_hari }} hari
+                                {{-- DURASI --}}
+                                <td class="px-1 py-3 text-center align-top whitespace-nowrap">
+                                    <span class="font-semibold text-text-main">
+                                        {{ $izin->jumlah_hari }}
+                                    </span>
+                                    <span class="text-xs text-text-muted ml-0.5">
+                                        hari
+                                    </span>
                                 </td>
 
-                                {{-- Diajukan --}}
-                                <td class="px-3 py-2 text-center align-top text-text-muted">
+                                {{-- DIAJUKAN --}}
+                                <td class="px-2 py-3 text-left align-top text-text-muted whitespace-nowrap">
                                     {{ $buat?->translatedFormat('d M Y, H:i') ?? '-' }}
                                 </td>
 
-                                {{-- Status (selalu pending di index) --}}
-                                <td class="px-3 py-2 text-center align-top">
-                                    <x-ui.badge variant="warning">Pending</x-ui.badge>
+                                {{-- STATUS (selalu pending di halaman ini) --}}
+                                <td class="px-2 py-3 text-left align-top whitespace-nowrap">
+                                    <x-ui.badge variant="warning">
+                                        Pending
+                                    </x-ui.badge>
+                                </td>
+
+                                {{-- ALASAN – dibatasi & dipotong "..." --}}
+                                <td class="px-2 py-3 text-left align-top">
+                                    <span class="block max-w-[13rem] truncate text-text-main">
+                                        {{ $izin->alasan ? Str::limit($izin->alasan, 70) : '-' }}
+                                    </span>
+                                </td>
+
+                                {{-- DETAIL (halaman terpisah) --}}
+                                <td class="px-2 py-3 text-right align-top whitespace-nowrap">
+                                    <a
+                                        href="{{ route('member.izin_latihan.detail', $izin->id) }}"
+                                        class="inline-flex items-center gap-1 text-[13px] font-semibold
+                                               text-gold-600 hover:text-gold-500 transition-colors"
+                                    >
+                                        Lihat detail
+                                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                                    </a>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="px-3 py-6 text-center text-text-muted text-sm italic">
+                                <td colspan="6" class="px-4 py-8 text-center text-text-muted text-sm">
                                     Belum ada izin latihan yang sedang diajukan.
                                 </td>
                             </tr>

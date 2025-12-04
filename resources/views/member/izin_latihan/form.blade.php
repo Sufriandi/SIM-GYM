@@ -1,4 +1,4 @@
-{{-- resources/views/member/izin_latihan/create.blade.php --}}
+{{-- resources/views/member/izin_latihan/form.blade.php --}}
 
 <x-layouts.member
     pageTitle="Ajukan Izin Latihan"
@@ -32,11 +32,16 @@
         @endif
 
         {{-- FORM CARD --}}
-        <x-ui.card title="Formulir Pengajuan Izin" subtitle="Tanggal, durasi, dan alasan izin akan digunakan sebagai dasar penilaian Admin.">
-            <form method="POST"
-                  action="{{ route('member.izin_latihan.store') }}"
-                  enctype="multipart/form-data"
-                  class="space-y-5">
+        <x-ui.card
+            title="Formulir Pengajuan Izin"
+            subtitle="Tanggal, durasi, dan alasan izin akan digunakan sebagai dasar penilaian Admin."
+        >
+            <form
+                method="POST"
+                action="{{ route('member.izin_latihan.store') }}"
+                enctype="multipart/form-data"
+                class="space-y-5"
+            >
                 @csrf
 
                 {{-- Periode Tanggal --}}
@@ -72,25 +77,23 @@
                     </div>
                 </div>
 
-                {{-- Durasi Otomatis (opsional, bisa diisi via controller juga) --}}
+                {{-- Durasi (info, dihitung otomatis di backend) --}}
                 <div>
-                    <x-ui.label for="jumlah_hari">Durasi Izin (Hari)</x-ui.label>
+                    <x-ui.label for="jumlah_hari_display">Durasi Izin (Hari)</x-ui.label>
                     <input
                         type="number"
-                        id="jumlah_hari"
-                        name="jumlah_hari"
+                        id="jumlah_hari_display"
+                        name="jumlah_hari_display"
                         min="1"
-                        value="{{ old('jumlah_hari') }}"
+                        value="{{ old('jumlah_hari_display') }}"
                         class="mt-1 w-full rounded-xl border border-brand-borderSoft bg-brand-card text-sm text-text-main px-3 py-2.5 focus:ring-2 focus:ring-gold-500/60 focus:border-gold-500"
-                        placeholder="Contoh: 3"
-                        required
+                        placeholder="Akan dihitung otomatis"
+                        readonly
                     >
                     <p class="text-[11px] text-text-muted mt-1">
-                        Opsional bisa dihitung otomatis oleh sistem di controller; untuk sekarang, isi sesuai jumlah hari izin.
+                        Durasi izin akan dihitung otomatis dari selisih tanggal mulai dan tanggal selesai
+                        di sistem. Angka di atas hanya informasi untuk Anda.
                     </p>
-                    @error('jumlah_hari')
-                        <p class="text-xs text-danger mt-1">{{ $message }}</p>
-                    @enderror
                 </div>
 
                 {{-- Alasan --}}
@@ -116,11 +119,11 @@
                         type="file"
                         id="bukti_alasan"
                         name="bukti_alasan"
-                        accept="image/*"
+                        accept="image/*,.pdf,.doc,.docx"
                         class="mt-1 block w-full text-sm text-text-main file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-gold-500/90 file:text-brand-black hover:file:bg-gold-500/80"
                     >
                     <p class="text-[11px] text-text-muted mt-1">
-                        Contoh: surat keterangan dokter, tiket perjalanan, atau bukti lain (format gambar, maksimal sesuai aturan server).
+                        Contoh: surat keterangan dokter, tiket perjalanan, atau bukti lain (gambar / PDF / DOC, maksimal 2MB).
                     </p>
                     @error('bukti_alasan')
                         <p class="text-xs text-danger mt-1">{{ $message }}</p>
@@ -140,4 +143,36 @@
             </form>
         </x-ui.card>
     </div>
+
+    {{-- JS kecil buat hitung durasi secara live (frontend saja) --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const startInput  = document.getElementById('tanggal_mulai');
+            const endInput    = document.getElementById('tanggal_selesai');
+            const durasiInput = document.getElementById('jumlah_hari_display');
+
+            function updateDurasi() {
+                if (!startInput.value || !endInput.value) {
+                    durasiInput.value = '';
+                    return;
+                }
+
+                const start = new Date(startInput.value);
+                const end   = new Date(endInput.value);
+
+                if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+                    durasiInput.value = '';
+                    return;
+                }
+
+                const diffMs   = end - start;
+                const diffHari = Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1;
+
+                durasiInput.value = diffHari;
+            }
+
+            startInput.addEventListener('change', updateDurasi);
+            endInput.addEventListener('change', updateDurasi);
+        });
+    </script>
 </x-layouts.member>
