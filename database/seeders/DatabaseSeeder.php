@@ -28,8 +28,8 @@ class DatabaseSeeder extends Seeder
         User::updateOrCreate(
             ['email' => 'member@sim.gym'],
             [
-                'name'     => 'Member Demo',
-                'username' => 'memberdemo',
+                'name'     => 'Member',
+                'username' => 'member',
                 'no_hp'    => '6304230003',
                 'password' => 'password',       // plain text, di-hash oleh model
                 'role'     => 'member',

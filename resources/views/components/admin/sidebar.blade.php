@@ -7,6 +7,12 @@
     $dashboardActive = $active('admin.dashboard');
     $memberActive = $active('admin.members');
 
+    // Membership (parent + children)
+    $membershipPaketActive = $active('admin.paket_memberships'); // Kelola Paket Membership
+    $membershipPenjualanActive = $active('admin.memberships'); // Penjualan Membership
+    $membershipGroupActive = $active('admin.membership_groups'); // Halaman grup (tanpa menu langsung)
+    $membershipActive = $membershipPaketActive || $membershipPenjualanActive || $membershipGroupActive;
+
     $penjualanActive = $active('admin.penjualan_produk');
     $produkMasterActive = $active('admin.produk');
     $stokActive = $active('admin.stok_produk');
@@ -21,16 +27,17 @@
     // Submenu states (server-side default)
     $kehadiranOpen = $izinActive || $absensiActive;
     $produkManagementOpen = $penjualanActive || $produkMasterActive || $stokActive;
+    $membershipManagementOpen = $membershipActive;
 
     // Notification counts (fallback dari controller)
     $izinPending = $izinPending ?? 0;
 @endphp
 
-{{-- WRAPPER: handle state mobile + submenu --}}
 <div x-data="{
     mobileOpen: false,
     openKehadiran: {{ $kehadiranOpen ? 'true' : 'false' }},
     openProduk: {{ $produkManagementOpen ? 'true' : 'false' }},
+    openMembership: {{ $membershipManagementOpen ? 'true' : 'false' }},
 }" @toggle-mobile-menu.window="mobileOpen = !mobileOpen" class="relative z-40"
     aria-label="Admin Navigation">
 
@@ -38,7 +45,7 @@
     <div class="fixed inset-0 bg-black/50 md:hidden" x-show="mobileOpen" x-cloak x-transition.opacity
         @click="mobileOpen = false"></div>
 
-    {{-- SIDEBAR (desktop + mobile slide-in) --}}
+    {{-- SIDEBAR --}}
     <aside
         class="flex flex-col fixed inset-y-0 left-0 w-64 bg-brand-black text-brand-white
                shadow-2xl transform transition-transform duration-200
@@ -108,6 +115,58 @@
                     @endif
                 </a>
 
+                {{-- Manajemen Membership (parent collapsible) --}}
+                <button @click="openMembership = !openMembership" type="button"
+                    class="w-full flex items-center justify-start gap-4 px-4 py-3
+           rounded-2xl text-sm font-medium transition-all duration-300
+           {{ $membershipActive
+               ? 'text-gold-300 bg-brand-gunmetal/40'
+               : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/40' }}"
+                    x-bind:aria-expanded="openMembership" aria-controls="membership-submenu">
+                    <i data-lucide="badge-check" class="w-5 h-5 shrink-0"></i>
+
+                    {{-- teks dibuat flex-1 & text-left supaya rata kiri walau 2 baris --}}
+                    <span class="flex-1 text-left leading-tight">
+                        Kelola Membership
+                    </span>
+
+                    <i data-lucide="chevron-down" class="w-4 h-4 ml-auto transition-transform duration-300"
+                        :class="{ 'rotate-180': openMembership }"></i>
+                </button>
+
+                {{-- Submenu Membership --}}
+                <div x-show="openMembership" x-cloak x-collapse x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 -translate-y-1"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
+                    x-transition:leave-end="opacity-0" id="membership-submenu" class="space-y-1 mt-1 pl-4"
+                    role="menu">
+
+                    {{-- Paket Membership --}}
+                    <a href="{{ route('admin.paket_memberships.index') }}"
+                        class="group flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
+                            {{ $membershipPaketActive
+                                ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
+                                : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
+                        role="menuitem" aria-current="{{ $membershipPaketActive ? 'page' : 'false' }}">
+                        <i data-lucide="layers"
+                            class="w-4 h-4 {{ $membershipPaketActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
+                        <span>Paket Membership</span>
+                    </a>
+
+                    {{-- Penjualan Membership --}}
+                    <a href="{{ route('admin.memberships.index') }}"
+                        class="group flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
+                            {{ $membershipPenjualanActive
+                                ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
+                                : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
+                        role="menuitem" aria-current="{{ $membershipPenjualanActive ? 'page' : 'false' }}">
+                        <i data-lucide="ticket-percent"
+                            class="w-4 h-4 {{ $membershipPenjualanActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
+                        <span>Penjualan Membership</span>
+                    </a>
+                </div>
+
                 {{-- Manajemen Produk (parent collapsible) --}}
                 <button @click="openProduk = !openProduk" type="button"
                     class="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
@@ -127,7 +186,7 @@
                     x-transition:enter-end="opacity-100 translate-y-0"
                     x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
                     x-transition:leave-end="opacity-0" id="produk-submenu" class="space-y-1 mt-1 pl-4" role="menu">
-                    {{-- Produk --}}
+
                     <a href="{{ route('admin.produk.index') }}"
                         class="group flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
                             {{ $produkMasterActive
@@ -139,7 +198,6 @@
                         <span>Produk</span>
                     </a>
 
-                    {{-- Stok Produk --}}
                     <a href="{{ route('admin.stok_produk.index') }}"
                         class="group flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
                             {{ $stokActive
@@ -151,7 +209,6 @@
                         <span>Stok Produk</span>
                     </a>
 
-                    {{-- Penjualan Produk --}}
                     <a href="{{ route('admin.penjualan_produk.index') }}"
                         class="group flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
                             {{ $penjualanActive
@@ -237,7 +294,7 @@
                     x-transition:enter-end="opacity-100 translate-y-0"
                     x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
                     x-transition:leave-end="opacity-0" id="kehadiran-submenu" class="space-y-1 mt-1" role="menu">
-                    {{-- Daftar Izin --}}
+
                     <a href="{{ route('admin.izin_latihan.index') }}"
                         class="group flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all duration-200
                             {{ $izinActive
@@ -254,7 +311,6 @@
                         @endif
                     </a>
 
-                    {{-- Data Absensi (placeholder) --}}
                     <a href="#"
                         class="group flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all duration-200
                             {{ $absensiActive
@@ -274,7 +330,6 @@
                     Analitik
                 </div>
 
-                {{-- Laporan & Statistik (placeholder) --}}
                 <a href="#"
                     class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
                         {{ $laporanActive
