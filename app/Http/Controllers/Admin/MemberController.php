@@ -77,7 +77,6 @@ class MemberController extends Controller
                     'user_id'        => $user->id,
                     'nama'           => $request->nama,
                     'tanggal_daftar' => now(),
-                    // kolom status sudah tidak ada, jadi tidak diisi lagi
                 ]);
             }
 
@@ -126,7 +125,6 @@ class MemberController extends Controller
             'alamat'        => ['nullable', 'string'],
             'tanggal_mulai' => ['nullable', 'date'],
             'tanggal_akhir' => ['nullable', 'date', 'after_or_equal:tanggal_mulai'],
-            // 'status' dihapus karena kolomnya sudah tidak ada
             'foto'          => ['nullable', 'image', 'max:2048'],
         ]);
 
