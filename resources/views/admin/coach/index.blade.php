@@ -97,12 +97,22 @@
                 <table class="table-fixed w-full border-collapse text-xs md:text-sm md:min-w-[900px]">
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[2%] min-w-[10px]">
+                            {{-- NO (dilonggarkan) --}}
+                            <th
+                                class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted
+                                       w-[5%] min-w-[40px]"
+                            >
                                 No
                             </th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[8%] min-w-[80px]">
+
+                            {{-- FOTO (dilonggarkan) --}}
+                            <th
+                                class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted
+                                       w-[10%] min-w-[90px]"
+                            >
                                 Foto
                             </th>
+
                             <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[18%] min-w-[150px]">
                                 Nama
                             </th>
@@ -135,15 +145,18 @@
                                     !search
                                     || @js(strtolower($coach->nama)).startsWith(search.toLowerCase())
                                 "
-                                class="hover:bg-brand-surface-50 transition-colors duration-150"
+                                class="hover:bg-brand-surface-50 transition-colors	duration-150"
                             >
                                 {{-- NO --}}
-                                <td class="p-3 align-middle text-sm font-medium text-text-main w-[2%]">
+                                <td
+                                    class="p-3 align-middle text-center text-sm font-medium text-text-main
+                                           w-[5%] min-w-[40px]"
+                                >
                                     {{ $loop->iteration + ($coaches->currentPage() - 1) * $coaches->perPage() }}
                                 </td>
 
                                 {{-- FOTO --}}
-                                <td class="p-3 align-middle w-[8%] min-w-[80px]">
+                                <td class="p-3 align-middle w-[10%] min-w-[90px]">
                                     <img
                                         src="{{ $currentFotoUrl }}"
                                         alt="Foto {{ $coach->nama }}"

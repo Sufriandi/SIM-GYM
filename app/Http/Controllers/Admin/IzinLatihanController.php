@@ -85,7 +85,7 @@ class IzinLatihanController extends Controller
         }
 
         // baris ini sebenarnya double, tapi kalau mau dipertahankan:
-        $query->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc');
+       // $query->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc');
 
         /*
         |--------------------------------------------------------------------------

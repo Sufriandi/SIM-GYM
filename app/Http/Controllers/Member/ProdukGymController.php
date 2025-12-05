@@ -5,55 +5,69 @@ namespace App\Http\Controllers\Member;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Produk;
-use App\Models\User; 
 
 class ProdukGymController extends Controller
 {
-    private $adminWhatsappNumber = '6282390694731'; // GANTI DENGAN NOMOR WA ADMIN NYA
-    private $kategoriOptions = ['minuman', 'suplemen', 'lainnya']; // Asumsi kategori dari Model Produk
+    /**
+     * Nomor WhatsApp admin untuk pemesanan.
+     */
+    private string $adminWhatsappNumber = '6282390694731'; // sesuaikan dengan nomor WA admin Anda
 
     /**
-     * Display a listing of the resource (Marketplace View) dengan fitur Pencarian dan Filter.
-     * Rute: member.produk_gym.index
+     * Daftar kategori yang diizinkan untuk filter.
+     */
+    private array $kategoriOptions = ['minuman', 'suplemen', 'lainnya'];
+
+    /**
+     * Halaman marketplace produk gym (area member).
+     * Route: member.produk_gym.index
      */
     public function index(Request $request)
     {
         $pageTitle = 'Produk Gym';
-        
-        // Ambil filter dari request
-        $search = $request->input('search');
-        $kategori = $request->input('kategori');
-        
-        // 1. Inisialisasi Query Produk
-        $produksQuery = Produk::where('stok', '>', 0);
-        
-        // 2. Terapkan Pencarian
-        if ($search) {
-            $produksQuery->where(function ($query) use ($search) {
-                $query->where('nama', 'like', '%' . $search . '%')
-                      ->orWhere('deskripsi', 'like', '%' . $search . '%');
+
+        // Ambil nilai filter dari query string
+        $search   = trim($request->query('search', ''));
+        $kategori = $request->query('kategori', 'all');
+
+        // Query dasar: ambil semua produk (TANPA filter stok)
+        // -> stok 0 tetap ditampilkan, hanya tombol beli yang dinonaktifkan di view
+        $query = Produk::query();
+
+        // PENCARIAN: nama / deskripsi
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                  ->orWhere('deskripsi', 'like', "%{$search}%");
             });
         }
 
-        // 3. Terapkan Filter Kategori
-        if ($kategori && $kategori !== 'all') {
-            $produksQuery->where('kategori', $kategori);
+        // FILTER KATEGORI: hanya jika bukan "all" dan nilai valid
+        if ($kategori !== 'all' && in_array($kategori, $this->kategoriOptions, true)) {
+            $query->where('kategori', $kategori);
         }
 
-        // 4. Ambil dan paginate data
-        $produks = $produksQuery->orderBy('nama', 'asc')->paginate(12);
-        
-        // Kategori yang tersedia
+        // Ambil data dengan pagination
+        $produks = $query
+            ->orderBy('nama', 'asc')   // bisa diganti 'created_at', 'desc' kalau mau produk terbaru duluan
+            ->paginate(12)
+            ->withQueryString();       // supaya search & kategori tetap ada di URL saat pindah halaman
+
         $kategoriOptions = $this->kategoriOptions;
 
-
-        return view('member.produk_gym.index', compact('produks', 'pageTitle', 'search', 'kategori', 'kategoriOptions'));
+        return view('member.produk_gym.index', compact(
+            'produks',
+            'pageTitle',
+            'search',
+            'kategori',
+            'kategoriOptions'
+        ));
     }
-    
+
     /**
-     * Helper untuk mendapatkan nomor WA Admin
+     * Helper untuk mendapatkan nomor WA admin.
      */
-    public function getAdminNumber()
+    public function getAdminNumber(): string
     {
         return $this->adminWhatsappNumber;
     }

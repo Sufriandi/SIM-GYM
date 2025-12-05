@@ -175,6 +175,8 @@ Route::middleware(['auth', 'member'])
             Route::get('/riwayat', [MemberIzinLatihanController::class, 'history'])->name('history');
             Route::get('/ajukan', [MemberIzinLatihanController::class, 'create'])->name('create');
             Route::post('/store', [MemberIzinLatihanController::class, 'store'])->name('store');
+            Route::get('/{id}/detail', [MemberIzinLatihanController::class, 'detail'])->name('detail');
+            
         });
 
         // produk gym (marketplace member)

@@ -43,15 +43,15 @@ class MemberController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'nama'                  => ['required', 'string', 'max:255'],
-            'username'              => ['required', 'string', 'max:255', 'unique:users,username'],
-            'email'                 => ['nullable', 'string', 'email', 'max:255', 'unique:users,email'],
-            'no_hp'                 => ['nullable', 'string', 'max:20', 'unique:users,no_hp'],
-            'password'              => ['required', 'string', 'min:8', 'confirmed'],
-            'alamat'                => ['nullable', 'string'],
-            'tanggal_mulai'         => ['nullable', 'date'],
-            'tanggal_akhir'         => ['nullable', 'date', 'after_or_equal:tanggal_mulai'],
-            'foto'                  => ['nullable', 'image', 'max:2048'],
+            'nama'          => ['required', 'string', 'max:255'],
+            'username'      => ['required', 'string', 'max:255', 'unique:users,username'],
+            'email'         => ['nullable', 'string', 'email', 'max:255', 'unique:users,email'],
+            'no_hp'         => ['nullable', 'string', 'max:20', 'unique:users,no_hp'],
+            'password'      => ['required', 'string', 'min:8', 'confirmed'],
+            'alamat'        => ['nullable', 'string'],
+            'tanggal_mulai' => ['nullable', 'date'],
+            'tanggal_akhir' => ['nullable', 'date', 'after_or_equal:tanggal_mulai'],
+            'foto'          => ['nullable', 'image', 'max:2048'],
         ]);
 
         DB::beginTransaction();
@@ -131,7 +131,7 @@ class MemberController extends Controller
         DB::beginTransaction();
 
         try {
-            // Update member
+            // Data member yang boleh di-update
             $dataMember = [
                 'nama'          => $request->nama,
                 'alamat'        => $request->alamat,
