@@ -77,7 +77,6 @@ class MemberController extends Controller
                     'user_id'        => $user->id,
                     'nama'           => $request->nama,
                     'tanggal_daftar' => now(),
-                    'status'         => 'aktif',
                 ]);
             }
 
@@ -97,7 +96,6 @@ class MemberController extends Controller
                 'alamat'         => $request->alamat,
                 'tanggal_mulai'  => $request->tanggal_mulai,
                 'tanggal_akhir'  => $request->tanggal_akhir,
-                'status'         => 'aktif',
                 'foto'           => $fotoPath,
             ]);
 
@@ -127,7 +125,6 @@ class MemberController extends Controller
             'alamat'        => ['nullable', 'string'],
             'tanggal_mulai' => ['nullable', 'date'],
             'tanggal_akhir' => ['nullable', 'date', 'after_or_equal:tanggal_mulai'],
-            'status'        => ['required', 'string'],
             'foto'          => ['nullable', 'image', 'max:2048'],
         ]);
 
@@ -140,7 +137,6 @@ class MemberController extends Controller
                 'alamat'        => $request->alamat,
                 'tanggal_mulai' => $request->tanggal_mulai,
                 'tanggal_akhir' => $request->tanggal_akhir,
-                'status'        => $request->status,
             ];
 
             // Foto baru?
