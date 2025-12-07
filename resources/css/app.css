@@ -1,4 +1,14 @@
 @tailwind base;
+
+/* GLOBAL HEADING */
+@layer base {
+    h1,
+    h2 {
+        @apply font-heading;
+        font-weight: 700 !important;
+    }
+}
+
 @tailwind components;
 @tailwind utilities;
 
@@ -23,7 +33,64 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-    background: #111;          /* boleh kamu ganti sesuai tema dashboard */
+    background: #111; /* boleh kamu ganti sesuai tema dashboard */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #d4a757;
+    border-radius: 999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #c08f3e;
+}
+
+/* Optional: kalau kamu pakai class custom-scrollbar di Blade,
+   kita samakan saja dengan global supaya tidak beda-beda */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 12px;
+    height: 10px;
+}
+
+[x-cloak] {
+    display: none !important;
+}
+@tailwind base;
+
+/* GLOBAL HEADING */
+@layer base {
+    h1,
+    h2 {
+        @apply font-heading;
+        font-weight: 700 !important;
+    }
+}
+
+@tailwind components;
+@tailwind utilities;
+
+.swal2-container.swal2-top-end {
+    margin-top: 65px !important;
+}
+
+/* === BETA GYM GOLD SCROLLBAR (GLOBAL) === */
+
+/* Firefox */
+* {
+    scrollbar-width: thin; /* atau 'auto' kalau mau agak besar */
+    scrollbar-color: #d4a757 #111111;
+}
+
+/* Chrome, Edge, Safari */
+/* === BETA GYM GOLD SCROLLBAR (HANYA UNTUK .custom-scrollbar) === */
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #111; /* boleh kamu ganti sesuai tema dashboard */
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
