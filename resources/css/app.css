@@ -1,4 +1,15 @@
 @tailwind base;
+
+/* GLOBAL HEADING */
+@layer base {
+    h1,
+    h2
+    {
+        @apply font-heading;
+        font-weight: 700 !important;
+    }
+}
+
 @tailwind components;
 @tailwind utilities;
 
