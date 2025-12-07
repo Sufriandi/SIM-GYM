@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\MembershipController;
 use App\Http\Controllers\Admin\PaketMembershipController;
 use App\Http\Controllers\Admin\MembershipGroupController;
+use App\Http\Controllers\Admin\ProfilGymController;
 
 // Controller Absensi (Admin)
 use App\Http\Controllers\Admin\KehadiranMemberController as AdminKehadiranMemberController;
@@ -153,6 +154,13 @@ Route::middleware(['auth', 'admin'])
         // Membership group (anggota tambahan paket double/triple)
         Route::resource('membership_groups', MembershipGroupController::class)
             ->only(['index', 'store', 'destroy']);
+        // admin.membership_groups.index, ...
+
+        // =========================================================
+        // RUTE MANAJEMEN PROFIL GYM
+        // =========================================================
+        Route::resource('profil_gym', ProfilGymController::class)
+            ->parameters(['profil_gym' => 'profilGym']);
 
         // =========================================================
         // RUTE ABSENSI (ADMIN) – QR aktif + daftar kehadiran

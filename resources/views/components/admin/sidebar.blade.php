@@ -7,7 +7,8 @@
 
     // Menu states (top level)
     $dashboardActive = $active('admin.dashboard');
-    $memberActive    = $active('admin.members');
+    // pastikan hanya match ke admin.members.*
+    $memberActive = str($current)->startsWith('admin.members.');
 
     // Membership (parent + children)
     $membershipPaketActive      = $active('admin.paket_memberships');   // Kelola Paket Membership
@@ -29,6 +30,9 @@
     $absensiActive = $active('admin.absensi.kehadiran'); // satu prefix untuk absensi
 
     $laporanActive = $active('admin.reports');
+
+    // Profil gym
+    $profilGymActive = $active('admin.profil_gym');
 
     // Submenu states (server-side default)
     $kehadiranOpen            = $izinActive || $absensiActive;
@@ -442,7 +446,33 @@
                 </div>
             </div>
 
-            {{-- ================== ANALITIK ================== --}}
+            {{-- Konfigurasi / Profil Gym --}}
+            <div class="space-y-2 mt-4">
+                <div class="px-4 text-[11px] font-bold tracking-wider uppercase text-brand-silver/70 mb-3">
+                    Konfigurasi
+                </div>
+
+                <a href="{{ route('admin.profil_gym.index') }}"
+                    class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
+                        {{ $profilGymActive
+                            ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20'
+                            : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
+                    aria-current="{{ $profilGymActive ? 'page' : 'false' }}">
+                    <i data-lucide="settings-2"
+                        class="w-5 h-5 transition-transform duration-300
+                            {{ $profilGymActive ? 'text-gold-300' : 'group-hover:scale-110' }}"></i>
+                    <span>Kelola Profil Gym</span>
+
+                    @if ($profilGymActive)
+                        <div
+                            class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600
+                                   rounded-full animate-pulse">
+                        </div>
+                    @endif
+                </a>
+            </div>
+
+            {{-- Analitik Section --}}
             <div class="space-y-2">
                 <div class="px-4 text-[11px] font-bold tracking-wider uppercase text-brand-silver/70 mb-3">
                     Analitik
