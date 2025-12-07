@@ -1,0 +1,145 @@
+<?php
+
+namespace App\Http\Controllers\Member;
+
+use App\Http\Controllers\Controller;
+use App\Models\KehadiranMember;
+use App\Models\SesiAbsensi;
+use App\Models\Member;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Carbon;
+
+class KehadiranMemberController extends Controller
+{
+    /**
+     * Helper: ambil record Member berdasarkan user yang login.
+     */
+    protected function getCurrentMember(): Member
+    {
+        $userId = Auth::id();
+
+        return Member::where('user_id', $userId)->firstOrFail();
+    }
+
+    /**
+     * Halaman riwayat kehadiran member.
+     *
+     * GET /member/kehadiran
+     * Route name: member.kehadiran.index
+     */
+    public function index()
+    {
+        $pageTitle = 'Riwayat Kehadiran';
+
+        $member = $this->getCurrentMember();
+
+        $riwayat = KehadiranMember::with('sesi')
+            ->where('member_id', $member->id)
+            ->orderByDesc('waktu_absen')
+            ->paginate(15);
+
+        return view('member.kehadiran.index', compact(
+            'pageTitle',
+            'riwayat',
+            'member'
+        ));
+    }
+
+    /**
+     * Endpoint yang dipanggil ketika member scan QR.
+     * QR berisi URL: route('member.kehadiran.scan', $sesi->kode_qr)
+     *
+     * GET /member/kehadiran/scan/{kode_qr}
+     * Route name: member.kehadiran.scan
+     */
+    public function scan(Request $request, string $kode_qr)
+    {
+        $member = $this->getCurrentMember();
+
+        // Cari sesi berdasarkan kode_qr dan status aktif
+        $sesi = SesiAbsensi::where('kode_qr', $kode_qr)
+            ->where('status', 'aktif')
+            ->first();
+
+        if (! $sesi) {
+            return redirect()
+                ->route('member.kehadiran.index')
+                ->with('error', 'Sesi absensi tidak ditemukan atau sudah ditutup.');
+        }
+
+        // Cek apakah sesi memang untuk hari ini (opsional, bisa disesuaikan)
+        $today = Carbon::today();
+        if (! $sesi->tanggal instanceof Carbon) {
+            $sesi->tanggal = Carbon::parse($sesi->tanggal);
+        }
+
+        if (! $sesi->tanggal->isSameDay($today)) {
+            return redirect()
+                ->route('member.kehadiran.index')
+                ->with('error', 'Sesi absensi ini tidak dijadwalkan untuk hari ini.');
+        }
+
+        // Cek apakah member sudah absen di sesi ini
+        $existing = KehadiranMember::where('sesi_absensi_id', $sesi->id)
+            ->where('member_id', $member->id)
+            ->first();
+
+        if ($existing) {
+            return redirect()
+                ->route('member.kehadiran.index')
+                ->with('info', 'Anda sudah melakukan absensi untuk sesi ini.');
+        }
+
+        // Tentukan status hadir / terlambat (opsional: toleransi 15 menit)
+        $now    = Carbon::now();
+        $status = 'hadir';
+
+        if ($sesi->jam_mulai) {
+            $jamMulai = Carbon::parse($sesi->tanggal->format('Y-m-d') . ' ' . $sesi->jam_mulai);
+            $batasTerlambat = $jamMulai->copy()->addMinutes(15); // toleransi 15 menit
+
+            if ($now->greaterThan($batasTerlambat)) {
+                $status = 'terlambat';
+            }
+        }
+
+        // Simpan kehadiran
+        $kehadiran = KehadiranMember::create([
+            'sesi_absensi_id' => $sesi->id,
+            'member_id'       => $member->id,
+            'waktu_absen'     => $now,
+            'status'          => $status,
+            'device_info'     => $request->userAgent(),  // opsional
+            'keterangan'      => null,
+        ]);
+
+        return redirect()
+            ->route('member.kehadiran.index')
+            ->with('success', "Absensi berhasil direkam pada sesi \"{$sesi->nama_sesi}\" dengan status {$status}.");
+    }
+
+    /**
+     * Detail satu baris kehadiran (opsional).
+     *
+     * GET /member/kehadiran/{id}
+     * Route name: member.kehadiran.show
+     */
+    public function show($id)
+    {
+        $pageTitle = 'Detail Kehadiran';
+
+        $member = $this->getCurrentMember();
+
+        $kehadiran = KehadiranMember::with('sesi')
+            ->where('member_id', $member->id)
+            ->where('id', $id)
+            ->firstOrFail();
+
+        return view('member.kehadiran.show', compact(
+            'pageTitle',
+            'member',
+            'kehadiran'
+        ));
+    }
+}

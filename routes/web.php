@@ -21,12 +21,17 @@ use App\Http\Controllers\Admin\MembershipController;
 use App\Http\Controllers\Admin\PaketMembershipController;
 use App\Http\Controllers\Admin\MembershipGroupController;
 use App\Http\Controllers\Admin\ProfilGymController;
+
+// Controller Absensi (Admin)
+use App\Http\Controllers\Admin\KehadiranMemberController as AdminKehadiranMemberController;
+
 // Controller Member
 use App\Http\Controllers\Member\DashboardController as MemberDashboardController;
 use App\Http\Controllers\Member\IzinLatihanController as MemberIzinLatihanController;
 use App\Http\Controllers\Member\CoachController as MemberCoachController;
 use App\Http\Controllers\Member\MemberProfileController;
 use App\Http\Controllers\Member\ProdukGymController;
+use App\Http\Controllers\Member\KehadiranMemberController as MemberKehadiranMemberController;
 
 /*
 |--------------------------------------------------------------------------
@@ -78,7 +83,7 @@ Route::middleware(['auth', 'admin'])
     ->name('admin.')
     ->group(function () {
 
-        // Dashboard
+        // ================== DASHBOARD ==================
         Route::get('dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
         // ================== INVENTARIS ALAT ==================
@@ -111,14 +116,13 @@ Route::middleware(['auth', 'admin'])
         // 2. Master produk
         Route::resource('produk', ProdukController::class);
 
-        // Riwayat stok
+        // 3. Riwayat stok
         Route::prefix('stok_produk')->name('stok_produk.')->group(function () {
             Route::get('/riwayat', [StokProdukController::class, 'history'])->name('history');
             Route::get('/riwayat/{stokProduk}/detail', [StokProdukController::class, 'showHistoryDetail'])->name('history.detail');
         });
 
-
-        // 3. Manajemen stok produk
+        // 4. Manajemen stok produk
         Route::resource('stok_produk', StokProdukController::class)
             ->parameters([
                 'stok_produk' => 'stokProduk',
@@ -142,12 +146,10 @@ Route::middleware(['auth', 'admin'])
         // Penjualan / transaksi membership
         Route::resource('memberships', MembershipController::class)
             ->only(['index', 'store', 'show', 'destroy']);
-        // admin.memberships.index, admin.memberships.store, ...
 
         // Master paket membership
         Route::resource('paket_memberships', PaketMembershipController::class)
             ->only(['index', 'store', 'update', 'destroy']);
-        // admin.paket_memberships.index, ...
 
         // Membership group (anggota tambahan paket double/triple)
         Route::resource('membership_groups', MembershipGroupController::class)
@@ -159,6 +161,15 @@ Route::middleware(['auth', 'admin'])
         // =========================================================
         Route::resource('profil_gym', ProfilGymController::class)
             ->parameters(['profil_gym' => 'profilGym']);
+
+        // =========================================================
+        // RUTE ABSENSI (ADMIN) – QR aktif + daftar kehadiran
+        // =========================================================
+        Route::prefix('absensi')->name('absensi.')->group(function () {
+            // Dipakai di sidebar: admin.absensi.kehadiran.index
+            Route::get('kehadiran', [AdminKehadiranMemberController::class, 'index'])
+                ->name('kehadiran.index');
+        });
     });
 
 
@@ -172,10 +183,10 @@ Route::middleware(['auth', 'member'])
     ->name('member.')
     ->group(function () {
 
-        // Dashboard
+        // ================== DASHBOARD ==================
         Route::get('dashboard', [MemberDashboardController::class, 'index'])->name('dashboard');
 
-        // Izin Latihan (Member)
+        // ================== IZIN LATIHAN (Member) ==================
         Route::prefix('izin-latihan')->name('izin_latihan.')->group(function () {
             Route::get('/', [MemberIzinLatihanController::class, 'index'])->name('index');
             Route::get('/riwayat', [MemberIzinLatihanController::class, 'history'])->name('history');
@@ -184,12 +195,34 @@ Route::middleware(['auth', 'member'])
             Route::get('/{id}/detail', [MemberIzinLatihanController::class, 'detail'])->name('detail');
         });
 
-        // produk gym (marketplace member)
+        // ================== KEHADIRAN (Member – riwayat / status) ==================
+        Route::prefix('kehadiran')->name('kehadiran.')->group(function () {
+            // Dipakai sidebar: member.kehadiran.index
+            Route::get('/', [MemberKehadiranMemberController::class, 'index'])
+                ->name('index');
+        });
+
+        // ========= KEHADIRAN (halaman utama di sidebar) =========
+        Route::get('kehadiran', [MemberKehadiranMemberController::class, 'index'])
+            ->name('kehadiran.index');
+
+        // ========= ABSENSI (scan QR & simpan) =========
+        Route::prefix('absensi')->name('absensi.')->group(function () {
+            // /member/absensi/scan?token=xxxx  -> dari QR
+            Route::get('scan', [MemberKehadiranMemberController::class, 'scan'])
+                ->name('scan');
+
+            // POST /member/absensi -> simpan kehadiran
+            Route::post('/', [MemberKehadiranMemberController::class, 'store'])
+                ->name('store');
+        });
+
+        // ================== PRODUK GYM (Marketplace) ==================
         Route::resource('produk_gym', ProdukGymController::class)
             ->only(['index', 'store'])
             ->names('produk_gym');
 
-        // Daftar coach (member)
+        // ================== DAFTAR COACH ==================
         Route::get('coach', [MemberCoachController::class, 'index'])->name('coach.index');
 
         // (opsional) rute pelengkapan profil bisa ditambahkan di sini

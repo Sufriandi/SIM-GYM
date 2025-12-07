@@ -2,10 +2,11 @@
 @php
     $current = request()->route()?->getName() ?? '';
 
-    $isDashboard = str($current)->startsWith('member.dashboard');
-    $isIzin      = str($current)->startsWith('member.izin_latihan');
-    $isProduk    = str($current)->startsWith('member.produk_gym');
-    $isCoach     = str($current)->startsWith('member.coach');
+    $isDashboard  = str($current)->startsWith('member.dashboard');
+    $isIzin       = str($current)->startsWith('member.izin_latihan');
+    $isProduk     = str($current)->startsWith('member.produk_gym');
+    $isCoach      = str($current)->startsWith('member.coach');
+    $isKehadiran  = str($current)->startsWith('member.kehadiran');
 @endphp
 
 <div
@@ -96,6 +97,24 @@
                                {{ $isIzin ? 'text-gold-300' : 'group-hover:scale-110' }}"
                     ></i>
                     <span>Izin Latihan</span>
+                </a>
+
+                {{-- Kehadiran (riwayat & status) --}}
+                <a
+                    href="{{ route('member.kehadiran.index') }}"
+                    class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium
+                           transition-all duration-300
+                           {{ $isKehadiran
+                                ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20'
+                                : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
+                    aria-current="{{ $isKehadiran ? 'page' : 'false' }}"
+                >
+                    <i
+                        data-lucide="check-square"
+                        class="w-5 h-5 transition-transform duration-300
+                               {{ $isKehadiran ? 'text-gold-300' : 'group-hover:scale-110' }}"
+                    ></i>
+                    <span>Kehadiran</span>
                 </a>
 
                 {{-- Produk Gym --}}
