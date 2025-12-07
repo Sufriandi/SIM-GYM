@@ -41,10 +41,10 @@
         'warning' => 'bg-amber-50 text-amber-700 border-amber-200',
 
         // Danger (Red): Untuk 'Ditolak' atau Error
-        'danger'  => 'bg-rose-50 text-rose-700 border-rose-200',
+        'danger' => 'bg-rose-50 text-rose-700 border-rose-200',
 
         // Info (Blue): Untuk Status informatif
-        'info'    => 'bg-blue-50 text-blue-700 border-blue-200',
+        'info' => 'bg-blue-50 text-blue-700 border-blue-200',
 
         // Neutral (Gray): Untuk data umum (Hari, Tanggal)
         'neutral' => 'bg-gray-50 text-gray-600 border-gray-200',
@@ -56,11 +56,11 @@
 <span {{ $attributes->merge(['class' => $classes]) }}>
     {{-- Dot Indicator (Otomatis muncul kecil di kiri) --}}
     {{-- Ini opsional visual trick: Dot kecil membuat badge terasa "hidup" --}}
-    @if(in_array($variant, ['success', 'warning', 'danger']))
+    @if (in_array($variant, ['primary', 'success', 'warning', 'danger']))
         <svg class="-ml-0.5 mr-1.5 h-2 w-2 opacity-75" fill="currentColor" viewBox="0 0 8 8">
             <circle cx="4" cy="4" r="3" />
         </svg>
     @endif
-    
+
     {{ $slot }}
 </span>

@@ -37,13 +37,9 @@
                 {{ $slot }}
             </main>
 
-            {{-- FOOTER MEMBER (simple & center) --}}
-            <footer class="w-full border-t border-brand-borderSoft bg-brand-shell/70">
-                <div class="max-w-6xl mx-auto px-4 py-4 text-center text-[11px] text-text-muted space-y-1">
-                    <div>© {{ now()->year }} <span class="font-semibold">BETA GYM</span> · Area Member</div>
-                    <div>Jaga konsistensi latihan, kami urus administrasinya.</div>
-                </div>
-            </footer>
+            {{-- FOOTER MEMBER --}}
+            <x-member.footer />
+
         </div>
     </div>
 

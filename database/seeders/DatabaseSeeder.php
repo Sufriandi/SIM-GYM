@@ -38,5 +38,10 @@ class DatabaseSeeder extends Seeder
                 'role'     => 'member',
             ]
         );
+
+        $this->call([
+            PaketMembershipSeeder::class,
+            // seeder lain kalau nanti ada, tambahkan di sini juga
+        ]);
     }
 }

@@ -12,9 +12,10 @@ use Carbon\Carbon;
 class IzinLatihanController extends Controller
 {
     /**
-     * Ambil record member milik user yang login.
+     * Ambil record Member milik user yang login.
+     * Jika tidak ada, akan melempar 404.
      */
-    protected function getCurrentMember()
+    protected function getCurrentMember(): Member
     {
         $userId = Auth::id();
 
@@ -29,13 +30,12 @@ class IzinLatihanController extends Controller
     {
         $pageTitle = 'Izin Membership';
 
-        $member   = $this->getCurrentMember();
-        $memberId = $member->id;
+        $member = $this->getCurrentMember();
 
-        $daftar_izin = IzinLatihan::where('member_id', $memberId)
+        $daftar_izin = IzinLatihan::where('member_id', $member->id)
             ->where('status', 'pending')
             ->orderBy('created_at', 'desc')
-            ->paginate(10);
+            ->paginate(15);
 
         return view('member.izin_latihan.index', compact('daftar_izin', 'pageTitle'));
     }
@@ -48,12 +48,11 @@ class IzinLatihanController extends Controller
     {
         $pageTitle = 'Riwayat Pengajuan Izin Lengkap';
 
-        $member   = $this->getCurrentMember();
-        $memberId = $member->id;
+        $member = $this->getCurrentMember();
 
-        $daftar_izin = IzinLatihan::where('member_id', $memberId)
+        $daftar_izin = IzinLatihan::where('member_id', $member->id)
             ->orderBy('created_at', 'desc')
-            ->paginate(10);
+            ->paginate(15);
 
         return view('member.izin_latihan.history', compact('daftar_izin', 'pageTitle'));
     }
@@ -65,114 +64,131 @@ class IzinLatihanController extends Controller
     {
         $pageTitle = 'Formulir Izin Baru';
 
-        return view('member.izin_latihan.form', compact('pageTitle'));
+        $member = $this->getCurrentMember();
+
+        // Range tanggal yang sudah dipakai izin (pending + disetujui)
+        $blockedRanges = IzinLatihan::where('member_id', $member->id)
+            ->whereIn('status', ['pending', 'disetujui'])
+            ->orderBy('tanggal_mulai')
+            ->get(['tanggal_mulai', 'tanggal_selesai']);
+
+        return view('member.izin_latihan.form', compact('pageTitle', 'blockedRanges'));
     }
 
     /**
      * Menyimpan data pengajuan izin baru ke database.
+     *
      * Sinkron dengan struktur yang dipakai admin:
-     *  - pakai kolom member_id
-     *  - kolom jumlah_hari dihitung otomatis dari tanggal_mulai & tanggal_selesai
+     * - pakai kolom member_id
+     * - kolom jumlah_hari diinput user
+     * - kolom tanggal_selesai dihitung otomatis: tanggal_mulai + (jumlah_hari - 1)
      */
     public function store(Request $request)
     {
         $member = $this->getCurrentMember();
 
         // 1. Validasi input
-        $request->validate(
+        $validated = $request->validate(
             [
-                'tanggal_mulai'   => 'required|date|after_or_equal:today',
-                'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-                'alasan'          => 'required|string|max:1000',
-                'bukti_alasan'    => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:2048',
+                'tanggal_mulai' => 'required|date|after_or_equal:today',
+                'jumlah_hari'   => 'required|integer|min:1|max:30',
+                'alasan'        => 'required|string|max:1000',
+                'bukti_alasan'  => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:2048',
             ],
             [
-                'tanggal_mulai.required'   => 'Tanggal mulai izin wajib diisi.',
+                'tanggal_mulai.required'       => 'Tanggal mulai izin wajib diisi.',
+                'tanggal_mulai.date'           => 'Format tanggal mulai tidak valid.',
                 'tanggal_mulai.after_or_equal' => 'Tanggal mulai izin minimal hari ini.',
-                'tanggal_selesai.required' => 'Tanggal selesai izin wajib diisi.',
-                'tanggal_selesai.after_or_equal' => 'Tanggal selesai izin tidak boleh sebelum tanggal mulai.',
-                'alasan.required'          => 'Alasan izin wajib diisi.',
-                'bukti_alasan.mimes'       => 'Bukti harus berformat JPG, JPEG, PNG, PDF, DOC, atau DOCX.',
-                'bukti_alasan.max'         => 'Ukuran file bukti maksimal 2MB.',
+                'jumlah_hari.required'         => 'Durasi izin wajib diisi.',
+                'jumlah_hari.integer'          => 'Durasi izin harus berupa angka.',
+                'jumlah_hari.min'              => 'Durasi izin minimal 1 hari.',
+                'jumlah_hari.max'              => 'Durasi izin maksimal 30 hari.',
+                'alasan.required'              => 'Alasan izin wajib diisi.',
+                'bukti_alasan.mimes'           => 'Bukti harus berformat JPG, JPEG, PNG, PDF, DOC, atau DOCX.',
+                'bukti_alasan.max'             => 'Ukuran file bukti maksimal 2MB.',
             ]
         );
 
-        // 2. Anti–spam: cek overlap tanggal dengan izin lain (pending/disetujui) milik member yang sama
-        $tglMulaiBaru   = Carbon::parse($request->tanggal_mulai)->toDateString();
-        $tglSelesaiBaru = Carbon::parse($request->tanggal_selesai)->toDateString();
+        // 2. Hitung tanggal mulai & tanggal selesai berdasarkan durasi
+        $tglMulai   = Carbon::parse($validated['tanggal_mulai'])->startOfDay();
+        $jumlahHari = (int) $validated['jumlah_hari'];
 
-        $existingIzin = IzinLatihan::where('member_id', $member->id)
+        // tanggal_selesai = tanggal_mulai + (jumlah_hari - 1)
+        $tglSelesai = (clone $tglMulai)->addDays($jumlahHari - 1);
+
+        $tglMulaiBaru   = $tglMulai->toDateString();
+        $tglSelesaiBaru = $tglSelesai->toDateString();
+
+        // 3. Anti–spam: cek overlap tanggal dengan izin lain (pending/disetujui)
+        // (tetap ada di backend untuk keamanan, walau sudah diblok di frontend)
+        $conflict = IzinLatihan::where('member_id', $member->id)
             ->whereIn('status', ['pending', 'disetujui'])
-            ->get();
+            ->where(function ($q) use ($tglMulaiBaru, $tglSelesaiBaru) {
+                $q->whereBetween('tanggal_mulai', [$tglMulaiBaru, $tglSelesaiBaru])
+                  ->orWhereBetween('tanggal_selesai', [$tglMulaiBaru, $tglSelesaiBaru])
+                  ->orWhere(function ($q2) use ($tglMulaiBaru, $tglSelesaiBaru) {
+                      $q2->where('tanggal_mulai', '<=', $tglMulaiBaru)
+                         ->where('tanggal_selesai', '>=', $tglSelesaiBaru);
+                  });
+            })
+            ->orderBy('tanggal_mulai')
+            ->first();
 
-        foreach ($existingIzin as $izin) {
-            $overlap =
-                $tglMulaiBaru <= $izin->tanggal_selesai &&
-                $tglSelesaiBaru >= $izin->tanggal_mulai;
+        if ($conflict) {
+            $izinMulai   = Carbon::parse($conflict->tanggal_mulai)->translatedFormat('d M Y');
+            $izinSelesai = Carbon::parse($conflict->tanggal_selesai)->translatedFormat('d M Y');
 
-            if ($overlap) {
-                $izinMulai   = Carbon::parse($izin->tanggal_mulai)->translatedFormat('d M Y');
-                $izinSelesai = Carbon::parse($izin->tanggal_selesai)->translatedFormat('d M Y');
+            $message = "Sudah ada izin lain pada {$izinMulai}–{$izinSelesai}.";
 
-                return redirect()
-                    ->route('member.izin_latihan.index')
-                    ->with('error', "Gagal! Periode izin Anda bertabrakan dengan izin yang sudah ada pada tanggal {$izinMulai} s/d {$izinSelesai}.");
-            }
+            // Kembali ke form dengan error di field tanggal_mulai (tanpa session('error'))
+            return back()
+                ->withErrors(['tanggal_mulai' => $message])
+                ->withInput();
         }
 
-        // 3. Upload bukti (jika ada)
+        // 4. Upload bukti (jika ada)
         $path_bukti = null;
         if ($request->hasFile('bukti_alasan')) {
             $path_bukti = $request->file('bukti_alasan')
                 ->store('uploads/bukti_izin', 'public');
         }
 
-        // 4. Hitung jumlah hari dari tanggal_mulai & tanggal_selesai
-        $tglMulai   = Carbon::parse($request->tanggal_mulai)->startOfDay();
-        $tglSelesai = Carbon::parse($request->tanggal_selesai)->startOfDay();
-        $jumlahHari = $tglMulai->diffInDays($tglSelesai) + 1;
-
-        // 5. Simpan ke database (sinkron dengan struktur di sisi admin)
+        // 5. Simpan ke database
         IzinLatihan::create([
             'member_id'       => $member->id,
-            'tanggal_mulai'   => $tglMulai->toDateString(),
-            'tanggal_selesai' => $tglSelesai->toDateString(),
+            'tanggal_mulai'   => $tglMulaiBaru,
+            'tanggal_selesai' => $tglSelesaiBaru,
             'jumlah_hari'     => $jumlahHari,
-            'alasan'          => trim($request->alasan),
+            'alasan'          => trim($validated['alasan']),
             'bukti_alasan'    => $path_bukti,
             'status'          => 'pending',
-            // kolom lain (durasi_izin_disetujui, keterangan_admin, tanggal_persetujuan) diisi oleh admin saat approve/reject
+            // durasi_izin_disetujui, keterangan_admin, tanggal_persetujuan
+            // diisi oleh admin saat approve/reject
         ]);
 
         // 6. Redirect ke halaman pending
         return redirect()
             ->route('member.izin_latihan.index')
-            ->with('success', 'Formulir izin latihan Anda telah berhasil diajukan dan sedang menunggu persetujuan Admin.');
+            ->with(
+                'success',
+                'Formulir izin latihan Anda telah berhasil diajukan dan sedang menunggu persetujuan Admin.'
+            );
     }
+
     /**
      * Menampilkan detail izin latihan member.
+     * Hanya bisa melihat izin milik dirinya sendiri.
      */
     public function detail($id)
     {
         $pageTitle = 'Detail Izin Latihan';
-        
-        // Ambil member dari user yang sedang login
-        // (Saya ubah ini biar aman, jaga-jaga kalau function getCurrentMember gak ada)
-        $member = auth()->user()->member; 
-        
-        if (!$member) {
-            return redirect()->back()->with('error', 'Data member tidak ditemukan.');
-        }
 
-        $memberId = $member->id;
+        $member = $this->getCurrentMember();
 
-        // Cari izin berdasarkan ID dan pastikan milik member tersebut
         $izin = IzinLatihan::where('id', $id)
-            ->where('member_id', $memberId)
+            ->where('member_id', $member->id)
             ->firstOrFail();
 
-        // Arahkan ke view detail
         return view('member.izin_latihan.detail', compact('izin', 'pageTitle'));
-    } 
-    
+    }
 }
