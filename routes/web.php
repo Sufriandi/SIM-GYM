@@ -20,7 +20,7 @@ use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\MembershipController;
 use App\Http\Controllers\Admin\PaketMembershipController;
 use App\Http\Controllers\Admin\MembershipGroupController;
-
+use App\Http\Controllers\Admin\ProfilGymController;
 // Controller Member
 use App\Http\Controllers\Member\DashboardController as MemberDashboardController;
 use App\Http\Controllers\Member\IzinLatihanController as MemberIzinLatihanController;
@@ -153,6 +153,12 @@ Route::middleware(['auth', 'admin'])
         Route::resource('membership_groups', MembershipGroupController::class)
             ->only(['index', 'store', 'destroy']);
         // admin.membership_groups.index, ...
+
+        // =========================================================
+        // RUTE MANAJEMEN PROFIL GYM
+        // =========================================================
+        Route::resource('profil_gym', ProfilGymController::class)
+            ->parameters(['profil_gym' => 'profilGym']);
     });
 
 
@@ -176,7 +182,6 @@ Route::middleware(['auth', 'member'])
             Route::get('/ajukan', [MemberIzinLatihanController::class, 'create'])->name('create');
             Route::post('/store', [MemberIzinLatihanController::class, 'store'])->name('store');
             Route::get('/{id}/detail', [MemberIzinLatihanController::class, 'detail'])->name('detail');
-            
         });
 
         // produk gym (marketplace member)
