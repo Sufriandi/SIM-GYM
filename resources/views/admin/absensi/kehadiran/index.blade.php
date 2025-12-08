@@ -279,18 +279,13 @@
             </div>
 
             {{-- TABEL KEHADIRAN --}}
-            {{-- TABEL KEHADIRAN --}}
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead class="bg-brand-surface-100 border-b border-brand-borderSoft">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
-                    <thead class="bg-brand-surface-100 border-b border-brand-borderSoft">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
                                 Tanggal
                             </th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
                             <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
                                 Jam Masuk
                             </th>
@@ -298,32 +293,23 @@
                                 Member
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
                                 Keterangan
                             </th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-brand-borderSoft/60">
-                    <tbody class="divide-y divide-brand-borderSoft/60">
                         @forelse ($kehadiran as $row)
                             <tr class="hover:bg-brand-surface-50">
                                 <td class="px-6 py-3 align-top">
                                     {{ Carbon::parse($row->tanggal)->format('d M Y') }}
-                            <tr class="hover:bg-brand-surface-50">
-                                <td class="px-6 py-3 align-top">
-                                    {{ Carbon::parse($row->tanggal)->format('d M Y') }}
                                 </td>
-                                <td class="px-6 py-3 align-top">
                                 <td class="px-6 py-3 align-top">
                                     {{ $row->jam_masuk ? Carbon::parse($row->jam_masuk)->format('H:i') : '-' }}
                                 </td>
                                 <td class="px-6 py-3 align-top">
                                     <div class="font-semibold text-brand-text">
-                                <td class="px-6 py-3 align-top">
-                                    <div class="font-semibold text-brand-text">
                                         {{ $row->member->nama ?? '-' }}
                                     </div>
-                                    @if($row->member && $row->member->username)
                                     @if($row->member && $row->member->username)
                                         <div class="text-xs text-brand-textSoft">
                                             {{ '@' . $row->member->username }}
@@ -332,13 +318,10 @@
                                 </td>
                                 <td class="px-6 py-3 align-top text-xs text-brand-textSoft">
                                     {{ $row->is_valid ? 'Valid' : 'Perlu ditinjau' }}
-                                <td class="px-6 py-3 align-top text-xs text-brand-textSoft">
-                                    {{ $row->is_valid ? 'Valid' : 'Perlu ditinjau' }}
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="px-6 py-8 text-center text-sm text-brand-textSoft">
                                 <td colspan="4" class="px-6 py-8 text-center text-sm text-brand-textSoft">
                                     Belum ada kehadiran tercatat dalam periode ini.
                                 </td>
@@ -348,10 +331,6 @@
                 </table>
             </div>
 
-            {{-- PAGINATION --}}
-            @if($kehadiran->hasPages())
-                <div class="px-6 py-4 border-t border-brand-borderSoft bg-brand-card/60 hidden-print">
-                    {{ $kehadiran->links() }}
             {{-- PAGINATION --}}
             @if($kehadiran->hasPages())
                 <div class="px-6 py-4 border-t border-brand-borderSoft bg-brand-card/60 hidden-print">
