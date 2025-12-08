@@ -166,15 +166,15 @@ Route::middleware(['auth', 'admin'])
         // RUTE ABSENSI (ADMIN) – QR aktif + daftar kehadiran
         // =========================================================
         Route::prefix('absensi')->name('absensi.')->group(function () {
-            // URL: /admin/absensi/kehadiran
-            // Name: admin.absensi.kehadiran.index
-            Route::get('kehadiran', [AdminKehadiranMemberController::class, 'index'])
-                ->name('kehadiran.index');
+            // URL: /admin/absensi
+            // Name: admin.absensi.index
+            Route::get('absensi', [AdminKehadiranMemberController::class, 'index'])
+                ->name('index');
 
-            // URL: /admin/absensi/kehadiran/print
-            // Name: admin.absensi.kehadiran.print
-            Route::get('kehadiran/print', [AdminKehadiranMemberController::class, 'print'])
-                ->name('kehadiran.print');
+            // URL: /admin/absensi/print
+            // Name: admin.absensi.kprint
+            Route::get('/print', [AdminKehadiranMemberController::class, 'print'])
+                ->name('print');
             
         });
     });
@@ -209,9 +209,9 @@ Route::middleware(['auth', 'member'])
                 ->name('index');
         });
 
-        // ========= KEHADIRAN (halaman utama di sidebar) =========
-        Route::get('kehadiran', [MemberKehadiranMemberController::class, 'index'])
-            ->name('kehadiran.index');
+        // // ========= KEHADIRAN (halaman utama di sidebar) =========
+        // Route::get('kehadiran', [MemberKehadiranMemberController::class, 'index'])
+        //     ->name('kehadiran.index');
 
         // ========= ABSENSI (scan QR & simpan) =========
         Route::prefix('absensi')->name('absensi.')->group(function () {

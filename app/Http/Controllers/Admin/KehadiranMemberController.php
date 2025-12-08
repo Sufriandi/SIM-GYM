@@ -72,7 +72,7 @@ class KehadiranMemberController extends Controller
 
     /**
      * Halaman admin: QR aktif + daftar kehadiran dalam periode tersebut.
-     * Route: admin.absensi.kehadiran.index
+     * Route: admin.absensi.index
      */
     public function index(Request $request)
     {
@@ -98,7 +98,7 @@ class KehadiranMemberController extends Controller
             $memberSearch = $request->input('member');
             $query->whereHas('member', function ($q) use ($memberSearch) {
                 $q->where('nama', 'like', "%{$memberSearch}%")
-                    ->orWhere('username', 'like', "%{$memberSearch}%");
+                    ->orWhere('nama', 'like', "%{$memberSearch}%");
             });
         }
 
@@ -118,7 +118,7 @@ class KehadiranMemberController extends Controller
             'bulanan'  => 'Bulanan',
         ];
 
-        return view('admin.absensi.kehadiran.index', compact(
+        return view('admin.absensi.index', compact(
             'periodeAktif',
             'kehadiran',
             'qrUrl',
@@ -129,7 +129,7 @@ class KehadiranMemberController extends Controller
 
     /**
      * Halaman khusus cetak (QR + daftar kehadiran).
-     * Route: admin.absensi.kehadiran.print
+     * Route: admin.absensi.print
      */
     public function print(Request $request)
     {
@@ -153,7 +153,7 @@ class KehadiranMemberController extends Controller
             $memberSearch = $request->input('member');
             $query->whereHas('member', function ($q) use ($memberSearch) {
                 $q->where('nama', 'like', "%{$memberSearch}%")
-                    ->orWhere('username', 'like', "%{$memberSearch}%");
+                    ->orWhere('nama', 'like', "%{$memberSearch}%");
             });
         }
 
@@ -171,7 +171,7 @@ class KehadiranMemberController extends Controller
             'bulanan'  => 'Bulanan',
         ];
 
-        return view('admin.absensi.kehadiran.print', compact(
+        return view('admin.absensi.print', compact(
             'periodeAktif',
             'kehadiran',
             'qrUrl',
