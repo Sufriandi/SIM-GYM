@@ -166,9 +166,16 @@ Route::middleware(['auth', 'admin'])
         // RUTE ABSENSI (ADMIN) – QR aktif + daftar kehadiran
         // =========================================================
         Route::prefix('absensi')->name('absensi.')->group(function () {
-            // Dipakai di sidebar: admin.absensi.kehadiran.index
+            // URL: /admin/absensi/kehadiran
+            // Name: admin.absensi.kehadiran.index
             Route::get('kehadiran', [AdminKehadiranMemberController::class, 'index'])
                 ->name('kehadiran.index');
+
+            // URL: /admin/absensi/kehadiran/print
+            // Name: admin.absensi.kehadiran.print
+            Route::get('kehadiran/print', [AdminKehadiranMemberController::class, 'print'])
+                ->name('kehadiran.print');
+            
         });
     });
 
@@ -208,13 +215,18 @@ Route::middleware(['auth', 'member'])
 
         // ========= ABSENSI (scan QR & simpan) =========
         Route::prefix('absensi')->name('absensi.')->group(function () {
-            // /member/absensi/scan?token=xxxx  -> dari QR
+            // GET /member/absensi/scan?token=xxxx  -> dari QR
             Route::get('scan', [MemberKehadiranMemberController::class, 'scan'])
                 ->name('scan');
 
             // POST /member/absensi -> simpan kehadiran
             Route::post('/', [MemberKehadiranMemberController::class, 'store'])
                 ->name('store');
+
+            // GET /member/absensi -> kalau ada yang akses langsung, redirect ke riwayat
+            Route::get('/', function () {
+                return redirect()->route('member.kehadiran.index');
+            })->name('index_redirect'); // nama optional, boleh dihapus juga
         });
 
         // ================== PRODUK GYM (Marketplace) ==================

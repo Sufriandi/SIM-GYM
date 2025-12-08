@@ -23,7 +23,6 @@ class KehadiranMemberController extends Controller
             abort(403, 'Hanya akun yang terhubung dengan data member yang dapat mengakses fitur ini.');
         }
 
-        // GUNAKAN NAMA VARIABEL: $kehadiran
         $kehadiran = KehadiranMember::with('absensiPeriode')
             ->where('member_id', $member->id)
             ->orderByDesc('tanggal')
@@ -36,6 +35,10 @@ class KehadiranMemberController extends Controller
     /**
      * Halaman yang dibuka setelah scan QR.
      * Route: member.absensi.scan (GET /member/absensi/scan?token=xxx)
+     *
+     * CATATAN skenario A:
+     * - Di sini kita cek "sudah absen" berdasarkan member + tanggal saja,
+     *   supaya 1 hari hanya boleh 1 kali absen, meskipun QR / periode berbeda.
      */
     public function scan(Request $request)
     {
@@ -55,6 +58,7 @@ class KehadiranMemberController extends Controller
 
         $today = now()->toDateString();
 
+        // Cari periode aktif yang cocok dengan token + tanggal hari ini
         $periodeAktif = AbsensiPeriode::aktif()
             ->where('kode_qr', $token)
             ->whereDate('tanggal_mulai', '<=', $today)
@@ -66,9 +70,10 @@ class KehadiranMemberController extends Controller
             return view('member.kehadiran.scan_invalid', compact('token'));
         }
 
-        // Cek apakah member sudah absen pada periode + hari ini
+        // === SKENARIO A ===
+        // Cek apakah member sudah punya kehadiran apa pun di TANGGAL hari ini
+        // (mode/periode apa saja). Kalau sudah, anggap sudah absen.
         $sudahAbsen = KehadiranMember::where('member_id', $member->id)
-            ->where('absensi_periode_id', $periodeAktif->id)
             ->whereDate('tanggal', $today)
             ->exists();
 
@@ -86,6 +91,10 @@ class KehadiranMemberController extends Controller
     /**
      * Simpan kehadiran setelah konfirmasi.
      * Route: member.absensi.store (POST /member/absensi)
+     *
+     * CATATAN skenario A:
+     * - Di sini juga cek "sudah absen" berdasarkan member + tanggal saja,
+     *   untuk menghindari race condition / double submit.
      */
     public function store(Request $request)
     {
@@ -103,33 +112,35 @@ class KehadiranMemberController extends Controller
         $today   = now()->toDateString();
         $nowTime = now()->format('H:i:s');
 
-        // Cari periode absensi aktif berdasarkan token
+        // Cari periode absensi aktif berdasarkan token + tanggal hari ini
         $periodeAktif = AbsensiPeriode::aktif()
             ->where('kode_qr', $request->input('token'))
             ->whereDate('tanggal_mulai', '<=', $today)
             ->whereDate('tanggal_selesai', '>=', $today)
             ->firstOrFail();
 
-        // Cegah absen dobel di hari yang sama dalam periode yang sama
+        // === SKENARIO A ===
+        // Cegah absen dobel di hari yang sama (mode apa pun / periode apa pun)
         $sudahAbsen = KehadiranMember::where('member_id', $member->id)
-            ->where('absensi_periode_id', $periodeAktif->id)
             ->whereDate('tanggal', $today)
             ->exists();
 
         if ($sudahAbsen) {
             return redirect()
                 ->route('member.kehadiran.index')
-                ->with('error', 'Anda sudah mencatat kehadiran pada periode ini.');
+                ->with('error', 'Anda sudah mencatat kehadiran hari ini.');
         }
 
-        // Simpan kehadiran
+        // Simpan kehadiran.
+        // absensi_periode_id tetap diisi supaya kita tahu QR mana yang dipakai pertama.
         KehadiranMember::create([
             'member_id'          => $member->id,
             'absensi_periode_id' => $periodeAktif->id,
             'tanggal'            => $today,
             'jam_masuk'          => $nowTime,
             'ip_address'         => $request->ip(),
-            'device_info'        => $request->userAgent(), // MASUK ke kolom device_info
+            'device_info'        => $request->userAgent(),
+            // 'is_valid'        => true, // bisa kamu aktifkan kalau mau eksplisit
         ]);
 
         return redirect()
