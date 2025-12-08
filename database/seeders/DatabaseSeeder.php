@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash; 
 
 class DatabaseSeeder extends Seeder
 {
@@ -14,12 +15,13 @@ class DatabaseSeeder extends Seeder
     {
         // Akun Admin
         User::updateOrCreate(
-            ['email' => 'admin@sim.gym'], // key untuk pencarian
+            ['email' => 'admin@sim.gym'],
             [
                 'name'     => 'Admin BETA GYM',
-                'username' => 'admin',          // jelas & gampang diingat
-                'no_hp'    => '6304230002',   // optional, bisa dipakai login juga
-                'password' => 'password',       // akan di-hash otomatis oleh cast
+                'username' => 'admin',
+                'no_hp'    => '6304230002',
+                // WAJIB: Password di-hash
+                'password' => Hash::make('password'), 
                 'role'     => 'admin',
             ]
         );
@@ -31,9 +33,15 @@ class DatabaseSeeder extends Seeder
                 'name'     => 'Member',
                 'username' => 'member',
                 'no_hp'    => '6304230003',
-                'password' => 'password',       // plain text, di-hash oleh model
+                // WAJIB: Password di-hash
+                'password' => Hash::make('password'), 
                 'role'     => 'member',
             ]
         );
+
+        $this->call([
+            PaketMembershipSeeder::class,
+            // seeder lain kalau nanti ada, tambahkan di sini juga
+        ]);
     }
 }

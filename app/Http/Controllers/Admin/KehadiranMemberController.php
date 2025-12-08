@@ -66,7 +66,7 @@ class KehadiranMemberController extends Controller
             'tanggal_selesai' => $end->toDateString(),
             'kode_qr'         => Str::random(40),
             'status'          => 'aktif',
-            'created_by'      => auth()->id(),
+            'created_by'      => auth()->id,
         ]);
     }
 

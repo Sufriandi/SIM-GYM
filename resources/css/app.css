@@ -3,8 +3,7 @@
 /* GLOBAL HEADING */
 @layer base {
     h1,
-    h2
-    {
+    h2 {
         @apply font-heading;
         font-weight: 700 !important;
     }
@@ -34,7 +33,7 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-    background: #111;          /* boleh kamu ganti sesuai tema dashboard */
+    background: #111; /* boleh kamu ganti sesuai tema dashboard */
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
