@@ -167,6 +167,7 @@ Route::middleware(['auth', 'admin'])
             // Name: admin.absensi.kehadiran.print
             Route::get('kehadiran/print', [AdminKehadiranMemberController::class, 'print'])
                 ->name('kehadiran.print');
+            
         });
     });
 
@@ -206,14 +207,18 @@ Route::middleware(['auth', 'member'])
 
         // ========= ABSENSI (scan QR & simpan) =========
         Route::prefix('absensi')->name('absensi.')->group(function () {
-            // /member/absensi/scan?token=xxxx  -> dari QR
+            // GET /member/absensi/scan?token=xxxx  -> dari QR
             Route::get('scan', [MemberKehadiranMemberController::class, 'scan'])
                 ->name('scan');
 
             // POST /member/absensi -> simpan kehadiran
             Route::post('/', [MemberKehadiranMemberController::class, 'store'])
                 ->name('store');
-            
+
+            // GET /member/absensi -> kalau ada yang akses langsung, redirect ke riwayat
+            Route::get('/', function () {
+                return redirect()->route('member.kehadiran.index');
+            })->name('index_redirect'); // nama optional, boleh dihapus juga
         });
 
         // ================== PRODUK GYM (Marketplace) ==================
