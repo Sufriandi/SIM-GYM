@@ -158,9 +158,15 @@ Route::middleware(['auth', 'admin'])
         // RUTE ABSENSI (ADMIN) – QR aktif + daftar kehadiran
         // =========================================================
         Route::prefix('absensi')->name('absensi.')->group(function () {
-            // Dipakai di sidebar: admin.absensi.kehadiran.index
+            // URL: /admin/absensi/kehadiran
+            // Name: admin.absensi.kehadiran.index
             Route::get('kehadiran', [AdminKehadiranMemberController::class, 'index'])
                 ->name('kehadiran.index');
+
+            // URL: /admin/absensi/kehadiran/print
+            // Name: admin.absensi.kehadiran.print
+            Route::get('kehadiran/print', [AdminKehadiranMemberController::class, 'print'])
+                ->name('kehadiran.print');
         });
     });
 
@@ -207,6 +213,7 @@ Route::middleware(['auth', 'member'])
             // POST /member/absensi -> simpan kehadiran
             Route::post('/', [MemberKehadiranMemberController::class, 'store'])
                 ->name('store');
+            
         });
 
         // ================== PRODUK GYM (Marketplace) ==================

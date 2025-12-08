@@ -66,7 +66,7 @@ class KehadiranMemberController extends Controller
             'tanggal_selesai' => $end->toDateString(),
             'kode_qr'         => Str::random(40),
             'status'          => 'aktif',
-            'created_by'      => auth()->id(), // pastikan kolom created_by ada di migration
+            'created_by'      => auth()->id(),
         ]);
     }
 
@@ -126,14 +126,57 @@ class KehadiranMemberController extends Controller
             'modeOptions'
         ));
     }
-    public function print()
-{
-    // Pakai helper yang sudah kamu punya
-    $periodeAktif = $this->getOrCreateActivePeriodeForToday();
 
-    // URL yang dikodekan ke QR
-    $qrUrl = route('member.absensi.scan', ['token' => $periodeAktif->kode_qr]);
+    /**
+     * Halaman khusus cetak (QR + daftar kehadiran).
+     * Route: admin.absensi.kehadiran.print
+     */
+    public function print(Request $request)
+    {
+        // Bawa mode dari query (supaya sama seperti index)
+        $requestedMode = $request->get('mode');
 
-    return view('admin.absensi.kehadiran.print', compact('periodeAktif', 'qrUrl'));
-}
+        $periodeAktif = $this->getOrCreateActivePeriodeForToday($requestedMode);
+
+        // Query kehadiran dalam periode (sama seperti index, tapi tanpa paginate)
+        $query = KehadiranMember::with('member')
+            ->whereBetween('tanggal', [
+                $periodeAktif->tanggal_mulai,
+                $periodeAktif->tanggal_selesai,
+            ]);
+
+        if ($request->filled('tanggal')) {
+            $query->whereDate('tanggal', $request->input('tanggal'));
+        }
+
+        if ($request->filled('member')) {
+            $memberSearch = $request->input('member');
+            $query->whereHas('member', function ($q) use ($memberSearch) {
+                $q->where('nama', 'like', "%{$memberSearch}%")
+                    ->orWhere('username', 'like', "%{$memberSearch}%");
+            });
+        }
+
+        $kehadiran = $query
+            ->orderByDesc('tanggal')
+            ->orderByDesc('jam_masuk')
+            ->get(); // ambil semua untuk keperluan print
+
+        $qrUrl = route('member.absensi.scan', ['token' => $periodeAktif->kode_qr]);
+
+        $pageTitle   = 'Cetak QR Absensi Member';
+        $modeOptions = [
+            'harian'   => 'Harian',
+            'mingguan' => 'Mingguan',
+            'bulanan'  => 'Bulanan',
+        ];
+
+        return view('admin.absensi.kehadiran.print', compact(
+            'periodeAktif',
+            'kehadiran',
+            'qrUrl',
+            'pageTitle',
+            'modeOptions'
+        ));
+    }
 }
