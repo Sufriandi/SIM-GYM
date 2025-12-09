@@ -15,6 +15,9 @@ use App\Http\Controllers\Admin\ProdukController;
 use App\Http\Controllers\Admin\StokProdukController;
 use App\Http\Controllers\Admin\CoachController;
 use App\Http\Controllers\Admin\MemberController;
+// >>> TAMBAHAN
+use App\Http\Controllers\Admin\LatihanHarianController;
+// <<<
 
 // Controller Membership (Admin)
 use App\Http\Controllers\Admin\MembershipController;
@@ -155,6 +158,16 @@ Route::middleware(['auth', 'admin'])
         Route::resource('membership_groups', MembershipGroupController::class)
             ->only(['index', 'store', 'destroy']);
         // admin.membership_groups.index, ...
+
+        // =========================================================
+        // RUTE LATIHAN HARIAN
+        // =========================================================
+        Route::resource('latihan-harian', LatihanHarianController::class)
+            ->parameters([
+                'latihan-harian' => 'latihanHarian', // {latihanHarian} untuk binding
+            ])
+            ->names('latihan_harian');
+        // Contoh: admin.latihan_harian.index, admin.latihan_harian.store, dst.
 
         // =========================================================
         // RUTE MANAJEMEN PROFIL GYM

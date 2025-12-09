@@ -38,6 +38,7 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             PaketMembershipSeeder::class,
+            LatihanHarianSeeder::class,
             // seeder lain kalau nanti ada, tambahkan di sini juga
         ]);
     }
