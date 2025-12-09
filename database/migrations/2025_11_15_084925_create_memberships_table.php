@@ -6,20 +6,35 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('memberships', function (Blueprint $table) {
             $table->id();
+
+            // Member utama
+            $table->foreignId('member_id')
+                ->constrained('members')
+                ->cascadeOnUpdate()
+                ->cascadeOnDelete();
+
+            // Paket membership yang dibeli (FULL FK)
+            $table->foreignId('paket_id')
+                ->constrained('paket_memberships')
+                ->cascadeOnUpdate()
+                ->restrictOnDelete();
+
+            // Info transaksi
+            $table->dateTime('tanggal_transaksi');
+            $table->enum('metode_pembayaran', ['cash', 'transfer', 'qris'])->default('cash');
+            $table->string('keterangan')->nullable();
+
             $table->timestamps();
+
+            // Optional index
+            $table->index('tanggal_transaksi');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('memberships');

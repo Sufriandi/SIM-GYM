@@ -3,35 +3,45 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
-
+use Illuminate\Support\Facades\Hash; 
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
      * Seed the application's database.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // Akun Admin
+        User::updateOrCreate(
+            ['email' => 'admin@sim.gym'],
+            [
+                'name'     => 'Admin BETA GYM',
+                'username' => 'admin',
+                'no_hp'    => '6304230002',
+                // WAJIB: Password di-hash
+                'password' => Hash::make('password'), 
+                'role'     => 'admin',
+            ]
+        );
 
-         // Akun Admin
-        User::factory()->create([
-            'name' => 'admin',
-            'email' => 'admin@sim.gym',
-            'password' => Hash::make('password'),
-            'role' => 'admin',
-        ]);
-        // Akun User Biasa
-        User::factory()->create([
-            'name' => 'Member',
-            'email' => 'member@sim.gym',
-            'password' => Hash::make('password'),
-            'role' => 'user',
+        // Akun Member Demo
+        User::updateOrCreate(
+            ['email' => 'member@sim.gym'],
+            [
+                'name'     => 'Member',
+                'username' => 'member',
+                'no_hp'    => '6304230003',
+                // WAJIB: Password di-hash
+                'password' => Hash::make('password'), 
+                'role'     => 'member',
+            ]
+        );
+
+        $this->call([
+            PaketMembershipSeeder::class,
+            // seeder lain kalau nanti ada, tambahkan di sini juga
         ]);
     }
 }

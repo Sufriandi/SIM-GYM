@@ -5,7 +5,7 @@
     <div
         class="w-full max-w-5xl bg-brand-card rounded-3xl overflow-hidden border border-brand-borderSoft shadow-card flex flex-col lg:flex-row">
 
-        {{-- KIRI: HERO / BRAND --}}
+        {{-- KIRI: HERO / BRAND (TIDAK DIUBAH) --}}
         <div class="hidden lg:block lg:w-1/2 relative overflow-hidden">
             <img
                 src="{{ asset('images/gym-bg.jpg') }}"
@@ -80,46 +80,58 @@
             <form method="POST" action="{{ route('login') }}" class="space-y-5">
                 @csrf
 
-                {{-- Email --}}
+                {{-- LOGIN FIELD (username / email / no_hp) --}}
                 <div>
-                    <x-ui.label for="email">Email</x-ui.label>
+                    <x-ui.label for="login">Username / Email / No HP</x-ui.label>
+
                     <div class="relative mt-1">
                         <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i data-lucide="mail" class="w-4 h-4 text-text-muted"></i>
+                            <i data-lucide="user" class="w-4 h-4 text-text-muted"></i>
                         </span>
+
                         <input
-                            id="email"
-                            name="email"
-                            type="email"
-                            autocomplete="username"
+                            id="login"
+                            name="login"
+                            type="text"
                             required
-                            value="{{ old('email') }}"
-                            class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-brand-borderSoft bg-brand-card text-sm text-text-main placeholder:text-text-muted/70 focus:outline-none focus:ring-2 focus:ring-gold-500/60 focus:border-gold-500 transition-shadow"
-                            placeholder="nama@email.com"
+                            autocomplete="username"
+                            value="{{ old('login') }}"
+                            class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-brand-borderSoft bg-brand-card 
+                                   text-sm text-text-main placeholder:text-text-muted/70 
+                                   focus:outline-none focus:ring-2 focus:ring-gold-500/60 focus:border-gold-500
+                                   transition-shadow"
+                            placeholder="username / email / nomor HP"
                         >
                     </div>
-                    @error('email')
+
+                    @error('login')
                         <p class="mt-1 text-xs text-danger">{{ $message }}</p>
                     @enderror
                 </div>
 
-                {{-- Password --}}
+                {{-- PASSWORD --}}
                 <div>
                     <x-ui.label for="password">Password</x-ui.label>
+
                     <div class="relative mt-1">
                         <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <i data-lucide="lock" class="w-4 h-4 text-text-muted"></i>
                         </span>
+
                         <input
                             id="password"
                             name="password"
                             type="password"
-                            autocomplete="current-password"
                             required
-                            class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-brand-borderSoft bg-brand-card text-sm text-text-main placeholder:text-text-muted/70 focus:outline-none focus:ring-2 focus:ring-gold-500/60 focus:border-gold-500 transition-shadow"
+                            autocomplete="current-password"
+                            class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-brand-borderSoft bg-brand-card 
+                                   text-sm text-text-main placeholder:text-text-muted/70
+                                   focus:outline-none focus:ring-2 focus:ring-gold-500/60 focus:border-gold-500
+                                   transition-shadow"
                             placeholder="••••••••"
                         >
                     </div>
+
                     @error('password')
                         <p class="mt-1 text-xs text-danger">{{ $message }}</p>
                     @enderror
@@ -132,7 +144,7 @@
                             id="remember_me"
                             type="checkbox"
                             name="remember"
-                            class="rounded border-brand-borderSoft text-gold-600 focus:ring-gold-500 focus:ring-offset-transparent bg-brand-card"
+                            class="rounded border-brand-borderSoft text-gold-600 focus:ring-gold-500 bg-brand-card"
                         >
                         <span class="text-text-muted hover:text-text-main transition-colors">
                             Ingat saya
@@ -140,27 +152,27 @@
                     </label>
 
                     @if (Route::has('password.request'))
-                        <a
-                            href="{{ route('password.request') }}"
+                        <a href="{{ route('password.request') }}"
                             class="text-gold-700 hover:text-gold-500 font-medium">
                             Lupa password?
                         </a>
                     @endif
                 </div>
 
-                {{-- Tombol login --}}
+                {{-- Tombol Login --}}
                 <x-ui.button-primary type="submit" class="w-full justify-center mt-2">
                     <span>Masuk</span>
                     <i data-lucide="log-in" class="w-4 h-4 ml-2"></i>
                 </x-ui.button-primary>
 
-                {{-- Link register --}}
+                {{-- Register --}}
                 <p class="text-xs text-center text-text-muted mt-4">
                     Belum punya akun?
                     <a href="{{ route('register') }}" class="text-gold-700 hover:text-gold-500 font-semibold">
                         Daftar sekarang
                     </a>
                 </p>
+
             </form>
         </div>
     </div>

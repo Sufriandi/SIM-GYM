@@ -2,15 +2,15 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Models\Member;
+use Laravel\Sanctum\HasApiTokens; 
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable; // WAJIB: Tambahkan HasApiTokens
 
     /**
      * The attributes that are mass assignable.
@@ -19,7 +19,9 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'username',
         'email',
+        'no_hp',
         'password',
         'role',
     ];
@@ -43,9 +45,9 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
         ];
     }
+    
     /**
      * Sinkronisasi: Membuat record Member baru setelah User dibuat.
      */
@@ -54,17 +56,11 @@ class User extends Authenticatable
         parent::boot();
 
         static::created(function ($user) {
-            // Kolom unik seperti 'no_hp', 'alamat', 'tanggal_mulai', dll., diabaikan di sini
-            // dan akan diisi di proses Onboarding.
-            Member::create([
+            // Menggunakan namespace lengkap untuk Member
+            \App\Models\Member::create([ 
                 'user_id' => $user->id,
                 'nama' => $user->name,
-                'username' => explode('@', $user->email)[0],
-                'email' => $user->email,
-                'password' => $user->password,
-                'status' => 'aktif',
-                'tanggal_daftar' => now()->toDateString(), // Mengisi tanggal daftar default
-                // Kolom lain otomatis NULL karena tidak dimasukkan
+                'tanggal_daftar' => now(),
             ]);
         });
     }
@@ -72,7 +68,6 @@ class User extends Authenticatable
     // Relasi: User memiliki 1 member
     public function member()
     {
-        // Terhubung ke 'user_id' di tabel 'members'
-        return $this->hasOne(Member::class, 'user_id');
+        return $this->hasOne(\App\Models\Member::class);
     }
 }

@@ -7,17 +7,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\IzinLatihan;
+use App\Models\KehadiranAbsensi;
+use App\Models\SesiAbsensi;
 
 class Member extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'nama',
-        'username',
-        'email',
-        'password',
-        'no_hp',
         'alamat',
         'jenis_kelamin',
         'tanggal_daftar',
@@ -25,7 +24,7 @@ class Member extends Model
         'tanggal_akhir',
         'foto',
         'status',
-        'user_id',
+        'qr_code_token',
     ];
 
     // protected static function boot()
@@ -71,7 +70,7 @@ class Member extends Model
     //     });
     // }
     // Relasi: Member dimiliki oleh 1 user
-    public function user()
+   public function user()
     {
         return $this->belongsTo(User::class);
     }
@@ -79,5 +78,26 @@ class Member extends Model
     public function izinLatihan()
     {
         return $this->hasMany(IzinLatihan::class, 'user_id', 'user_id');
+    }
+    /**
+     * Semua baris kehadiran absensi yang dimiliki member ini.
+     */
+    public function kehadiranMember()
+    {
+        return $this->hasMany(KehadiranMember::class, 'member_id');
+    }
+
+    /**
+     * Sesi absensi yang pernah diikuti member (via tabel kehadiran_absensi).
+     */
+    public function sesiAbsensi()
+    {
+        return $this->belongsToMany(
+            SesiAbsensi::class,
+            'kehadiran_absensi',
+            'member_id',
+            'sesi_absensi_id'
+        )->withTimestamps()
+         ->withPivot(['waktu_absen', 'status', 'device_info', 'keterangan']);
     }
 }

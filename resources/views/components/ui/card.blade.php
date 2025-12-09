@@ -2,12 +2,16 @@
 @props([
     'title' => null,
     'subtitle' => null,
-    'highlight' => false,   // kalau true pakai style sedikit lebih “wah”
+    'highlight' => false,   // kalau true, card sedikit lebih menonjol
 ])
 
 @php
-    $baseClasses = 'rounded-2xl border bg-brand-card shadow-card';
-    $highlightClasses = 'bg-brand-cardSoft border-3 border-brand-borderStrong shadow-card-strong bg-brand-radial-spot bg-no-repeat';
+    // Card dasar – dipakai di hampir semua halaman (termasuk Data Produk)
+    $baseClasses = 'rounded-3xl border border-brand-borderSoft bg-brand-card shadow-card';
+
+    // Versi highlight – warna sedikit lebih terang & shadow lebih kuat,
+    // tapi TIDAK mengubah layout (tidak ada border-3, radius aneh, dsb).
+    $highlightClasses = 'rounded-3xl border border-brand-borderStrong bg-brand-cardSoft shadow-card-strong';
 @endphp
 
 <section
@@ -22,6 +26,7 @@
                     {{ $title }}
                 </h2>
             @endif
+
             @if($subtitle)
                 <p class="text-xs text-text-muted mt-1">
                     {{ $subtitle }}
