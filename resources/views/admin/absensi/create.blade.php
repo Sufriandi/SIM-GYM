@@ -1,4 +1,4 @@
-{{-- resources/views/admin/absensi/sesi/create.blade.php --}}
+{{-- resources/views/admin/absensi/create.blade.php --}}
 
 @php
     $pageTitle = $pageTitle ?? 'Buat Sesi Absensi';

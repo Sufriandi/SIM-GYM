@@ -1,4 +1,4 @@
-{{-- resources/views/admin/absensi/sesi/show.blade.php --}}
+{{-- resources/views/admin/absensi/show.blade.php --}}
 
 @php
     use Illuminate\Support\Carbon;

@@ -27,7 +27,7 @@
 
     // Izin & Absensi
     $izinActive    = $active('admin.izin_latihan');
-    $absensiActive = $active('admin.absensi.kehadiran'); // satu prefix untuk absensi
+    $absensiActive = $active('admin.absensi'); // satu prefix untuk absensi
 
     $laporanActive = $active('admin.reports');
 
@@ -429,7 +429,7 @@
 
                     {{-- Absensi QR & Data --}}
                     <a
-                        href="{{ route('admin.absensi.kehadiran.index') }}"
+                        href="{{ route('admin.absensi.index') }}"
                         class="group flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all duration-200
                             {{ $absensiActive
                                 ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
