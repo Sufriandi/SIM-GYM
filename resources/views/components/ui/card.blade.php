@@ -6,11 +6,9 @@
 ])
 
 @php
-    // Card dasar – dipakai di hampir semua halaman (termasuk Data Produk)
+    // Card dasar 
     $baseClasses = 'rounded-3xl border border-brand-borderSoft bg-brand-card shadow-card';
 
-    // Versi highlight – warna sedikit lebih terang & shadow lebih kuat,
-    // tapi TIDAK mengubah layout (tidak ada border-3, radius aneh, dsb).
     $highlightClasses = 'rounded-3xl border border-brand-borderStrong bg-brand-cardSoft shadow-card-strong';
 @endphp
 
