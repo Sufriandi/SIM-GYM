@@ -50,7 +50,7 @@
 
 <div x-show="openCreate" x-cloak x-transition
     class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
-    @click.self="openCreate = false" @keydown.escape.window="openCreate = false">
+    @click.self="openCreate = false" @keydown.escape.window="openCreate = false" @wheel.prevent @touchmove.prevent>
     <div class="relative w-full max-w-4xl rounded-3xl shadow-2xl border border-brand-borderSoft
                bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell"
         x-data="{

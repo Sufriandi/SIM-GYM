@@ -1,32 +1,22 @@
 {{-- resources/views/admin/izin_latihan/history.blade.php --}}
 
-<x-layouts.admin
-    :title="$pageTitle . ' – BETA GYM'"
-    :page-title="$pageTitle"
-    page-subtitle="Daftar izin latihan yang sudah diproses oleh Admin."
->
+<x-layouts.admin :title="$pageTitle . ' – BETA GYM'" :page-title="$pageTitle" page-subtitle="Daftar izin latihan yang sudah diproses oleh Admin.">
     {{-- JUDUL + SUBTITLE ATAS --}}
-    <x-ui.section-header
-        :title="$pageTitle"
-        subtitle="Daftar izin latihan yang sudah disetujui atau ditolak oleh Admin."
-    />
+    <x-ui.section-header :title="$pageTitle"
+        subtitle="Daftar izin latihan yang sudah disetujui atau ditolak oleh Admin." />
 
     {{-- TOMBOL KEMBALI DI BAWAH SUBTITLE --}}
     <div class="mt-2">
-        <x-ui.back-button
-            href="{{ route('admin.izin_latihan.index') }}"
-            text="Kembali ke Permintaan Pending"
-        />
+        <x-ui.back-button href="{{ route('admin.izin_latihan.index') }}" text="Kembali ke Permintaan Pending" />
     </div>
 
     {{-- GARIS PEMBATAS --}}
     <hr class="border-t border-brand-borderSoft mb-6 mt-2">
 
     {{-- WRAPPER ALPINE UNTUK MODAL DETAIL --}}
-    <div
-        x-data="{
-            openDetailId: null,
-        }"
+    <div x-data="{
+        openDetailId: null,
+    }"
         x-effect="
             // optional: kunci scroll saat modal detail terbuka
             const main = document.querySelector('main');
@@ -53,8 +43,7 @@
                     }
                 });
             }
-        "
-    >
+        ">
         {{-- CARD UTAMA --}}
         <div class="w-full">
             <x-ui.card class="border-brand-borderSoft">
@@ -75,31 +64,38 @@
                         <thead>
                             <tr class="border-b-2 border-brand-borderSoft/80 bg-brand-shell/60">
                                 {{-- NO --}}
-                                <th class="px-4 py-3 text-center text-[11px] font-semibold tracking-wide text-text-main uppercase w-[6%]">
+                                <th
+                                    class="px-4 py-3 text-center text-[11px] font-semibold tracking-wide text-text-main uppercase w-[6%]">
                                     No
                                 </th>
                                 {{-- MEMBER --}}
-                                <th class="px-4 py-3 text-left text-[11px] font-semibold tracking-wide text-text-main uppercase">
+                                <th
+                                    class="px-4 py-3 text-left text-[11px] font-semibold tracking-wide text-text-main uppercase">
                                     Member
                                 </th>
                                 {{-- DIAJUKAN (H) --}}
-                                <th class="px-4 py-3 text-center text-[11px] font-semibold tracking-wide text-text-main uppercase whitespace-nowrap">
+                                <th
+                                    class="px-4 py-3 text-center text-[11px] font-semibold tracking-wide text-text-main uppercase whitespace-nowrap">
                                     Diajukan (H)
                                 </th>
                                 {{-- DISETUJUI (H) --}}
-                                <th class="px-4 py-3 text-center text-[11px] font-semibold tracking-wide text-text-main uppercase whitespace-nowrap">
+                                <th
+                                    class="px-4 py-3 text-center text-[11px] font-semibold tracking-wide text-text-main uppercase whitespace-nowrap">
                                     Disetujui (H)
                                 </th>
                                 {{-- STATUS --}}
-                                <th class="px-4 py-3 text-center text-[11px] font-semibold tracking-wide text-text-main uppercase">
+                                <th
+                                    class="px-4 py-3 text-center text-[11px] font-semibold tracking-wide text-text-main uppercase">
                                     Status
                                 </th>
                                 {{-- KET ADMIN (Diperkecil lebarnya) --}}
-                                <th class="px-4 py-3 text-left text-[11px] font-semibold tracking-wide text-text-main uppercase w-[25%]">
+                                <th
+                                    class="px-4 py-3 text-left text-[11px] font-semibold tracking-wide text-text-main uppercase w-[25%]">
                                     Ket. Admin
                                 </th>
                                 {{-- DETAIL --}}
-                                <th class="px-4 py-3 text-center text-[11px] font-semibold tracking-wide text-text-main uppercase whitespace-nowrap">
+                                <th
+                                    class="px-4 py-3 text-center text-[11px] font-semibold tracking-wide text-text-main uppercase whitespace-nowrap">
                                     Detail
                                 </th>
                             </tr>
@@ -107,7 +103,8 @@
 
                         <tbody>
                             @forelse ($riwayat_izin as $izin)
-                                <tr class="border-b border-brand-borderSoft/60 hover:bg-brand-surface-50 transition-colors h-16">
+                                <tr
+                                    class="border-b border-brand-borderSoft/60 hover:bg-brand-surface-50 transition-colors h-16">
                                     {{-- NO (global pagination) --}}
                                     <td class="px-4 py-4 text-center align-middle text-xs text-text-muted">
                                         {{ $loop->iteration + ($riwayat_izin->currentPage() - 1) * $riwayat_izin->perPage() }}
@@ -166,11 +163,9 @@
 
                                     {{-- DETAIL (PAKAI MODAL, BUKAN ROUTE) --}}
                                     <td class="px-4 py-4 text-center align-middle">
-                                        <button
-                                            type="button"
+                                        <button type="button"
                                             class="inline-flex items-center justify-center gap-1 text-gold-600 hover:text-gold-500 font-semibold text-xs md:text-sm transition-colors whitespace-nowrap"
-                                            @click="openDetailId = {{ $izin->id }}"
-                                        >
+                                            @click="openDetailId = {{ $izin->id }}">
                                             <span>Lihat Detail</span>
                                             <i data-lucide="arrow-right" class="w-4 h-4"></i>
                                         </button>
@@ -201,6 +196,8 @@
     </div>
 
     <style>
-        [x-cloak] { display: none !important; }
+        [x-cloak] {
+            display: none !important;
+        }
     </style>
 </x-layouts.admin>
