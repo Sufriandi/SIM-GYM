@@ -8,18 +8,20 @@
 
     $openCreateOnLoad = $errors->hasBag('izin_manual') && $errors->izin_manual->any() ? 'true' : 'false';
 
+    // Ambil member yang punya user role=member, urut nama
     $sourceMembers = isset($membersForSelect)
         ? $membersForSelect
         : Member::with('user')
             ->whereHas('user', fn($q) => $q->where('role', 'member'))
             ->orderBy('nama')
-            ->get(['id', 'nama', 'username', 'user_id']);
+            ->get(['id', 'nama', 'user_id']); // TIDAK ada kolom username di members
 
+    // Opsi dropdown: label = nama saja
     $memberOptions = $sourceMembers
         ->map(function ($m) {
             return [
                 'id'    => $m->id,
-                'label' => trim($m->nama . ($m->user?->username ? ' (' . $m->user->username . ')' : '')),
+                'label' => $m->nama, // hanya nama
             ];
         })
         ->toArray();
@@ -308,28 +310,36 @@
                     <tbody class="divide-y divide-brand-borderSoft/80">
                         @forelse ($daftar_izin as $izin)
                             <tr
-                                x-data="{
-                                    memberName: @js($izin->member?->nama ?? ''),
-                                    memberUsername: @js($izin->member?->username ?? ''),
-                                }"
-                                x-show="
-                                    !searchTerm
-                                    || memberName.toLowerCase().startsWith(searchTerm.toLowerCase())
-                                    || memberUsername.toLowerCase().startsWith(searchTerm.toLowerCase())
-                                "
-                                class="hover:bg-brand-surface-50 transition-colors duration-150 h-24"
-                            >
+                                <tr
+                                    x-data="{
+                                        memberName: @js($izin->member?->nama ?? ''),
+                                    }"
+                                    x-show="
+                                        !searchTerm
+                                        || memberName.toLowerCase().includes(searchTerm.toLowerCase())
+                                    "
+                                    class="hover:bg-brand-surface-50 transition-colors duration-150 h-24"
+                                >
                                 <td class="p-3 text-center align-middle text-xs text-text-muted">
                                     {{ $loop->iteration + ($daftar_izin->currentPage() - 1) * $daftar_izin->perPage() }}
                                 </td>
 
                                 <td class="p-3 text-left align-middle">
-                                    <div class="text-sm {{ $izin->member ? 'text-text-main' : 'text-danger italic' }}">
-                                        {{ $izin->member?->nama ?? '[Member Dihapus]' }}
-                                    </div>
-                                    @if ($izin->member)
-                                        <div class="text-[11px] text-text-muted">
-                                            ID Member: {{ $izin->member->kode_member ?? '-' }}
+                                    @if ($izin->member && $izin->member->user)                                       
+                                        {{-- Nama  --}}
+                                        <div class="text-sm font-semibold text-text-main">
+                                            {{ $izin->member->nama }}
+                                        </div>
+
+                                        
+                                    @elseif ($izin->member)
+                                        
+                                        <div class="text-sm text-text-main">
+                                            {{ $izin->member->nama }}
+                                        </div>
+                                    @else
+                                        <div class="text-sm text-danger italic">
+                                            [Member Dihapus]
                                         </div>
                                     @endif
                                 </td>
@@ -513,7 +523,7 @@
                                                 <input type="text" id="member_search"
                                                     x-model="create.memberSearch" @focus="dropdownOpen = true"
                                                     @input="dropdownOpen = true"
-                                                    placeholder="Cari nama / username member..." autocomplete="off"
+                                                    placeholder="Cari nama member..." autocomplete="off"
                                                     class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
                                                 <input type="hidden" name="member_id" :value="create.memberId ?? ''">
 
@@ -535,7 +545,7 @@
                                                 <p class="text-xs text-danger mt-1">{{ $message }}</p>
                                             @enderror
                                             <p class="text-[11px] text-text-muted">
-                                                Ketik sebagian nama / username lalu klik salah satu hasil.
+                                                Ketik sebagian nama lalu klik salah satu hasil.
                                             </p>
                                         </div>
 

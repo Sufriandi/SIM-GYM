@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\IzinLatihan;
@@ -24,8 +23,7 @@ class Member extends Model
         'tanggal_daftar',
         'tanggal_mulai',
         'tanggal_akhir',
-        'status',
-        'qr_code_token',
+
     ];
 
     // ================= RELASI UTAMA =================
@@ -37,9 +35,10 @@ class Member extends Model
     }
 
     // Relasi: Member memiliki banyak izin latihan
+    // (pakai member_id, bukan user_id)
     public function izinLatihan()
     {
-        return $this->hasMany(IzinLatihan::class, 'user_id', 'user_id');
+        return $this->hasMany(IzinLatihan::class, 'member_id', 'id');
     }
 
     /**
@@ -61,12 +60,11 @@ class Member extends Model
             'member_id',
             'sesi_absensi_id'
         )->withTimestamps()
-            ->withPivot(['waktu_absen', 'status', 'device_info', 'keterangan']);
+         ->withPivot(['waktu_absen', 'status', 'device_info', 'keterangan']);
     }
 
     /**
      * Relasi ke semua transaksi membership milik member ini.
-     * (kalau sewaktu-waktu perlu dicek riwayatnya).
      */
     public function memberships()
     {
@@ -77,7 +75,6 @@ class Member extends Model
 
     /**
      * Scope: hanya member yang membership-nya sedang aktif hari ini.
-     * Dipakai kalau kamu perlu query daftar member aktif.
      */
     public function scopeMembershipAktif($query)
     {
@@ -92,12 +89,6 @@ class Member extends Model
 
     /**
      * Accessor: $member->membership_aktif (boolean)
-     *
-     * TRUE  jika hari ini di antara tanggal_mulai & tanggal_akhir.
-     * FALSE jika belum ada membership / sudah lewat.
-     *
-     * Nilai tanggal_mulai & tanggal_akhir sudah selalu
-     * disinkronkan oleh MembershipController.
      */
     public function getMembershipAktifAttribute(): bool
     {
