@@ -1,4 +1,4 @@
-<x-layouts.member
+{{-- <x-layouts.member
     pageTitle="Absensi Latihan"
     pageSubtitle="Konfirmasi kehadiran Anda."
 >
@@ -32,4 +32,4 @@
             @endif
         </x-ui.card>
     </div>
-</x-layouts.member>
+</x-layouts.member> --}}

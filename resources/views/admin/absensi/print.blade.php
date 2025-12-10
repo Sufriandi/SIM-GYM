@@ -1,4 +1,4 @@
-{{-- resources/views/admin/absensi/kehadiran/print.blade.php --}}
+{{-- resources/views/admin/absensi/print.blade.php --}}
 @php
     $pageTitle = $pageTitle ?? 'Kartu Absensi Member';
     $gymName   = 'BETA GYM';

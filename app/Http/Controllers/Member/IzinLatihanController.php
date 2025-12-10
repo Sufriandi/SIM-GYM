@@ -23,6 +23,26 @@ class IzinLatihanController extends Controller
     }
 
     /**
+     * Cek apakah membership member sedang aktif hari ini.
+     *
+     * Syarat aktif:
+     * - tanggal_mulai & tanggal_akhir tidak null
+     * - today berada di antara tanggal_mulai dan tanggal_akhir (inklusif)
+     */
+    protected function isMembershipActive(Member $member): bool
+    {
+        if (! $member->tanggal_mulai || ! $member->tanggal_akhir) {
+            return false;
+        }
+
+        $today = Carbon::today();
+        $mulai = Carbon::parse($member->tanggal_mulai)->startOfDay();
+        $akhir = Carbon::parse($member->tanggal_akhir)->endOfDay();
+
+        return $today->gte($mulai) && $today->lte($akhir);
+    }
+
+    /**
      * Menampilkan daftar izin yang HANYA berstatus 'pending'
      * untuk member yang sedang login.
      */
@@ -59,12 +79,20 @@ class IzinLatihanController extends Controller
 
     /**
      * Menampilkan formulir untuk membuat izin baru.
+     * Hanya boleh diakses jika membership sedang aktif.
      */
     public function create()
     {
         $pageTitle = 'Formulir Izin Baru';
 
         $member = $this->getCurrentMember();
+
+        // Hanya member dengan membership aktif yang boleh mengajukan izin
+        if (! $this->isMembershipActive($member)) {
+            return redirect()
+                ->route('member.izin_latihan.index')
+                ->with('error', 'Anda hanya dapat mengajukan izin jika membership Anda masih aktif.');
+        }
 
         // Range tanggal yang sudah dipakai izin (pending + disetujui)
         $blockedRanges = IzinLatihan::where('member_id', $member->id)
@@ -78,14 +106,18 @@ class IzinLatihanController extends Controller
     /**
      * Menyimpan data pengajuan izin baru ke database.
      *
-     * Sinkron dengan struktur yang dipakai admin:
-     * - pakai kolom member_id
-     * - kolom jumlah_hari diinput user
-     * - kolom tanggal_selesai dihitung otomatis: tanggal_mulai + (jumlah_hari - 1)
+     * Hanya member dengan membership aktif yang boleh submit.
      */
     public function store(Request $request)
     {
         $member = $this->getCurrentMember();
+
+        // Cek membership aktif sebelum validasi/form processing
+        if (! $this->isMembershipActive($member)) {
+            return redirect()
+                ->route('member.izin_latihan.index')
+                ->with('error', 'Anda hanya dapat mengajukan izin jika membership Anda masih aktif.');
+        }
 
         // 1. Validasi input
         $validated = $request->validate(
@@ -120,7 +152,6 @@ class IzinLatihanController extends Controller
         $tglSelesaiBaru = $tglSelesai->toDateString();
 
         // 3. Anti–spam: cek overlap tanggal dengan izin lain (pending/disetujui)
-        // (tetap ada di backend untuk keamanan, walau sudah diblok di frontend)
         $conflict = IzinLatihan::where('member_id', $member->id)
             ->whereIn('status', ['pending', 'disetujui'])
             ->where(function ($q) use ($tglMulaiBaru, $tglSelesaiBaru) {
@@ -140,7 +171,6 @@ class IzinLatihanController extends Controller
 
             $message = "Sudah ada izin lain pada {$izinMulai}–{$izinSelesai}.";
 
-            // Kembali ke form dengan error di field tanggal_mulai (tanpa session('error'))
             return back()
                 ->withErrors(['tanggal_mulai' => $message])
                 ->withInput();
