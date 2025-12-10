@@ -341,8 +341,7 @@
                     </a>
 
                     {{-- Absensi QR & Data --}}
-                    <<<<<<< HEAD <a href="{{ route('admin.absensi.kehadiran.index') }}"=======<a
-                        href="{{ route('admin.absensi.index') }}">>>>>>> Development
+                    <a href="{{ route('admin.absensi.index') }}"
                         class="group flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all duration-200
                             {{ $absensiActive
                                 ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
@@ -351,7 +350,7 @@
                         <i data-lucide="qr-code"
                             class="w-4 h-4 {{ $absensiActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
                         <span>Absensi QR &amp; Data</span>
-                        </a>
+                    </a>
                 </div>
             </div>
 
