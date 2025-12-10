@@ -1,4 +1,3 @@
-{{-- resources/views/admin/memberships/index.blade.php --}}
 @php
     use Illuminate\Support\Str;
     use Illuminate\Support\Carbon;
@@ -19,25 +18,43 @@
 
 <x-layouts.admin :title="$pageTitle . ' – BETA GYM'" :page-title="$pageTitle"
     page-subtitle="Catat transaksi membership dan pantau status masa aktif member.">
-    {{-- FLASH MESSAGE --}}
-    @if (session('success'))
-        <div class="bg-primary-soft border border-primary text-primary-dark px-4 py-3 rounded relative mb-4">
-            <span class="block sm:inline">{{ session('success') }}</span>
-        </div>
-    @endif
-
-    @if (session('error'))
-        <div class="bg-danger-soft border border-danger text-danger px-4 py-3 rounded relative mb-4">
-            <span class="block sm:inline">{{ session('error') }}</span>
-        </div>
-    @endif
 
     <div x-data="{
         openCreate: {{ $openCreateOnLoad }},
+        openDetailId: null,
+        openEditId: null,
+    
+        // filter frontend
         searchTerm: '',
         statusFilter: 'all',
         metodeFilter: 'all',
-    }">
+    }"
+        x-effect="
+            const main  = document.querySelector('main');
+            const html  = document.documentElement;
+            const body  = document.body;
+            const locked = openCreate || openDetailId || openEditId;
+
+            const targets = [html, body, main].filter(Boolean);
+
+            if (locked) {
+                targets.forEach((el) => {
+                    if (el.dataset.prevOverflowY === undefined) {
+                        el.dataset.prevOverflowY = el.style.overflowY || '';
+                    }
+                    el.style.overflowY = 'hidden';
+                });
+            } else {
+                targets.forEach((el) => {
+                    if (el.dataset.prevOverflowY !== undefined) {
+                        el.style.overflowY = el.dataset.prevOverflowY;
+                        delete el.dataset.prevOverflowY;
+                    } else {
+                        el.style.removeProperty('overflow-y');
+                    }
+                });
+            }
+        ">
         {{-- HEADER --}}
         <x-ui.section-header :title="$pageTitle"
             subtitle="Setiap transaksi akan menambah atau memperpanjang masa aktif membership member." />
@@ -74,9 +91,9 @@
                             <h4 class="text-sm font-semibold text-text-main">Filter</h4>
                             <button type="button" class="text-xs text-danger hover:underline"
                                 @click="
-                                    statusFilter = 'all';
-                                    metodeFilter = 'all';
-                                ">
+                                        statusFilter = 'all';
+                                        metodeFilter = 'all';
+                                    ">
                                 Reset
                             </button>
                         </div>
@@ -123,7 +140,7 @@
         </div>
 
         {{-- CARD TABEL TRANSAKSI --}}
-        <x-ui.card class="border-brand-borderSoft">
+        <x-ui.card class="border-brand-borderSoft ">
             <div class="px-6 py-4 border-b border-brand-borderSoft flex items-center justify-between">
                 <div>
                     <h3 class="text-lg font-bold text-text-main">Daftar Transaksi Membership</h3>
@@ -139,41 +156,57 @@
                 </div>
             </div>
 
+            {{-- WRAPPER TABEL TRANSAKSI --}}
             <div class="w-full overflow-x-auto custom-scrollbar">
-                <table class="w-full border-collapse text-xs md:text-sm md:min-w-[900px]">
+                <table class="w-full border-collapse text-xs md:text-sm md:min-w-[800px]">
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
+                            {{-- NO --}}
                             <th
-                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[5%]">
+                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[6%]">
                                 No
                             </th>
+
+                            {{-- MEMBER --}}
                             <th
                                 class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[24%]">
                                 Member
                             </th>
+
+                            {{-- PAKET (HANYA NAMA) --}}
                             <th
-                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[18%]">
+                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[20%]">
                                 Paket
                             </th>
+
+                            {{-- BERLAKU SAMPAI --}}
                             <th
-                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[15%]">
-                                Periode
+                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted whitespace-nowrap w-[16%]">
+                                Berlaku Sampai
                             </th>
+
+                            {{-- METODE (HANYA METODE, TANPA TANGGAL) --}}
                             <th
-                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[13%]">
-                                Metode & Tanggal
+                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[10%]">
+                                Metode
                             </th>
+
+                            {{-- STATUS --}}
                             <th
-                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[9%]">
+                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[10%]">
                                 Status
                             </th>
+
+                            {{-- KETERANGAN (HANYA DI LAYAR LEBAR) --}}
                             <th
-                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[18%]">
+                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted hidden xl:table-cell w-[18%]">
                                 Keterangan
                             </th>
+
+                            {{-- DETAIL --}}
                             <th
-                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[8%]">
-                                Aksi
+                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted whitespace-nowrap w-[8%]">
+                                Detail
                             </th>
                         </tr>
                     </thead>
@@ -210,8 +243,7 @@
                                     $statusVariant = 'neutral';
                                 }
 
-                                $periodeText =
-                                    $mulai && $akhir ? $mulai->format('d M Y') . ' – ' . $akhir->format('d M Y') : '—';
+                                $akhirText = $akhir ? $akhir->format('d M Y') : '—';
 
                                 $groupNames = $membership->groupMembers
                                     ->map(fn($gm) => $gm->member?->nama)
@@ -231,13 +263,13 @@
                                 metode: '{{ $membership->metode_pembayaran }}',
                             }"
                                 x-show="
-                                    (!searchTerm
-                                        || memberName.toLowerCase().includes(searchTerm.toLowerCase())
-                                        || memberUsername.toLowerCase().includes(searchTerm.toLowerCase())
-                                        || paketName.toLowerCase().includes(searchTerm.toLowerCase()))
+                        (!searchTerm
+                            || memberName.toLowerCase().includes(searchTerm.toLowerCase())
+                            || memberUsername.toLowerCase().includes(searchTerm.toLowerCase())
+                            || paketName.toLowerCase().includes(searchTerm.toLowerCase()))
 && (statusFilter === 'all' || statusFilter === status)
-                                    && (metodeFilter === 'all' || metodeFilter === metode)
-                                "
+                        && (metodeFilter === 'all' || metodeFilter === metode)
+                    "
                                 class="hover:bg-brand-surface-50 transition-colors duration-150">
                                 {{-- NO --}}
                                 <td class="p-3 text-center align-middle text-xs text-text-muted">
@@ -248,7 +280,7 @@
                                 <td class="p-3 text-left align-middle">
                                     <div
                                         class="text-sm font-semibold {{ $member ? 'text-text-main' : 'text-danger italic' }}
-                                               max-w-[230px] md:max-w-[280px] truncate">
+                                max-w-[230px] md:max-w-[260px] truncate">
                                         {{ $member->nama ?? '[Member dihapus]' }}
                                     </div>
 
@@ -259,47 +291,25 @@
                                     @endif
                                 </td>
 
-                                {{-- PAKET --}}
+                                {{-- PAKET (HANYA NAMA) --}}
                                 <td class="p-3 text-left align-middle">
-                                    <div class="text-sm font-semibold text-text-main max-w-[210px] truncate">
+                                    <span class="text-sm font-semibold text-text-main max-w-[220px] line-clamp-1">
                                         {{ $paket->nama ?? '[Paket dihapus]' }}
-                                    </div>
-
-                                    @if ($paket)
-                                        <div class="mt-1 flex items-center gap-2">
-                                            @php
-                                                $badgeVariant =
-                                                    $paket->tipe === 'single'
-                                                        ? 'primary'
-                                                        : ($paket->tipe === 'double'
-                                                            ? 'success'
-                                                            : 'warning');
-                                            @endphp
-
-                                            <x-ui.badge :variant="$badgeVariant">
-                                                {{ Str::ucfirst($paket->tipe) }}
-                                            </x-ui.badge>
-                                        </div>
-                                    @endif
+                                    </span>
                                 </td>
 
-                                {{-- PERIODE --}}
-                                <td class="p-3 text-left align-middle">
+                                {{-- BERLAKU SAMPAI --}}
+                                <td class="p-3 text-left align-middle whitespace-nowrap">
                                     <div class="text-sm text-text-main">
-                                        {{ $periodeText }}
+                                        {{ $akhirText }}
                                     </div>
                                 </td>
 
-                                {{-- METODE + TANGGAL TRANSAKSI --}}
-                                <td class="p-3 text-left align-middle">
-                                    <div class="mb-1">
-                                        <x-ui.badge variant="neutral">
-                                            {{ $metodeLabel }}
-                                        </x-ui.badge>
-                                    </div>
-                                    <div class="text-[11px] text-text-muted">
-                                        {{ Carbon::parse($membership->tanggal_transaksi)->format('d M Y H:i') }}
-                                    </div>
+                                {{-- METODE PEMBAYARAN (TANPA TANGGAL) --}}
+                                <td class="p-3 text-center align-middle">
+                                    <x-ui.badge variant="neutral">
+                                        {{ $metodeLabel }}
+                                    </x-ui.badge>
                                 </td>
 
                                 {{-- STATUS --}}
@@ -315,49 +325,21 @@
                                     @endif
                                 </td>
 
-                                {{-- KETERANGAN --}}
-                                <td class="p-3 text-left align-middle">
+                                {{-- KETERANGAN (DISSEMBUNYIKAN DI LAYAR KECIL) --}}
+                                <td class="p-3 text-left align-middle hidden xl:table-cell">
                                     <div class="text-xs text-text-muted max-w-[260px] truncate">
                                         {{ $membership->keterangan ? Str::limit($membership->keterangan, 80) : '—' }}
                                     </div>
                                 </td>
 
-                                {{-- AKSI --}}
-                                <td class="px-3 py-4 align-middle w-[8%] min-w-[110px]">
-                                    <div class="flex items-center justify-center gap-4 h-full">
-                                        {{-- DETAIL --}}
-                                        <a href="{{ route('admin.memberships.show', $membership) }}"
-                                            class="p-2 rounded-full text-info hover:bg-info-soft/50 transition-colors duration-150"
-                                            title="Detail">
-                                            <i data-lucide="eye" class="w-5 h-5"></i>
-                                        </a>
-
-                                        {{-- HAPUS --}}
-                                        <form id="delete-membership-{{ $membership->id }}"
-                                            action="{{ route('admin.memberships.destroy', $membership) }}"
-                                            method="POST" class="inline-block">
-                                            @csrf
-                                            @method('DELETE')
-
-                                            <button type="button"
-                                                class="relative group p-2 rounded-full text-danger hover:bg-danger-soft/60 transition-colors duration-150"
-                                                title="Hapus"
-                                                onclick="confirmDeleteMembership(
-                                                    {{ $membership->id }},
-                                                    @js($member->nama ?? '[Member dihapus]'),
-                                                    @js($paket->nama ?? '[Paket dihapus]')
-                                                )">
-                                                <i data-lucide="trash-2" class="w-5 h-5"></i>
-                                                <span
-                                                    class="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2
-                                                           text-[10px] font-medium text-danger
-                                                           opacity-0 group-hover:opacity-100
-                                                           transition-opacity duration-150">
-                                                    Hapus
-                                                </span>
-                                            </button>
-                                        </form>
-                                    </div>
+                                {{-- DETAIL (SEPERTI RIWAYAT IZIN LATIHAN) --}}
+                                <td class="px-3 py-4 text-center align-middle">
+                                    <button type="button"
+                                        class="inline-flex items-center justify-center gap-1 text-gold-600 hover:text-gold-500 font-semibold text-xs md:text-sm transition-colors whitespace-nowrap"
+                                        @click="openDetailId = {{ $membership->id }}">
+                                        <span>Lihat Detail</span>
+                                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                                    </button>
                                 </td>
                             </tr>
                         @empty
@@ -371,41 +353,38 @@
                 </table>
             </div>
 
+
             {{-- PAGINATION --}}
             <div class="mt-6">
                 {{ $memberships->onEachSide(1)->links() }}
             </div>
         </x-ui.card>
 
-        {{-- MODAL CREATE (TERPISAH DI FILE LAIN) --}}
+        {{-- MODAL CREATE --}}
         @include('admin.memberships.modals.create', [
             'members' => $members,
             'paketList' => $paketList,
-            'openCreateOnLoad' => $openCreateOnLoad,
         ])
+
+        {{-- MODAL DETAIL & EDIT (SATU PER MEMBERSHIP) --}}
+        @foreach ($memberships as $membership)
+            @include('admin.memberships.modals.detail', [
+                'membership' => $membership,
+                'metodeOptions' => $metodeOptions,
+                'today' => $today,
+            ])
+
+            @include('admin.memberships.modals.edit', [
+                'membership' => $membership,
+                'members' => $members,
+                'paketList' => $paketList,
+                'metodeOptions' => $metodeOptions,
+            ])
+        @endforeach
 
         <style>
             [x-cloak] {
                 display: none !important;
-            }
-
-            .custom-scrollbar::-webkit-scrollbar {
-                height: 6px;
-                width: 6px;
-            }
-
-            .custom-scrollbar::-webkit-scrollbar-track {
-                background: #F5E6D6;
-                border-radius: 999px;
-            }
-
-            .custom-scrollbar::-webkit-scrollbar-thumb {
-                background: #D4A757;
-                border-radius: 999px;
-            }
-
-            .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                background: #A67C39;
             }
         </style>
     </div>

@@ -18,24 +18,23 @@
     $memberOptions = $sourceMembers
         ->map(function ($m) {
             return [
-                'id'    => $m->id,
+                'id' => $m->id,
                 'label' => trim($m->nama . ($m->user?->username ? ' (' . $m->user->username . ')' : '')),
             ];
         })
         ->toArray();
 
-    $oldMemberId    = old('member_id');
+    $oldMemberId = old('member_id');
     $oldMemberLabel = '';
 
     if ($oldMemberId) {
-        $found          = collect($memberOptions)->firstWhere('id', (int) $oldMemberId);
+        $found = collect($memberOptions)->firstWhere('id', (int) $oldMemberId);
         $oldMemberLabel = $found['label'] ?? '';
     }
 @endphp
 
-<x-layouts.admin :title="$pageTitle . ' – BETA GYM'" :page-title="$pageTitle"
-    page-subtitle="Permintaan izin yang belum diproses.">
-    
+<x-layouts.admin :title="$pageTitle . ' – BETA GYM'" :page-title="$pageTitle" page-subtitle="Permintaan izin yang belum diproses.">
+
 
     {{-- MAIN WRAPPER (ALPINE ROOT) --}}
     <div x-data="{
@@ -43,14 +42,14 @@
         openCreate: {{ $openCreateOnLoad }},
         openDetailId: null,
         openApproveId: null,
-        openRejectId: null,      // ⬅️ TAMBAHAN
-
+        openRejectId: null, // ⬅️ TAMBAHAN
+    
         // Search realtime (frontend)
         searchTerm: @js(request('q')),
-
+    
         // === STATE MODAL CREATE ===
         members: @js($memberOptions),
-
+    
         create: {
             memberSearch: @js($oldMemberLabel),
             memberId: @js($oldMemberId),
@@ -58,53 +57,53 @@
             tanggalMulai: '{{ old('tanggal_mulai', now()->toDateString()) }}',
             keterangan: @js(old('keterangan')),
         },
-
+    
         dropdownOpen: false,
-
+    
         fileUrl: null,
         fileName: '',
         fileType: '',
-
+    
         // === FUNCTIONS ===
         openCreateModal() {
             this.resetCreateForm();
             this.openCreate = true;
         },
-
+    
         closeCreateModal() {
             this.openCreate = false;
             this.resetCreateForm();
         },
-
+    
         resetCreateForm() {
             this.create.memberSearch = '';
             this.create.memberId = null;
             this.create.jumlahHari = 1;
             this.create.tanggalMulai = '{{ now()->toDateString() }}';
             this.create.keterangan = '';
-
+    
             this.dropdownOpen = false;
-
+    
             this.fileUrl = null;
             this.fileName = '';
             this.fileType = '';
-
+    
             if (this.$refs.buktiInput) {
                 this.$refs.buktiInput.value = null;
             }
         },
-
+    
         matchMember(m) {
             if (!this.create.memberSearch) return true;
             return m.label.toLowerCase().includes(this.create.memberSearch.toLowerCase());
         },
-
+    
         selectMember(m) {
             this.create.memberId = m.id;
             this.create.memberSearch = m.label;
             this.dropdownOpen = false;
         },
-
+    
         handleFileChange(e) {
             const file = e.target.files[0];
             if (!file) {
@@ -113,11 +112,11 @@
                 this.fileType = '';
                 return;
             }
-
+    
             this.fileName = file.name;
             const mime = file.type || '';
             const lower = file.name.toLowerCase();
-
+    
             if (mime.startsWith('image/')) {
                 this.fileType = 'image';
             } else if (mime === 'application/pdf' || lower.endsWith('.pdf')) {
@@ -125,7 +124,7 @@
             } else {
                 this.fileType = 'other';
             }
-
+    
             if (this.fileType === 'image' || this.fileType === 'pdf') {
                 const reader = new FileReader();
                 reader.onload = (ev) => {
@@ -136,9 +135,8 @@
                 this.fileUrl = null;
             }
         },
-    }"
-    x-on:open-izin-manual.window="openCreateModal()"
-    x-effect="
+    }" x-on:open-izin-manual.window="openCreateModal()"
+        x-effect="
         const main = document.querySelector('main');
         const html = document.documentElement;
         const body = document.body;
@@ -212,7 +210,8 @@
                                 </label>
                                 <select name="sort"
                                     class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2">
-                                    <option value="newest" {{ request('sort', 'newest') == 'newest' ? 'selected' : '' }}>
+                                    <option value="newest"
+                                        {{ request('sort', 'newest') == 'newest' ? 'selected' : '' }}>
                                         Waktu pengajuan · Terbaru
                                     </option>
                                     <option value="oldest" {{ request('sort') == 'oldest' ? 'selected' : '' }}>
@@ -307,18 +306,16 @@
 
                     <tbody class="divide-y divide-brand-borderSoft/80">
                         @forelse ($daftar_izin as $izin)
-                            <tr
-                                x-data="{
-                                    memberName: @js($izin->member?->nama ?? ''),
-                                    memberUsername: @js($izin->member?->username ?? ''),
-                                }"
+                            <tr x-data="{
+                                memberName: @js($izin->member?->nama ?? ''),
+                                memberUsername: @js($izin->member?->username ?? ''),
+                            }"
                                 x-show="
                                     !searchTerm
                                     || memberName.toLowerCase().startsWith(searchTerm.toLowerCase())
                                     || memberUsername.toLowerCase().startsWith(searchTerm.toLowerCase())
                                 "
-                                class="hover:bg-brand-surface-50 transition-colors duration-150 h-24"
-                            >
+                                class="hover:bg-brand-surface-50 transition-colors duration-150 h-24">
                                 <td class="p-3 text-center align-middle text-xs text-text-muted">
                                     {{ $loop->iteration + ($daftar_izin->currentPage() - 1) * $daftar_izin->perPage() }}
                                 </td>
@@ -363,8 +360,7 @@
                                     <div class="flex items-center justify-center gap-4 h-full">
                                         {{-- DETAIL --}}
                                         <div class="relative group flex items-center justify-center">
-                                            <button type="button"
-                                                @click="openDetailId = {{ $izin->id }}"
+                                            <button type="button" @click="openDetailId = {{ $izin->id }}"
                                                 class="p-2 rounded-full text-info hover:bg-info-soft/50 transition-colors duration-150">
                                                 <i data-lucide="eye" class="w-6 h-6"></i>
                                             </button>
@@ -381,8 +377,7 @@
                                         @if ($izin->member)
                                             {{-- SETUJUI (BUKA MODAL APPROVE) --}}
                                             <div class="relative group flex items-center justify-center">
-                                                <button type="button"
-                                                    @click="openApproveId = {{ $izin->id }}"
+                                                <button type="button" @click="openApproveId = {{ $izin->id }}"
                                                     class="p-2 rounded-full text-success hover:bg-success-soft/50 transition-colors duration-150">
                                                     <i data-lucide="circle-check" class="w-6 h-6"></i>
                                                 </button>
@@ -398,8 +393,7 @@
 
                                             {{-- TOLAK (BUKA MODAL REJECT) --}}
                                             <div class="relative group flex items-center justify-center">
-                                                <button type="button"
-                                                    @click="openRejectId = {{ $izin->id }}"
+                                                <button type="button" @click="openRejectId = {{ $izin->id }}"
                                                     class="p-2 rounded-full text-danger hover:bg-danger-soft/50 transition-colors duration-150">
                                                     <i data-lucide="circle-x" class="w-6 h-6"></i>
                                                 </button>
