@@ -24,7 +24,6 @@ class Member extends Model
         'tanggal_daftar',
         'tanggal_mulai',
         'tanggal_akhir',
-        'foto',
         'status',
         'qr_code_token',
     ];
@@ -62,7 +61,7 @@ class Member extends Model
             'member_id',
             'sesi_absensi_id'
         )->withTimestamps()
-         ->withPivot(['waktu_absen', 'status', 'device_info', 'keterangan']);
+            ->withPivot(['waktu_absen', 'status', 'device_info', 'keterangan']);
     }
 
     /**
