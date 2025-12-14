@@ -149,30 +149,39 @@
 
                                 // STATUS dari tanggal_mulai/tanggal_akhir
                                 $today = Carbon::today();
-                                if (empty($member->tanggal_mulai) || empty($member->tanggal_akhir)) {
-                                    $statusKey = 'belum_ada_periode';
-                                } else {
-                                    $mulai = Carbon::parse($member->tanggal_mulai)->startOfDay();
-                                    $akhir = Carbon::parse($member->tanggal_akhir)->endOfDay();
 
-                                    if ($today->lt($mulai)) {
-                                        $statusKey = 'belum_aktif';
-                                    } elseif ($today->betweenIncluded($mulai, $akhir)) {
+                                $mulaiRaw = $member->tanggal_mulai;
+                                $akhirRaw = $member->tanggal_akhir;
+
+                                if (empty($mulaiRaw) && empty($akhirRaw)) {
+                                    // belum ada periode => dianggap belum aktif (sesuai requirement)
+                                    $statusKey = 'belum_aktif';
+                                } elseif (!empty($mulaiRaw) && !empty($akhirRaw)) {
+                                    $mulai = Carbon::parse($mulaiRaw)->startOfDay();
+                                    $akhir = Carbon::parse($akhirRaw)->endOfDay();
+
+                                    if ($today->betweenIncluded($mulai, $akhir)) {
                                         $statusKey = 'aktif';
-                                    } else {
+                                    } elseif ($today->gt($akhir)) {
                                         $statusKey = 'expired';
+                                    } else {
+                                        // $today < $mulai
+                                        $statusKey = 'belum_aktif';
                                     }
+                                } else {
+                                    // kasus data tidak lengkap (salah satu null) -> tetap masuk belum_aktif agar tidak muncul status ke-4
+                                    $statusKey = 'belum_aktif';
                                 }
 
                                 $statusVariant = match ($statusKey) {
                                     'aktif' => 'success',
                                     'expired' => 'danger',
                                     'belum_aktif' => 'warning',
-                                    'belum_ada_periode' => 'neutral',
                                     default => 'neutral',
                                 };
 
                                 $statusLabel = Str::upper(str_replace('_', ' ', $statusKey));
+
                             @endphp
 
                             <tr x-show="
