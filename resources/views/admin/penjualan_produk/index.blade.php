@@ -391,8 +391,8 @@
             class="border-brand-borderSoft"
         >
             {{-- wrapper tabel: scroll horizontal hanya di layar kecil --}}
-            <div class="w-full overflow-x-auto md:overflow-x-visible custom-scrollbar">
-                <table class="table-fixed w-full border-collapse text-sm md:min-w-[900px]">
+            <div class="w-full overflow-x-auto custom-scrollbar">
+                <table class="w-full border-collapse text-xs md:text-sm md:min-w-[800px]">
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
                             {{-- total persentase kolom ≈ 100% --}}

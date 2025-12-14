@@ -270,14 +270,14 @@
             </div>
         </div>
 
-        {{-- CARD TABEL STOK PRODUK – TANPA overflow-x-auto supaya tidak ada scrollbar --}}
+        {{-- wrapper tabel: scroll horizontal hanya di layar kecil --}}
         <x-ui.card
             title="Daftar Stok Produk"
             subtitle="Stok yang tersedia saat ini di database."
             class="border-brand-borderSoft"
         >
-            <div class="w-full">
-                <table class="table-fixed w-full border-collapse text-sm">
+            <div class="w-full overflow-x-auto custom-scrollbar">
+                <table class="w-full border-collapse text-xs md:text-sm md:min-w-[800px]">
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
                             <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[6%]">

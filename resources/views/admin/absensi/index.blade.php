@@ -59,9 +59,7 @@
 
         <hr class="border-t border-brand-borderSoft mb-4 hidden-print">
 
-        {{-- ===================================================== --}}
-        {{-- BAR ATAS: MODE PERIODE + TOMBOL CETAK KARTU QR       --}}
-        {{-- ===================================================== --}}
+        {{-- BAR ATAS: MODE PERIODE + TOMBOL CETAK KARTU QR --}}
         <div class="hidden-print mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 
             {{-- KIRI: MODE PERIODE --}}
@@ -114,9 +112,7 @@
             </div>
         </div>
 
-        {{-- ================================== --}}
-        {{-- CARD: PERIODE ABSENSI AKTIF + QR   --}}
-        {{-- ================================== --}}
+        {{-- CARD: PERIODE ABSENSI AKTIF + QR --}}
         <section
             class="bg-brand-card rounded-[32px] border border-brand-borderSoft shadow-card-strong overflow-hidden
                    print:w-full print:shadow-none print:border"
@@ -171,9 +167,7 @@
             </div>
         </section>
 
-        {{-- ===================== --}}
-        {{-- DAFTAR KEHADIRAN      --}}
-        {{-- ===================== --}}
+        {{-- DAFTAR KEHADIRAN --}}
         <section class="bg-brand-card rounded-3xl border border-brand-borderSoft shadow-card-soft overflow-visible">
             {{-- HEADER + SEARCH + FILTER --}}
             <div class="px-6 pt-6 pb-4 border-b border-brand-borderSoft/60 hidden-print">
@@ -213,7 +207,7 @@
                                 type="text"
                                 x-model="searchTerm"
                                 @input="visibleCount = 0"
-                                placeholder="Cari nama / username member..."
+                                placeholder="Cari nama member..."
                                 class="w-full bg-transparent border-none text-sm text-brand-text placeholder:text-brand-textSoft/60 focus:ring-0 py-2 pl-3 pr-2 rounded-l-full"
                                 @keydown.enter.prevent
                             >
@@ -241,7 +235,7 @@
                         >
                             <div class="space-y-4">
                                 <div class="flex justify-between items-center pb-2 border-b border-brand-borderSoft/50">
-                                    <h4 class="text-sm font-semibold text-brand-text">Filter Kehadiran</h4>
+                                    <h4 class="text-sm font-semibold text-brand-text">Filter & Urutkan</h4>
                                     <a
                                         href="{{ route('admin.absensi.index', ['mode' => $currentMode]) }}"
                                         class="text-xs text-danger hover:underline"
@@ -305,14 +299,17 @@
                 <table class="min-w-full text-sm">
                     <thead class="bg-brand-surface-100 border-b border-brand-borderSoft">
                         <tr>
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-brand-textSoft uppercase tracking-wide w-[60px]">
+                                No
+                            </th>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
                                 Tanggal
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
-                                Jam Masuk
+                                Member
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
-                                Member
+                                Jam Masuk
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
                                 Keterangan
@@ -331,22 +328,27 @@
                                 x-effect="if (matches(@js($rowName), @js($rowUsername))) visibleCount++"
                                 class="hover:bg-brand-surface-50"
                             >
+                                {{-- NO --}}
+                                <td class="px-4 py-4 text-center align-middle text-xs text-brand-textSoft">
+                                    {{ $loop->iteration + ($kehadiran->currentPage() - 1) * $kehadiran->perPage() }}
+                                </td>
+
+                                {{-- TANGGAL --}}
                                 <td class="px-6 py-4 align-middle">
                                     {{ Carbon::parse($row->tanggal)->format('d M Y') }}
                                 </td>
+
+                                {{-- MEMBER (NAMA SAJA) --}}
+                                <td class="px-6 py-4 align-middle text-sm font-semibold text-brand-text">
+                                    {{ $row->member->nama ?? '-' }}
+                                </td>
+
+                                {{-- JAM MASUK --}}
                                 <td class="px-6 py-4 align-middle">
                                     {{ $row->jam_masuk ? Carbon::parse($row->jam_masuk)->format('H:i') : '-' }}
                                 </td>
-                                <td class="px-6 py-4 align-middle">
-                                    <div class="font-semibold text-brand-text">
-                                        {{ $row->member->nama ?? '-' }}
-                                    </div>
-                                    @if($row->member && $row->member->user && $row->member->user->username)
-                                        <div class="text-xs text-brand-textSoft">
-                                            {{ '@' . $row->member->user->username }}
-                                        </div>
-                                    @endif
-                                </td>
+
+                                {{-- KETERANGAN --}}
                                 <td class="px-6 py-4 align-middle text-xs text-brand-textSoft">
                                     {{ $row->is_valid ? 'Valid' : 'Perlu ditinjau' }}
                                 </td>
@@ -354,7 +356,7 @@
                         @empty
                             {{-- Kalau dari server memang tidak ada data sama sekali --}}
                             <tr>
-                                <td colspan="4" class="px-6 py-8 text-center text-sm text-brand-textSoft">
+                                <td colspan="5" class="px-6 py-8 text-center text-sm text-brand-textSoft">
                                     Belum ada kehadiran tercatat dalam periode ini.
                                 </td>
                             </tr>
@@ -363,7 +365,7 @@
                         {{-- Pesan jika server punya data, tapi hasil pencarian di halaman ini kosong --}}
                         @if ($hasServerData)
                             <tr x-show="searchTerm && visibleCount === 0">
-                                <td colspan="4" class="px-6 py-8 text-center text-sm text-brand-textSoft">
+                                <td colspan="5" class="px-6 py-8 text-center text-sm text-brand-textSoft">
                                     Data yang Anda cari tidak ditemukan dalam periode ini.
                                 </td>
                             </tr>
