@@ -281,7 +281,7 @@
                                     <div
                                         class="text-sm font-semibold {{ $member ? 'text-text-main' : 'text-danger italic' }}
                                 max-w-[230px] md:max-w-[260px] truncate">
-                                        {{ $member->nama ?? '[Member dihapus]' }}
+                                        {{ $member->user->name ?? '[Member dihapus]' }}
                                     </div>
 
                                     @if ($groupNames->isNotEmpty())

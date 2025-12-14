@@ -7,7 +7,7 @@
         ->map(function ($m) {
             return [
                 'id' => $m->id,
-                'label' => trim($m->nama . ($m->user?->username ? ' (' . $m->user->username . ')' : '')),
+                'label' => trim($m->user?->name . ($m->user?->username ? ' (' . $m->user->username . ')' : '')),
             ];
         })
         ->values()
@@ -106,18 +106,6 @@
             <form method="POST" action="{{ route('admin.memberships.store') }}" class="space-y-5">
                 @csrf
 
-                {{-- ERROR VALIDASI --}}
-                @if ($errors->any())
-                    <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-2">
-                        <p class="text-sm font-semibold">Ada kesalahan input:</p>
-                        <ul class="list-disc list-inside text-xs mt-1">
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
-
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {{-- KOLOM KIRI --}}
                     <div class="space-y-4">
@@ -145,9 +133,6 @@
                                     </div>
                                 </div>
                             </div>
-                            @error('member_id')
-                                <p class="text-xs text-danger mt-1">{{ $message }}</p>
-                            @enderror
                             <p class="text-[11px] text-text-muted">
                                 Wajib pilih 1 member utama. Untuk paket double/triple, anggota tambahan diisi di bawah.
                             </p>
@@ -167,9 +152,6 @@
                                     </option>
                                 @endforeach
                             </select>
-                            @error('paket_id')
-                                <p class="text-xs text-danger mt-1">{{ $message }}</p>
-                            @enderror
                         </div>
 
                         {{-- ANGGOTA TAMBAHAN (DINAMIS) --}}
@@ -188,7 +170,7 @@
                                     @foreach ($members as $m)
                                         <option value="{{ $m->id }}"
                                             @if ($oldGroup1 == $m->id) selected @endif>
-                                            {{ $m->nama }}{{ $m->user?->username ? ' (' . $m->user->username . ')' : '' }}
+                                            {{ $m->user?->name }}{{ $m->user?->username ? ' (' . $m->user->username . ')' : '' }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -205,18 +187,11 @@
                                     @foreach ($members as $m)
                                         <option value="{{ $m->id }}"
                                             @if ($oldGroup2 == $m->id) selected @endif>
-                                            {{ $m->nama }}{{ $m->user?->username ? ' (' . $m->user->username . ')' : '' }}
+                                            {{ $m->user?->name }}{{ $m->user?->username ? ' (' . $m->user->username . ')' : '' }}
                                         </option>
                                     @endforeach
                                 </select>
                             </div>
-
-                            @error('group_member_ids')
-                                <p class="text-xs text-danger mt-1">{{ $message }}</p>
-                            @enderror
-                            @error('group_member_ids.*')
-                                <p class="text-xs text-danger mt-1">{{ $message }}</p>
-                            @enderror
 
                             <p class="text-[11px] text-text-muted">
                                 Untuk paket <strong>single</strong> bagian ini otomatis tidak dipakai.
@@ -236,9 +211,6 @@
                             <input type="datetime-local" id="tanggal_transaksi_create" name="tanggal_transaksi"
                                 value="{{ $defaultTanggalTransaksi }}"
                                 class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
-                            @error('tanggal_transaksi')
-                                <p class="text-xs text-danger mt-1">{{ $message }}</p>
-                            @enderror
                             <p class="text-[11px] text-text-muted mt-1">
                                 Default: waktu sekarang. Tanggal ini juga bisa dijadikan dasar perhitungan
                                 masa aktif membership (tanggal_mulai).
@@ -257,9 +229,6 @@
                                     </option>
                                 @endforeach
                             </select>
-                            @error('metode_pembayaran')
-                                <p class="text-xs text-danger mt-1">{{ $message }}</p>
-                            @enderror
                         </div>
 
                         {{-- KETERANGAN --}}
@@ -268,9 +237,6 @@
                             <textarea id="keterangan_create" name="keterangan" rows="4"
                                 class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
                                 placeholder="Contoh: Pembayaran tunai di kasir, promo akhir tahun.">{{ old('keterangan') }}</textarea>
-                            @error('keterangan')
-                                <p class="text-xs text-danger mt-1">{{ $message }}</p>
-                            @enderror
                         </div>
                     </div>
                 </div>
