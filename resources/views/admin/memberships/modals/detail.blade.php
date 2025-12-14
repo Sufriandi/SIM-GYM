@@ -70,7 +70,7 @@
                     <div class="rounded-2xl border border-brand-borderSoft/70 bg-brand-card p-4">
                         <p class="text-xs text-text-muted uppercase tracking-wider">Member Utama</p>
                         <p class="text-base font-semibold text-text-main mt-1">
-                            {{ $member->nama ?? '[Member dihapus]' }}
+                            {{ $member->user->name ?? '[Member dihapus]' }}
                         </p>
 
                         @if ($member && $member->user?->username)

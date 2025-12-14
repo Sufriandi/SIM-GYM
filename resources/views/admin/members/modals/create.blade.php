@@ -40,7 +40,7 @@
             <div>
                 <h2 class="text-xl font-semibold text-text-main">Tambah Member</h2>
                 <p class="text-sm text-text-muted mt-0.5">
-                    Buat akun member baru dan (opsional) langsung pilih paket membership.
+                    Buat akun member baru dan (opsional) set periode membership.
                 </p>
             </div>
             <button type="button" class="p-1.5 rounded-full hover:bg-brand-surface-50 transition"
@@ -49,7 +49,6 @@
             </button>
         </div>
 
-        {{-- BODY --}}
         <div class="px-6 pb-6 pt-4 max-h-[85vh] overflow-y-auto custom-scrollbar">
             <form method="POST" action="{{ route('admin.members.store') }}" enctype="multipart/form-data"
                 class="space-y-5">
@@ -70,15 +69,13 @@
                     {{-- PREVIEW FOTO --}}
                     <div class="md:col-span-1">
                         <div
-                            class="rounded-2xl border border-brand-borderSoft/70 bg-brand-card p-4
-                                   flex flex-col items-center gap-3">
+                            class="rounded-2xl border border-brand-borderSoft/70 bg-brand-card p-4 flex flex-col items-center gap-3">
                             <div
-                                class="w-24 h-24 rounded-full border-2 border-dashed border-brand-borderSoft
-                                       overflow-hidden flex items-center justify-center bg-brand-surface-50">
+                                class="w-24 h-24 rounded-full border-2 border-dashed border-brand-borderSoft overflow-hidden flex items-center justify-center bg-brand-surface-50">
                                 <img x-show="imageUrl" :src="imageUrl" alt="Preview Foto Member"
                                     class="object-cover w-full h-full">
                                 <span x-show="!imageUrl" class="text-xs text-text-muted text-center p-2">
-                                    Preview Foto Member
+                                    Preview Foto
                                 </span>
                             </div>
                             <p class="text-[11px] text-text-muted text-center">
@@ -95,18 +92,14 @@
                                     <x-ui.label for="nama_create">Nama Member</x-ui.label>
                                     <input id="nama_create" type="text" name="nama" value="{{ old('nama') }}"
                                         required
-                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2
-                                               border-brand-borderSoft focus:outline-none focus:ring-2
-                                               focus:ring-primary-dark focus:border-transparent">
+                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
                                 </div>
 
                                 <div>
                                     <x-ui.label for="username_create">Username</x-ui.label>
                                     <input id="username_create" type="text" name="username"
                                         value="{{ old('username') }}" required
-                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2
-                                               border-brand-borderSoft focus:outline-none focus:ring-2
-                                               focus:ring-primary-dark focus:border-transparent">
+                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
                                 </div>
                             </div>
 
@@ -114,57 +107,52 @@
                                 <div>
                                     <x-ui.label for="email_create">Email (opsional)</x-ui.label>
                                     <input id="email_create" type="email" name="email" value="{{ old('email') }}"
-                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2
-                                               border-brand-borderSoft focus:outline-none focus:ring-2
-                                               focus:ring-primary-dark focus:border-transparent">
+                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
                                 </div>
 
                                 <div>
-                                    <x-ui.label for="no_hp_create">Nomor HP</x-ui.label>
+                                    <x-ui.label for="no_hp_create">Nomor HP (opsional)</x-ui.label>
                                     <input id="no_hp_create" type="text" name="no_hp" value="{{ old('no_hp') }}"
-                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2
-                                               border-brand-borderSoft focus:outline-none focus:ring-2
-                                               focus:ring-primary-dark focus:border-transparent">
+                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <x-ui.label for="password_create">Password</x-ui.label>
-                                    <input id="password_create" type="password" name="password" required
-                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2
-                                               border-brand-borderSoft focus:outline-none focus:ring-2
-                                               focus:ring-primary-dark focus:border-transparent">
+                                    <x-ui.label for="jenis_kelamin_create">Jenis Kelamin (opsional)</x-ui.label>
+                                    <select id="jenis_kelamin_create" name="jenis_kelamin"
+                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
+                                        <option value="">- Pilih -</option>
+                                        <option value="laki-laki" @selected(old('jenis_kelamin') === 'laki-laki')>Laki-laki</option>
+                                        <option value="perempuan" @selected(old('jenis_kelamin') === 'perempuan')>Perempuan</option>
+                                    </select>
                                 </div>
 
                                 <div>
-                                    <x-ui.label for="password_confirmation_create">
-                                        Konfirmasi Password
-                                    </x-ui.label>
-                                    <input id="password_confirmation_create" type="password"
-                                        name="password_confirmation" required
-                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2
-                                               border-brand-borderSoft focus:outline-none focus:ring-2
-                                               focus:ring-primary-dark focus:border-transparent">
+                                    <x-ui.label for="password_create">Password</x-ui.label>
+                                    <input id="password_create" type="password" name="password" required
+                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
                                 </div>
                             </div>
 
-                            {{-- ALAMAT --}}
                             <div>
-                                <x-ui.label for="alamat_create">Alamat</x-ui.label>
-                                <textarea id="alamat_create" name="alamat" rows="2"
-                                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2
-                                           border-brand-borderSoft focus:outline-none focus:ring-2
-                                           focus:ring-primary-dark focus:border-transparent">{{ old('alamat') }}</textarea>
+                                <x-ui.label for="password_confirmation_create">Konfirmasi Password</x-ui.label>
+                                <input id="password_confirmation_create" type="password" name="password_confirmation"
+                                    required
+                                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">
                             </div>
 
-                            {{-- PAKET MEMBERSHIP OPSIONAL --}}
+                            <div>
+                                <x-ui.label for="alamat_create">Alamat (opsional)</x-ui.label>
+                                <textarea id="alamat_create" name="alamat" rows="2"
+                                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent">{{ old('alamat') }}</textarea>
+                            </div>
+
+                            {{-- PAKET (opsional, hanya untuk auto-fill tanggal di UI) --}}
                             <div class="space-y-1">
                                 <x-ui.label for="paket_membership">Paket Membership (opsional)</x-ui.label>
                                 <select id="paket_membership"
-                                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2
-                                           border-brand-borderSoft focus:outline-none focus:ring-2
-                                           focus:ring-primary-dark focus:border-transparent"
+                                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
                                     x-model="paket" @change="pilihPaket($event.target.value)">
                                     <option value="">Tidak Memilih Paket</option>
                                     <template x-for="p in paketList" :key="p.id">
@@ -172,30 +160,25 @@
                                     </template>
                                 </select>
                                 <p class="mt-1 text-[11px] text-text-muted">
-                                    Jika memilih paket, tanggal mulai & tanggal akhir membership akan terisi otomatis.
+                                    Jika memilih paket, tanggal mulai & akhir akan terisi otomatis.
                                 </p>
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <x-ui.label for="tanggal_mulai_create">Tanggal Mulai</x-ui.label>
+                                    <x-ui.label for="tanggal_mulai_create">Tanggal Mulai (opsional)</x-ui.label>
                                     <input id="tanggal_mulai_create" type="date" name="tanggal_mulai"
-                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2
-                                               border-brand-borderSoft focus:outline-none focus:ring-2
-                                               focus:ring-primary-dark focus:border-transparent"
+                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
                                         :value="tanggalMulai">
                                 </div>
                                 <div>
-                                    <x-ui.label for="tanggal_akhir_create">Tanggal Akhir</x-ui.label>
+                                    <x-ui.label for="tanggal_akhir_create">Tanggal Akhir (opsional)</x-ui.label>
                                     <input id="tanggal_akhir_create" type="date" name="tanggal_akhir"
-                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2
-                                               border-brand-borderSoft focus:outline-none focus:ring-2
-                                               focus:ring-primary-dark focus:border-transparent"
+                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
                                         :value="tanggalAkhir">
                                 </div>
                             </div>
 
-                            {{-- FOTO --}}
                             <div class="space-y-1">
                                 <x-ui.label for="foto_create">Foto Profil (opsional)</x-ui.label>
                                 <input id="foto_create" type="file" name="foto" accept="image/*"
@@ -216,21 +199,16 @@
                                         }
                                     ">
                                 <p class="text-[11px] text-text-muted mt-1">
-                                    Maksimal 2MB. Format: JPG, PNG, dsb.
+                                    Maksimal 2MB. Format: JPG/PNG.
                                 </p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {{-- FOOTER --}}
                 <div class="flex justify-end gap-2 pt-3">
-                    <x-ui.button-secondary type="button" @click="openCreate = false">
-                        Batal
-                    </x-ui.button-secondary>
-                    <x-ui.button-primary type="submit">
-                        Simpan Member
-                    </x-ui.button-primary>
+                    <x-ui.button-secondary type="button" @click="openCreate = false">Batal</x-ui.button-secondary>
+                    <x-ui.button-primary type="submit">Simpan Member</x-ui.button-primary>
                 </div>
             </form>
         </div>
