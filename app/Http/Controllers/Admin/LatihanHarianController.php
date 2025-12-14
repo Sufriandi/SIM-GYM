@@ -24,7 +24,7 @@ class LatihanHarianController extends Controller
             $query->orderBy('tanggal', 'desc');
         }
 
-        $data = $query->paginate(15)->withQueryString();
+        $data = $query->paginate(20)->withQueryString();
 
         return view('admin.latihan_harian.index', compact(
             'pageTitle',

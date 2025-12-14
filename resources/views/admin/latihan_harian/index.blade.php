@@ -185,8 +185,8 @@
             </div>
 
             {{-- TABEL (TANPA SCROLLBAR VERTIKAL DI DALAM CARD) --}}
-            <div class="w-full">
-                <table class="table-fixed w-full border-collapse text-sm md:min-w-[900px]">
+            <div class="w-full overflow-x-auto overflow-y-hidden custom-scrollbar">
+                <table class="w-full border-collapse text-xs md:text-sm md:min-w-[800px]">
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
                             <th
