@@ -19,11 +19,8 @@ return new class extends Migration
 
             $table->unique('user_id');
 
-            // tanggal daftar (default hari ini)
-            $table->date('tanggal_daftar')
-                ->nullable()
-                ->default(DB::raw('CURRENT_DATE'));
-
+            $table->date('tanggal_daftar')->nullable();
+            
             // periode aktif membership
             $table->date('tanggal_mulai')->nullable();
             $table->date('tanggal_akhir')->nullable();

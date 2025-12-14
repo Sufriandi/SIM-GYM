@@ -17,6 +17,15 @@ class Member extends Model
         'tanggal_akhir',
     ];
 
+       protected static function booted()
+    {
+        static::creating(function ($member) {
+            if (empty($member->tanggal_daftar)) {
+                $member->tanggal_daftar = now()->toDateString(); // YYYY-MM-DD
+            }
+        });
+    }
+
     /**
      * Relasi: member dimiliki oleh satu user.
      */
