@@ -1,4 +1,14 @@
 @tailwind base;
+
+/* GLOBAL HEADING */
+@layer base {
+    h1,
+    h2 {
+        @apply font-heading;
+        font-weight: 700 !important;
+    }
+}
+
 @tailwind components;
 @tailwind utilities;
 
@@ -23,7 +33,7 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-    background: #111;          /* boleh kamu ganti sesuai tema dashboard */
+    background: #111; /* boleh kamu ganti sesuai tema dashboard */
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {

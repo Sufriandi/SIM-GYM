@@ -56,7 +56,7 @@
 <span {{ $attributes->merge(['class' => $classes]) }}>
     {{-- Dot Indicator (Otomatis muncul kecil di kiri) --}}
     {{-- Ini opsional visual trick: Dot kecil membuat badge terasa "hidup" --}}
-    @if (in_array($variant, ['primary', 'success', 'warning', 'danger']))
+    @if (in_array($variant, ['primary', 'success', 'warning', 'danger', 'info', 'neutral']))
         <svg class="-ml-0.5 mr-1.5 h-2 w-2 opacity-75" fill="currentColor" viewBox="0 0 8 8">
             <circle cx="4" cy="4" r="3" />
         </svg>

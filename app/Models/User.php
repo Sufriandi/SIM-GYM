@@ -2,45 +2,32 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use App\Models\Member;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
         'username',
         'email',
         'no_hp',
-        'password',
+        'alamat',
+        'jenis_kelamin',
+        'foto',
         'role',
+        'password',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -48,26 +35,38 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
-    /**
-     * Sinkronisasi: Membuat record Member baru setelah User dibuat.
-     */
-    protected static function boot()
-    {
-        parent::boot();
 
-        static::created(function ($user) {
-            Member::create([
-                'user_id' => $user->id,
-                'nama' => $user->name,
-                'tanggal_daftar' => now(),
-            ]);
+
+    /**
+     * Otomatis buat record members hanya jika role = member.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (User $user) {
+            if ($user->role !== 'member') return;
+
+            $user->member()->firstOrCreate(
+                ['user_id' => $user->id],
+                ['tanggal_daftar' => now()->toDateString()]
+            );
         });
+
+        // Opsional: jika suatu saat role berubah jadi member, buat member-nya.
+        // static::updated(function (User $user) {
+        //     if ($user->wasChanged('role') && $user->role === 'member') {
+        //         $user->member()->firstOrCreate(
+        //             ['user_id' => $user->id],
+        //             ['tanggal_daftar' => now()]
+        //         );
+        //     }
+        // });
     }
 
-
-    // Relasi: User memiliki 1 member
+    /**
+     * Relasi: user punya satu member (hanya untuk role=member).
+     */
     public function member()
     {
-        return $this->hasOne(Member::class);
+        return $this->hasOne(\App\Models\Member::class);
     }
 }

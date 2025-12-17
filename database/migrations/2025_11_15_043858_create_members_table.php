@@ -3,55 +3,35 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('members', function (Blueprint $table) {
-          $table->id();
+            $table->id();
 
-          /**
-           * profil singkat member
-           */
-            $table->string('nama');
-            $table->string('username')->unique(); // username unik
-            $table->string('email')->unique();
-            $table->string('password');
+            // 1 user = 1 member
+            $table->foreignId('user_id')
+                ->constrained('users')
+                ->restrictOnDelete();
 
-            /**
-             * opsional
-             */
-            $table->string('no_hp')->nullable()->unique();
-            $table->text('alamat')->nullable();
+            $table->unique('user_id');
 
-
-          /**
-           * Otomatis create tanggal_daftar waktu sekarang
-           */
             $table->date('tanggal_daftar')->nullable();
-
-            /**
-             * Penting, Inti dari masa aktif membership
-             */
+            
+            // periode aktif membership
             $table->date('tanggal_mulai')->nullable();
             $table->date('tanggal_akhir')->nullable();
-            $table->enum('status', ['aktif', 'nonaktif'])->default('nonaktif');
-
-
-            $table->string('foto')->nullable();
-
 
             $table->timestamps();
+
+            $table->index('tanggal_mulai');
+            $table->index('tanggal_akhir');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('members');
