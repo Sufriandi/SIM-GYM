@@ -23,7 +23,7 @@
 @endphp
 
 <x-layouts.admin :title="$pageTitle . ' – BETA GYM'" :page-title="$pageTitle"
-    page-subtitle="Konfigurasi profil BETA GYM yang digunakan di seluruh sistem (dashboard, member, footer, dan lain-lain).">
+    page-subtitle="Konfigurasi profil gym yang digunakan di seluruh sistem (dashboard, member, footer, dan lain-lain).">
 
     {{-- FLASH MESSAGE --}}
     @if (session('success'))
@@ -78,7 +78,8 @@
                 </button>
             </div>
 
-            <form x-ref="infoForm" action="{{ $infoAction }}" method="POST" enctype="multipart/form-data" class="px-6 py-5 space-y-6">
+            <form x-ref="infoForm" action="{{ $infoAction }}" method="POST" enctype="multipart/form-data"
+                class="px-6 py-5 space-y-6">
                 @csrf
                 @if ($isUpdate)
                     @method('PUT')
@@ -154,282 +155,364 @@
                 </div>
 
                 {{-- BRANDING --}}
-<div class="pt-2 border-t border-brand-borderSoft/70"></div>
+                <div class="pt-2 border-t border-brand-borderSoft/70"></div>
 
-<div class="space-y-5">
-    <div>
-        <h4 class="text-sm font-semibold text-text-main">Branding</h4>
-        <p class="text-xs text-text-muted mt-0.5">
-            Upload logo, favicon, dan hero image yang digunakan di layout utama.
-        </p>
-    </div>
+                <div class="space-y-5"
+                    x-data="{
+                        logoPreview: null,
+                        faviconPreview: null,
+                        heroPreview: null,
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {{-- Logo (kiri) --}}
-        <div>
-            <x-ui.label for="logo">Logo (gambar)</x-ui.label>
-            <input :disabled="!editInfo" type="file" id="logo" name="logo" accept="image/*"
-                class="block w-full text-sm text-text-main
-                       file:mr-4 file:py-2 file:px-4
-                       file:rounded-full file:border-0
-                       file:text-sm file:font-semibold
-                       file:bg-gold-600 file:text-white
-                       hover:file:bg-gold-700
-                       disabled:opacity-60 disabled:cursor-not-allowed">
-            @error('logo')
-                <p class="text-xs text-danger mt-1">{{ $message }}</p>
-            @enderror
+                        logoExistingUrl: @js(!empty($profil?->logo) ? Storage::url($profil->logo) : null),
+                        faviconExistingUrl: @js(!empty($profil?->favicon) ? Storage::url($profil->favicon) : null),
+                        heroExistingUrl: @js(!empty($profil?->hero_image) ? Storage::url($profil->hero_image) : null),
 
-            @if (!empty($profil?->logo))
-                <div class="mt-3 flex items-center gap-3">
-                    <img src="{{ Storage::url($profil->logo) }}" alt="Logo BETA GYM"
-                        class="w-20 h-20 object-contain rounded-lg border border-brand-borderSoft bg-brand-shell"
-                        onerror="this.onerror=null; this.src='https://placehold.co/120x120/3A2D2A/F5E6D6?text=Logo';">
-                    <p class="text-[11px] text-text-muted break-all">{{ $profil->logo }}</p>
+                        setPreview(type, e) {
+                            const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                            const urlKey = type + 'Preview';
+
+                            if (this[urlKey]) URL.revokeObjectURL(this[urlKey]);
+
+                            if (!file) {
+                                this[urlKey] = null;
+                                return;
+                            }
+
+                            this[urlKey] = URL.createObjectURL(file);
+                        },
+
+                        src(type) {
+                            const urlKey = type + 'Preview';
+                            const existUrlKey = type + 'ExistingUrl';
+                            return this[urlKey] || this[existUrlKey] || '';
+                        },
+
+                        clearPreview(type) {
+                            const urlKey = type + 'Preview';
+                            if (this[urlKey]) URL.revokeObjectURL(this[urlKey]);
+                            this[urlKey] = null;
+
+                            const inputId = (type === 'hero') ? 'hero_image' : type;
+                            const el = this.$root.querySelector('#' + inputId);
+                            if (el) el.value = '';
+                        },
+
+                        resetBranding() {
+                            this.clearPreview('logo');
+                            this.clearPreview('favicon');
+                            this.clearPreview('hero');
+                        }
+                    }"
+                    @reset-branding.window="resetBranding()"
+                >
+                    <div>
+                        <h4 class="text-sm font-semibold text-text-main">Branding</h4>
+                        <p class="text-xs text-text-muted mt-0.5">
+                            Upload logo, favicon, dan hero image yang digunakan di layout utama.
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                        {{-- Logo --}}
+                        <div>
+                            <x-ui.label for="logo">Logo (gambar)</x-ui.label>
+                            <input :disabled="!editInfo"
+                                type="file" id="logo" name="logo" accept="image/*"
+                                @change="setPreview('logo', $event)"
+                                class="block w-full text-sm text-text-main
+                                       file:mr-4 file:py-2 file:px-4
+                                       file:rounded-full file:border-0
+                                       file:text-sm file:font-semibold
+                                       file:bg-gold-600 file:text-white
+                                       hover:file:bg-gold-700
+                                       disabled:opacity-60 disabled:cursor-not-allowed">
+                            @error('logo')
+                                <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                            @enderror
+
+                            <div class="mt-3">
+                                <div class="relative w-full aspect-[16/9] rounded-xl border border-brand-borderSoft bg-brand-shell overflow-hidden">
+                                    <template x-if="src('logo')">
+                                        <img :src="src('logo')" alt=""
+                                            class="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-60">
+                                    </template>
+                                    <template x-if="src('logo')">
+                                        <img :src="src('logo')" alt="Preview Logo"
+                                            class="relative z-10 w-full h-full object-contain">
+                                    </template>
+                                    <template x-if="!src('logo')">
+                                        <div class="absolute inset-0 flex items-center justify-center">
+                                            <span class="text-[11px] text-text-muted">Belum ada logo</span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <p class="text-[11px] text-text-muted mt-1">
+                                Format: JPG, JPEG, PNG, WEBP. Maksimal 2MB.
+                            </p>
+                        </div>
+
+                        {{-- Favicon --}}
+                        <div>
+                            <x-ui.label for="favicon">Favicon (opsional)</x-ui.label>
+                            <input :disabled="!editInfo"
+                                type="file" id="favicon" name="favicon" accept="image/*"
+                                @change="setPreview('favicon', $event)"
+                                class="block w-full text-sm text-text-main
+                                       file:mr-4 file:py-2 file:px-4
+                                       file:rounded-full file:border-0
+                                       file:text-sm file:font-semibold
+                                       file:bg-gold-600 file:text-white
+                                       hover:file:bg-gold-700
+                                       disabled:opacity-60 disabled:cursor-not-allowed">
+                            @error('favicon')
+                                <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                            @enderror
+
+                            <div class="mt-3">
+                                <div class="relative w-full aspect-[16/9] rounded-xl border border-brand-borderSoft bg-brand-shell overflow-hidden">
+                                    <template x-if="src('favicon')">
+                                        <img :src="src('favicon')" alt=""
+                                            class="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-60">
+                                    </template>
+                                    <template x-if="src('favicon')">
+                                        <img :src="src('favicon')" alt="Preview Favicon"
+                                            class="relative z-10 w-full h-full object-contain">
+                                    </template>
+                                    <template x-if="!src('favicon')">
+                                        <div class="absolute inset-0 flex items-center justify-center">
+                                            <span class="text-[11px] text-text-muted">Belum ada favicon</span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <p class="text-[11px] text-text-muted mt-1">
+                                Format: JPG, JPEG, PNG, WEBP. Maksimal 1MB.
+                            </p>
+                        </div>
+
+                        {{-- Hero Image --}}
+                        <div>
+                            <x-ui.label for="hero_image">Hero Image (opsional)</x-ui.label>
+                            <input :disabled="!editInfo"
+                                type="file" id="hero_image" name="hero_image" accept="image/*"
+                                @change="setPreview('hero', $event)"
+                                class="block w-full text-sm text-text-main
+                                       file:mr-4 file:py-2 file:px-4
+                                       file:rounded-full file:border-0
+                                       file:text-sm file:font-semibold
+                                       file:bg-gold-600 file:text-white
+                                       hover:file:bg-gold-700
+                                       disabled:opacity-60 disabled:cursor-not-allowed">
+                            @error('hero_image')
+                                <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                            @enderror
+
+                            <div class="mt-3">
+                                <div class="relative w-full aspect-[16/9] rounded-xl border border-brand-borderSoft bg-brand-shell overflow-hidden">
+                                    <template x-if="src('hero')">
+                                        <img :src="src('hero')" alt=""
+                                            class="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-60">
+                                    </template>
+                                    <template x-if="src('hero')">
+                                        <img :src="src('hero')" alt="Preview Hero"
+                                            class="relative z-10 w-full h-full object-contain">
+                                    </template>
+                                    <template x-if="!src('hero')">
+                                        <div class="absolute inset-0 flex items-center justify-center">
+                                            <span class="text-[11px] text-text-muted">Belum ada hero image</span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <p class="text-[11px] text-text-muted mt-1">
+                                Disarankan rasio landscape (misal 16:9). Maksimal 4MB.
+                            </p>
+                        </div>
+                    </div>
                 </div>
-            @endif
-
-            <p class="text-[11px] text-text-muted mt-1">
-                Format: JPG, JPEG, PNG, WEBP. Maksimal 2MB.
-            </p>
-        </div>
-
-        {{-- Favicon --}}
-<div>
-    <x-ui.label for="favicon">Favicon (opsional)</x-ui.label>
-    <input :disabled="!editInfo" type="file" id="favicon" name="favicon" accept="image/*"
-        class="block w-full text-sm text-text-main
-               file:mr-4 file:py-2 file:px-4
-               file:rounded-full file:border-0
-               file:text-sm file:font-semibold
-               file:bg-gold-600 file:text-white
-               hover:file:bg-gold-700
-               disabled:opacity-60 disabled:cursor-not-allowed">
-    @error('favicon')
-        <p class="text-xs text-danger mt-1">{{ $message }}</p>
-    @enderror
-
-    @if (!empty($profil?->favicon))
-        <div class="mt-3 flex items-center gap-3">
-            <img src="{{ Storage::url($profil->favicon) }}" alt="Favicon BETA GYM"
-                class="w-10 h-10 object-contain rounded-md border border-brand-borderSoft bg-brand-shell"
-                onerror="this.onerror=null; this.src='https://placehold.co/40x40/3A2D2A/F5E6D6?text=F';">
-            <p class="text-[11px] text-text-muted break-all">{{ $profil->favicon }}</p>
-        </div>
-    @endif
-
-    {{-- TEKS KECIL (dikembalikan) --}}
-    <p class="text-[11px] text-text-muted mt-1">
-        Format: JPG, JPEG, PNG, WEBP. Maksimal 1MB.
-    </p>
-</div>
-
-        {{-- Hero Image (bawah, full width) --}}
-        <div class="md:col-span-2">
-            <x-ui.label for="hero_image">Hero Image (opsional)</x-ui.label>
-            <input :disabled="!editInfo" type="file" id="hero_image" name="hero_image" accept="image/*"
-                class="block w-full text-sm text-text-main
-                       file:mr-4 file:py-2 file:px-4
-                       file:rounded-full file:border-0
-                       file:text-sm file:font-semibold
-                       file:bg-gold-600 file:text-white
-                       hover:file:bg-gold-700
-                       disabled:opacity-60 disabled:cursor-not-allowed">
-            @error('hero_image')
-                <p class="text-xs text-danger mt-1">{{ $message }}</p>
-            @enderror
-
-            @if (!empty($profil?->hero_image))
-                <div class="mt-3">
-                    <img src="{{ Storage::url($profil->hero_image) }}" alt="Hero Image BETA GYM"
-                        class="w-full max-w-xl h-32 object-cover rounded-xl border border-brand-borderSoft bg-brand-shell"
-                        onerror="this.onerror=null; this.src='https://placehold.co/600x200/3A2D2A/F5E6D6?text=Hero';">
-                    <p class="mt-1 text-[11px] text-text-muted break-all">{{ $profil->hero_image }}</p>
-                </div>
-            @endif
-
-            <p class="text-[11px] text-text-muted mt-1">
-                Disarankan rasio landscape (misal 16:9). Maksimal 4MB.
-            </p>
-        </div>
-    </div>
-</div>
-
 
                 {{-- ACTIONS --}}
-<div class="pt-4 flex items-center justify-end gap-2"
-     x-show="editInfo" x-cloak x-transition.opacity>
-    <x-ui.button-secondary type="button"
-        @click="editInfo = false; $refs.infoForm.reset()">
-        Batal
-    </x-ui.button-secondary>
+                <div class="pt-4 flex items-center justify-end gap-2"
+                    x-show="editInfo" x-cloak x-transition.opacity>
 
-    <x-ui.button-primary type="submit">
-        Simpan Perubahan
-    </x-ui.button-primary>
-</div>
+                    <x-ui.button-secondary
+                        type="button"
+                        @click="
+                            editInfo = false;
+                            $refs.infoForm.reset();
+                            $dispatch('reset-branding');
+                        ">
+                        Batal
+                    </x-ui.button-secondary>
 
+                    <x-ui.button-primary type="submit">
+                        Simpan Perubahan
+                    </x-ui.button-primary>
+                </div>
             </form>
         </x-ui.card>
 
         {{-- =========================
-    CARD 2: KONTAK & SOSMED
-========================== --}}
-<div class="mt-6"></div>
+            CARD 2: KONTAK & SOSMED
+        ========================== --}}
+        <div class="mt-6"></div>
 
-<x-ui.card class="border-brand-borderSoft">
-    <div class="px-6 py-4 border-b border-brand-borderSoft flex items-center justify-between gap-3">
-        <div>
-            <h3 class="text-xl font-bold text-text-main">Kontak & Sosial Media</h3>
-            <p class="text-xs text-text-muted mt-0.5">
-                Dipakai untuk tombol WhatsApp, email, dan link sosial media di berbagai halaman.
-            </p>
-        </div>
+        <x-ui.card class="border-brand-borderSoft">
+            <div class="px-6 py-4 border-b border-brand-borderSoft flex items-center justify-between gap-3">
+                <div>
+                    <h3 class="text-xl font-bold text-text-main">Kontak & Sosial Media</h3>
+                    <p class="text-xs text-text-muted mt-0.5">
+                        Dipakai untuk tombol WhatsApp, email, dan link sosial media di berbagai halaman.
+                    </p>
+                </div>
 
-        {{-- EDIT --}}
-        <button
-            type="button"
-            title="Edit Kontak & Sosial Media"
-            class="relative group p-2 rounded-full text-yellow-600 hover:bg-yellow-100/60 transition-colors duration-150"
-            @click="editKontak = true"
-        >
-            <i data-lucide="square-pen" class="w-5 h-5"></i>
-            <span
-                class="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2
-                       text-[10px] font-medium text-yellow-600
-                       opacity-0 group-hover:opacity-100
-                       transition-opacity duration-150"
-            >
-                Edit
-            </span>
-        </button>
-    </div>
-
-    <form x-ref="kontakForm" action="{{ $kontakAction }}" method="POST" class="px-6 py-5 space-y-4">
-        @csrf
-        @if ($isUpdate)
-            @method('PUT')
-        @endif
-        <input type="hidden" name="_section" value="kontak">
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <x-ui.label for="whatsapp">WhatsApp (No. dengan kode negara)</x-ui.label>
-                <input :disabled="!editKontak" type="text" id="whatsapp" name="whatsapp"
-                    value="{{ old('whatsapp', $profil->whatsapp ?? '') }}"
-                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft
-                           focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
-                           disabled:opacity-60 disabled:cursor-not-allowed"
-                    placeholder="Contoh: 62812xxxxxxxx">
-                @error('whatsapp')
-                    <p class="text-xs text-danger mt-1">{{ $message }}</p>
-                @enderror
-                <p class="text-[11px] text-text-muted mt-1">
-                    Isi hanya angka. Link resmi bisa dibentuk di frontend: <code>https://wa.me/nomor</code>.
-                </p>
+                {{-- EDIT --}}
+                <button
+                    type="button"
+                    title="Edit Kontak & Sosial Media"
+                    class="relative group p-2 rounded-full text-yellow-600 hover:bg-yellow-100/60 transition-colors duration-150"
+                    @click="editKontak = true"
+                >
+                    <i data-lucide="square-pen" class="w-5 h-5"></i>
+                    <span
+                        class="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2
+                               text-[10px] font-medium text-yellow-600
+                               opacity-0 group-hover:opacity-100
+                               transition-opacity duration-150"
+                    >
+                        Edit
+                    </span>
+                </button>
             </div>
 
-            <div>
-                <x-ui.label for="email_kontak">Email Kontak</x-ui.label>
-                <input :disabled="!editKontak" type="email" id="email_kontak" name="email_kontak"
-                    value="{{ old('email_kontak', $profil->email_kontak ?? '') }}"
-                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft
-                           focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
-                           disabled:opacity-60 disabled:cursor-not-allowed"
-                    placeholder="Contoh: admin@gym.com">
-                @error('email_kontak')
-                    <p class="text-xs text-danger mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-        </div>
+            <form x-ref="kontakForm" action="{{ $kontakAction }}" method="POST" class="px-6 py-5 space-y-4">
+                @csrf
+                @if ($isUpdate)
+                    @method('PUT')
+                @endif
+                <input type="hidden" name="_section" value="kontak">
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <x-ui.label for="instagram">Instagram</x-ui.label>
-                <input :disabled="!editKontak" type="text" id="instagram" name="instagram"
-                    value="{{ old('instagram', $profil->instagram ?? '') }}"
-                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft
-                           focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
-                           disabled:opacity-60 disabled:cursor-not-allowed"
-                    placeholder="Contoh: https://instagram.com/gym atau @gym">
-                @error('instagram')
-                    <p class="text-xs text-danger mt-1">{{ $message }}</p>
-                @enderror
-            </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <x-ui.label for="whatsapp">WhatsApp (No. dengan kode negara)</x-ui.label>
+                        <input :disabled="!editKontak" type="text" id="whatsapp" name="whatsapp"
+                            value="{{ old('whatsapp', $profil->whatsapp ?? '') }}"
+                            class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft
+                                   focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
+                                   disabled:opacity-60 disabled:cursor-not-allowed"
+                            placeholder="Contoh: 62812xxxxxxxx">
+                        @error('whatsapp')
+                            <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                        @enderror
+                        <p class="text-[11px] text-text-muted mt-1">
+                            Isi hanya angka. Link resmi bisa dibentuk di frontend: <code>https://wa.me/nomor</code>.
+                        </p>
+                    </div>
 
-            <div>
-                <x-ui.label for="tiktok">TikTok</x-ui.label>
-                <input :disabled="!editKontak" type="text" id="tiktok" name="tiktok"
-                    value="{{ old('tiktok', $profil->tiktok ?? '') }}"
-                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft
-                           focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
-                           disabled:opacity-60 disabled:cursor-not-allowed"
-                    placeholder="Contoh: https://www.tiktok.com/@gym">
-                @error('tiktok')
-                    <p class="text-xs text-danger mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-        </div>
+                    <div>
+                        <x-ui.label for="email_kontak">Email Kontak</x-ui.label>
+                        <input :disabled="!editKontak" type="email" id="email_kontak" name="email_kontak"
+                            value="{{ old('email_kontak', $profil->email_kontak ?? '') }}"
+                            class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft
+                                   focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
+                                   disabled:opacity-60 disabled:cursor-not-allowed"
+                            placeholder="Contoh: admin@gym.com">
+                        @error('email_kontak')
+                            <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <x-ui.label for="youtube">YouTube</x-ui.label>
-                <input :disabled="!editKontak" type="text" id="youtube" name="youtube"
-                    value="{{ old('youtube', $profil->youtube ?? '') }}"
-                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft
-                           focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
-                           disabled:opacity-60 disabled:cursor-not-allowed"
-                    placeholder="Contoh: https://www.youtube.com/@gym">
-                @error('youtube')
-                    <p class="text-xs text-danger mt-1">{{ $message }}</p>
-                @enderror
-            </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <x-ui.label for="instagram">Instagram</x-ui.label>
+                        <input :disabled="!editKontak" type="text" id="instagram" name="instagram"
+                            value="{{ old('instagram', $profil->instagram ?? '') }}"
+                            class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft
+                                   focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
+                                   disabled:opacity-60 disabled:cursor-not-allowed"
+                            placeholder="Contoh: https://instagram.com/gym atau @gym">
+                        @error('instagram')
+                            <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
 
-            <div>
-                <x-ui.label for="facebook">Facebook</x-ui.label>
-                <input :disabled="!editKontak" type="text" id="facebook" name="facebook"
-                    value="{{ old('facebook', $profil->facebook ?? '') }}"
-                    class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft
-                           focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
-                           disabled:opacity-60 disabled:cursor-not-allowed"
-                    placeholder="Contoh: https://facebook.com/gym">
-                @error('facebook')
-                    <p class="text-xs text-danger mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-        </div>
+                    <div>
+                        <x-ui.label for="tiktok">TikTok</x-ui.label>
+                        <input :disabled="!editKontak" type="text" id="tiktok" name="tiktok"
+                            value="{{ old('tiktok', $profil->tiktok ?? '') }}"
+                            class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft
+                                   focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
+                                   disabled:opacity-60 disabled:cursor-not-allowed"
+                            placeholder="Contoh: https://www.tiktok.com/@gym">
+                        @error('tiktok')
+                            <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
 
-        <div>
-            <x-ui.label for="maps_url">URL Google Maps</x-ui.label>
-            <input :disabled="!editKontak" type="text" id="maps_url" name="maps_url"
-                value="{{ old('maps_url', $profil->maps_url ?? '') }}"
-                class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft
-                       focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
-                       disabled:opacity-60 disabled:cursor-not-allowed"
-                placeholder="Contoh: https://maps.app.goo.gl/xxxxxxx">
-            @error('maps_url')
-                <p class="text-xs text-danger mt-1">{{ $message }}</p>
-            @enderror
-            <p class="text-[11px] text-text-muted mt-1">
-                Dipakai untuk tombol “Lihat di Maps” di aplikasi web / mobile.
-            </p>
-        </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <x-ui.label for="youtube">YouTube</x-ui.label>
+                        <input :disabled="!editKontak" type="text" id="youtube" name="youtube"
+                            value="{{ old('youtube', $profil->youtube ?? '') }}"
+                            class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft
+                                   focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
+                                   disabled:opacity-60 disabled:cursor-not-allowed"
+                            placeholder="Contoh: https://www.youtube.com/@gym">
+                        @error('youtube')
+                            <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
 
-        {{-- ACTIONS --}}
-        <div class="pt-4 flex items-center justify-end gap-2"
-             x-show="editKontak" x-cloak x-transition.opacity>
-            <x-ui.button-secondary type="button"
-                @click="editKontak = false; $refs.kontakForm.reset()">
-                Batal
-            </x-ui.button-secondary>
+                    <div>
+                        <x-ui.label for="facebook">Facebook</x-ui.label>
+                        <input :disabled="!editKontak" type="text" id="facebook" name="facebook"
+                            value="{{ old('facebook', $profil->facebook ?? '') }}"
+                            class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft
+                                   focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
+                                   disabled:opacity-60 disabled:cursor-not-allowed"
+                            placeholder="Contoh: https://facebook.com/gym">
+                        @error('facebook')
+                            <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
 
-            <x-ui.button-primary type="submit">
-                Simpan Perubahan
-            </x-ui.button-primary>
-        </div>
-    </form>
-</x-ui.card>
+                <div>
+                    <x-ui.label for="maps_url">URL Google Maps</x-ui.label>
+                    <input :disabled="!editKontak" type="text" id="maps_url" name="maps_url"
+                        value="{{ old('maps_url', $profil->maps_url ?? '') }}"
+                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft
+                               focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
+                               disabled:opacity-60 disabled:cursor-not-allowed"
+                        placeholder="Contoh: https://maps.app.goo.gl/xxxxxxx">
+                    @error('maps_url')
+                        <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                    @enderror
+                    <p class="text-[11px] text-text-muted mt-1">
+                        Dipakai untuk tombol “Lihat di Maps” di aplikasi web / mobile.
+                    </p>
+                </div>
 
+                {{-- ACTIONS --}}
+                <div class="pt-4 flex items-center justify-end gap-2"
+                    x-show="editKontak" x-cloak x-transition.opacity>
+                    <x-ui.button-secondary type="button"
+                        @click="editKontak = false; $refs.kontakForm.reset()">
+                        Batal
+                    </x-ui.button-secondary>
+
+                    <x-ui.button-primary type="submit">
+                        Simpan Perubahan
+                    </x-ui.button-primary>
+                </div>
+            </form>
+        </x-ui.card>
 
         <style>
             [x-cloak] { display: none !important; }
