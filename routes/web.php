@@ -10,7 +10,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\IzinLatihanController;
 use App\Http\Controllers\Admin\InventarisAlatController;
-use App\Http\Controllers\Admin\PenjualanProdukController;
+use App\Http\Controllers\Admin\TransaksiProdukController;
 use App\Http\Controllers\Admin\ProdukController;
 use App\Http\Controllers\Admin\StokProdukController;
 use App\Http\Controllers\Admin\CoachController;
@@ -18,13 +18,12 @@ use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\LatihanHarianController;
 
 // Controller Membership (Admin)
-use App\Http\Controllers\Admin\MembershipController;
 use App\Http\Controllers\Admin\PaketMembershipController;
-use App\Http\Controllers\Admin\MembershipGroupController;
+use App\Http\Controllers\Admin\TransaksiMembershipController;
 use App\Http\Controllers\Admin\ProfilGymController;
 
 // Controller Rekening & QRIS (Admin)
-use App\Http\Controllers\Admin\RekeningController;        // <<< TAMBAHAN (INDEX GABUNGAN)
+use App\Http\Controllers\Admin\RekeningController;
 use App\Http\Controllers\Admin\InfoRekeningController;
 use App\Http\Controllers\Admin\InfoQrisController;
 
@@ -109,23 +108,36 @@ Route::middleware(['auth', 'admin'])
             Route::post('/{izinLatihan}/approve', [IzinLatihanController::class, 'approveIzin'])->name('approve');
             Route::post('/{id}/reject', [IzinLatihanController::class, 'reject'])->name('reject');
 
-            Route::post('/store-manual', [IzinLatihanController::class, 'storeManual'])
-                ->name('store.manual');
+            Route::post('/store-manual', [IzinLatihanController::class, 'storeManual'])->name('store.manual');
         });
 
         // =========================================================
         // RUTE MANAJEMEN PRODUK
         // =========================================================
-        Route::resource('penjualan_produk', PenjualanProdukController::class)
-            ->only(['index', 'store', 'show', 'update', 'destroy']);
 
+        /**
+         * TRANSAKSI PRODUK (Kasir + Riwayat)
+         * Penting: route /riwayat harus didefinisikan sebelum route parameter {transaksiProduk}.
+         */
+        Route::prefix('transaksi-produk')->name('transaksi_produk.')->group(function () {
+            Route::get('/', [TransaksiProdukController::class, 'index'])->name('index');
+            Route::post('/', [TransaksiProdukController::class, 'store'])->name('store');
+
+            Route::get('/riwayat', [TransaksiProdukController::class, 'history'])->name('history');
+
+            Route::delete('/{transaksiProduk}', [TransaksiProdukController::class, 'destroy'])->name('destroy');
+        });
+
+        // Produk master
         Route::resource('produk', ProdukController::class);
 
+        // Riwayat stok (custom)
         Route::prefix('stok_produk')->name('stok_produk.')->group(function () {
             Route::get('/riwayat', [StokProdukController::class, 'history'])->name('history');
             Route::get('/riwayat/{stokProduk}/detail', [StokProdukController::class, 'showHistoryDetail'])->name('history.detail');
         });
 
+        // CRUD stok
         Route::resource('stok_produk', StokProdukController::class)
             ->parameters(['stok_produk' => 'stokProduk']);
 
@@ -140,16 +152,19 @@ Route::middleware(['auth', 'admin'])
         Route::resource('members', MemberController::class);
 
         // =========================================================
-        // RUTE MANAJEMEN MEMBERSHIP
+        // RUTE MANAJEMEN MEMBERSHIP (BARU)
+        // URL: kebab-case, route name: snake_case
         // =========================================================
-        Route::resource('memberships', MembershipController::class)
-            ->only(['index', 'store', 'show', 'destroy']);
 
+        // Transaksi membership (penjualan + riwayat + cancel)
+        Route::resource('transaksi-membership', TransaksiMembershipController::class)
+            ->parameters(['transaksi-membership' => 'transaksiMembership'])
+            ->names('transaksi_membership')
+            ->only(['index', 'store', 'show', 'update', 'destroy']);
+
+        // Master paket membership
         Route::resource('paket_memberships', PaketMembershipController::class)
             ->only(['index', 'store', 'update', 'destroy']);
-
-        Route::resource('membership_groups', MembershipGroupController::class)
-            ->only(['index', 'store', 'destroy']);
 
         // =========================================================
         // RUTE LATIHAN HARIAN
@@ -169,21 +184,15 @@ Route::middleware(['auth', 'admin'])
         // =========================================================
         // REKENING (INDEX GABUNGAN) + CRUD REKENING/QRIS
         // =========================================================
-        Route::resource('rekening', RekeningController::class)
-            ->only(['index']);
-        // admin.rekening.index  => GET /admin/rekening
+        Route::resource('rekening', RekeningController::class)->only(['index']);
 
         Route::resource('info-rekening', InfoRekeningController::class)
             ->only(['store', 'update', 'destroy'])
-            ->parameters([
-                'info-rekening' => 'infoRekening',
-            ]);
+            ->parameters(['info-rekening' => 'infoRekening']);
 
         Route::resource('info-qris', InfoQrisController::class)
             ->only(['store', 'update', 'destroy'])
-            ->parameters([
-                'info-qris' => 'infoQris',
-            ]);
+            ->parameters(['info-qris' => 'infoQris']);
 
         // =========================================================
         // RUTE ABSENSI (ADMIN)

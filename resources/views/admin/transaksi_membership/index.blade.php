@@ -4,7 +4,7 @@
 
     $pageTitle = $pageTitle ?? 'Penjualan Membership';
 
-    // modal create otomatis terbuka jika ada error validasi (hanya POST, belum ada PUT)
+    // modal create otomatis terbuka jika ada error validasi
     $openCreateOnLoad = $errors->any() ? 'true' : 'false';
 
     $today = Carbon::today();
@@ -13,6 +13,15 @@
         'cash' => 'Cash',
         'transfer' => 'Transfer',
         'qris' => 'QRIS',
+    ];
+
+    // mapping status internal -> label + badge
+    $statusMeta = [
+        'belum_aktif' => ['label' => 'Belum Aktif', 'variant' => 'info'],
+        'aktif' => ['label' => 'Aktif', 'variant' => 'success'],
+        'expired' => ['label' => 'Expired', 'variant' => 'warning'],
+        'canceled' => ['label' => 'Dibatalkan', 'variant' => 'danger'],
+        'unknown' => ['label' => 'Tidak Diketahui', 'variant' => 'neutral'],
     ];
 @endphp
 
@@ -55,13 +64,15 @@
                 });
             }
         ">
+
         {{-- HEADER --}}
         <x-ui.section-header :title="$pageTitle"
-            subtitle="Setiap transaksi akan menambah atau memperpanjang masa aktif membership member." />
+            subtitle="Setiap transaksi akan menambah atau memperpanjang masa aktif membership member (berdasarkan transaksi terakhir)." />
         <hr class="border-t border-brand-borderSoft mb-6">
 
         {{-- SEARCH + FILTER + ACTION --}}
         <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+
             {{-- SEARCH + FILTER (frontend only) --}}
             <div class="relative w-full max-w-md" x-data="{ showFilter: false }">
                 <div
@@ -90,10 +101,7 @@
                         <div class="flex justify-between items-center pb-2 border-b border-brand-borderSoft/50">
                             <h4 class="text-sm font-semibold text-text-main">Filter</h4>
                             <button type="button" class="text-xs text-danger hover:underline"
-                                @click="
-                                        statusFilter = 'all';
-                                        metodeFilter = 'all';
-                                    ">
+                                @click="statusFilter = 'all'; metodeFilter = 'all';">
                                 Reset
                             </button>
                         </div>
@@ -106,8 +114,8 @@
                             <select x-model="statusFilter"
                                 class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2">
                                 <option value="all">Semua status</option>
-                                <option value="upcoming">Belum aktif</option>
-                                <option value="active">Aktif</option>
+                                <option value="belum_aktif">Belum aktif</option>
+                                <option value="aktif">Aktif</option>
                                 <option value="expired">Expired</option>
                                 <option value="canceled">Dibatalkan</option>
                             </select>
@@ -134,7 +142,7 @@
             <div class="flex items-center gap-2">
                 <x-ui.button-primary type="button" @click="openCreate = true">
                     <i data-lucide="plus" class="w-5 h-5 mr-1"></i>
-                    Tambah Membership
+                    Tambah Transaksi Membership
                 </x-ui.button-primary>
             </div>
         </div>
@@ -145,156 +153,118 @@
                 <div>
                     <h3 class="text-lg font-bold text-text-main">Daftar Transaksi Membership</h3>
                     <p class="text-xs text-text-muted mt-0.5">
-                        {{ $memberships->total() }} transaksi yang tercatat.
+                        {{ $transaksis->total() }} transaksi yang tercatat.
                     </p>
                 </div>
 
                 <div class="bg-brand-surface-50 border border-brand-borderSoft px-3 py-1 rounded-full">
                     <span class="text-xs font-semibold text-text-main">
-                        Halaman {{ $memberships->currentPage() }} dari {{ $memberships->lastPage() }}
+                        Halaman {{ $transaksis->currentPage() }} dari {{ $transaksis->lastPage() }}
                     </span>
                 </div>
             </div>
 
             {{-- WRAPPER TABEL TRANSAKSI --}}
             <div class="w-full overflow-x-auto custom-scrollbar">
-                <table class="w-full border-collapse text-xs md:text-sm md:min-w-[800px]">
+                <table class="w-full border-collapse text-xs md:text-sm md:min-w-[900px]">
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
-                            {{-- NO --}}
                             <th
                                 class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[6%]">
-                                No
-                            </th>
-
-                            {{-- MEMBER --}}
+                                No</th>
                             <th
-                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[24%]">
-                                Member
-                            </th>
-
-                            {{-- PAKET (HANYA NAMA) --}}
+                                class="p-3 text-left   text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[24%]">
+                                Pembeli</th>
                             <th
-                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[20%]">
-                                Paket
-                            </th>
-
-                            {{-- BERLAKU SAMPAI --}}
+                                class="p-3 text-left   text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[20%]">
+                                Paket</th>
                             <th
-                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted whitespace-nowrap w-[16%]">
-                                Berlaku Sampai
-                            </th>
-
-                            {{-- METODE (HANYA METODE, TANPA TANGGAL) --}}
+                                class="p-3 text-left   text-[11px] font-semibold uppercase tracking-wide text-text-muted whitespace-nowrap w-[16%]">
+                                Berlaku Sampai</th>
                             <th
                                 class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[10%]">
-                                Metode
-                            </th>
-
-                            {{-- STATUS --}}
+                                Metode</th>
                             <th
                                 class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[10%]">
-                                Status
-                            </th>
-
-                            {{-- KETERANGAN (HANYA DI LAYAR LEBAR) --}}
+                                Status</th>
                             <th
-                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted hidden xl:table-cell w-[18%]">
-                                Keterangan
-                            </th>
-
-                            {{-- DETAIL --}}
+                                class="p-3 text-left   text-[11px] font-semibold uppercase tracking-wide text-text-muted hidden xl:table-cell w-[18%]">
+                                Keterangan</th>
                             <th
                                 class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted whitespace-nowrap w-[8%]">
-                                Detail
-                            </th>
+                                Detail</th>
                         </tr>
                     </thead>
 
                     <tbody class="divide-y divide-brand-borderSoft/80">
-                        @forelse ($memberships as $membership)
+                        @forelse ($transaksis as $trx)
                             @php
-                                $member = $membership->member;
-                                $paket = $membership->paket;
+                                $buyer = $trx->buyer;
+                                $paket = $trx->paket;
 
-                                $mulai = $membership->tanggal_mulai ? Carbon::parse($membership->tanggal_mulai) : null;
-                                $akhir = $membership->tanggal_akhir ? Carbon::parse($membership->tanggal_akhir) : null;
-                                $canceledAt = $membership->canceled_at ? Carbon::parse($membership->canceled_at) : null;
+                                $mulai = $trx->tanggal_mulai ? Carbon::parse($trx->tanggal_mulai) : null;
+                                $akhir = $trx->tanggal_akhir ? Carbon::parse($trx->tanggal_akhir) : null;
+                                $canceledAt = $trx->canceled_at ? Carbon::parse($trx->canceled_at) : null;
 
-                                if ($canceledAt) {
-                                    $statusKey = 'canceled';
-                                    $statusLabel = 'Dibatalkan';
-                                    $statusVariant = 'danger';
-                                } elseif ($mulai && $today->lt($mulai)) {
-                                    $statusKey = 'upcoming';
-                                    $statusLabel = 'Belum Aktif';
-                                    $statusVariant = 'info';
-                                } elseif ($mulai && $akhir && $today->between($mulai, $akhir)) {
-                                    $statusKey = 'active';
-                                    $statusLabel = 'Aktif';
-                                    $statusVariant = 'success';
-                                } elseif ($akhir && $today->gt($akhir)) {
-                                    $statusKey = 'expired';
-                                    $statusLabel = 'Expired';
-                                    $statusVariant = 'warning';
-                                } else {
-                                    $statusKey = 'unknown';
-                                    $statusLabel = 'Tidak Diketahui';
-                                    $statusVariant = 'neutral';
-                                }
+                                // status dari accessor model (lebih konsisten)
+                                $statusKey = $trx->status ?? 'unknown';
+                                $meta = $statusMeta[$statusKey] ?? $statusMeta['unknown'];
+                                $statusLabel = $meta['label'];
+                                $statusVariant = $meta['variant'];
 
                                 $akhirText = $akhir ? $akhir->format('d M Y') : '—';
 
-                                $groupNames = $membership->groupMembers
-                                    ->map(fn($gm) => $gm->member?->nama)
+                                // peserta tambahan = participants selain primary
+                                $extraNames = $trx->participants
+                                    ->where('role', 'member')
+                                    ->map(fn($p) => $p->member?->user?->name)
                                     ->filter()
                                     ->values();
 
-                                $metodeLabel =
-                                    $metodeOptions[$membership->metode_pembayaran] ??
-                                    Str::title($membership->metode_pembayaran);
+                                $metodeValue = $trx->metode_pembayaran;
+                                $metodeLabel = $metodeValue
+                                    ? $metodeOptions[$metodeValue] ?? Str::title($metodeValue)
+                                    : '—';
                             @endphp
 
                             <tr x-data="{
-                                memberName: @js($member->nama ?? ''),
-                                memberUsername: @js($member->user->username ?? ''),
-                                paketName: @js($paket->nama ?? ''),
-                                status: '{{ $statusKey }}',
-                                metode: '{{ $membership->metode_pembayaran }}',
+                                buyerName: @js($buyer?->user?->name ?? ''),
+                                paketName: @js($paket?->nama ?? ''),
+                                status: @js($statusKey),
+                                metode: @js($metodeValue ?? ''),
                             }"
                                 x-show="
-                        (!searchTerm
-                            || memberName.toLowerCase().includes(searchTerm.toLowerCase())
-                            || memberUsername.toLowerCase().includes(searchTerm.toLowerCase())
-                            || paketName.toLowerCase().includes(searchTerm.toLowerCase()))
+                                    (!searchTerm
+                                        || buyerName.toLowerCase().includes(searchTerm.toLowerCase())
+                                        || paketName.toLowerCase().includes(searchTerm.toLowerCase()))
 && (statusFilter === 'all' || statusFilter === status)
-                        && (metodeFilter === 'all' || metodeFilter === metode)
-                    "
+                                    && (metodeFilter === 'all' || metodeFilter === metode)
+                                "
                                 class="hover:bg-brand-surface-50 transition-colors duration-150">
+
                                 {{-- NO --}}
                                 <td class="p-3 text-center align-middle text-xs text-text-muted">
-                                    {{ $loop->iteration + ($memberships->currentPage() - 1) * $memberships->perPage() }}
+                                    {{ $loop->iteration + ($transaksis->currentPage() - 1) * $transaksis->perPage() }}
                                 </td>
 
-                                {{-- MEMBER + ANGGOTA TAMBAHAN --}}
+                                {{-- PEMBELI + ANGGOTA TAMBAHAN --}}
                                 <td class="p-3 text-left align-middle">
                                     <div
-                                        class="text-sm font-semibold {{ $member ? 'text-text-main' : 'text-danger italic' }}
-                                max-w-[230px] md:max-w-[260px] truncate">
-                                        {{ $member->user->name ?? '[Member dihapus]' }}
+                                        class="text-sm font-semibold {{ $buyer ? 'text-text-main' : 'text-danger italic' }} max-w-[230px] md:max-w-[260px] truncate">
+                                        {{ $buyer?->user?->name ?? '[Member dihapus]' }}
                                     </div>
 
-                                    @if ($groupNames->isNotEmpty())
+                                    @if ($extraNames->isNotEmpty())
                                         <div class="mt-1 text-[11px] text-text-muted">
-                                            Anggota tambahan: {{ $groupNames->join(', ') }}
+                                            Anggota tambahan: {{ $extraNames->join(', ') }}
                                         </div>
                                     @endif
                                 </td>
 
-                                {{-- PAKET (HANYA NAMA) --}}
+                                {{-- PAKET --}}
                                 <td class="p-3 text-left align-middle">
                                     <span class="text-sm font-semibold text-text-main max-w-[220px] line-clamp-1">
-                                        {{ $paket->nama ?? '[Paket dihapus]' }}
+                                        {{ $paket?->nama ?? '[Paket dihapus]' }}
                                     </span>
                                 </td>
 
@@ -305,7 +275,7 @@
                                     </div>
                                 </td>
 
-                                {{-- METODE PEMBAYARAN (TANPA TANGGAL) --}}
+                                {{-- METODE --}}
                                 <td class="p-3 text-center align-middle">
                                     <x-ui.badge variant="neutral">
                                         {{ $metodeLabel }}
@@ -325,18 +295,18 @@
                                     @endif
                                 </td>
 
-                                {{-- KETERANGAN (DISSEMBUNYIKAN DI LAYAR KECIL) --}}
+                                {{-- KETERANGAN --}}
                                 <td class="p-3 text-left align-middle hidden xl:table-cell">
                                     <div class="text-xs text-text-muted max-w-[260px] truncate">
-                                        {{ $membership->keterangan ? Str::limit($membership->keterangan, 80) : '—' }}
+                                        {{ $trx->keterangan ? Str::limit($trx->keterangan, 80) : '—' }}
                                     </div>
                                 </td>
 
-                                {{-- DETAIL (SEPERTI RIWAYAT IZIN LATIHAN) --}}
+                                {{-- DETAIL --}}
                                 <td class="px-3 py-4 text-center align-middle">
                                     <button type="button"
                                         class="inline-flex items-center justify-center gap-1 text-gold-600 hover:text-gold-500 font-semibold text-xs md:text-sm transition-colors whitespace-nowrap"
-                                        @click="openDetailId = {{ $membership->id }}">
+                                        @click="openDetailId = {{ $trx->id }}">
                                         <span>Lihat Detail</span>
                                         <i data-lucide="arrow-right" class="w-4 h-4"></i>
                                     </button>
@@ -353,29 +323,29 @@
                 </table>
             </div>
 
-
             {{-- PAGINATION --}}
             <div class="mt-6">
-                {{ $memberships->onEachSide(1)->links() }}
+                {{ $transaksis->onEachSide(1)->links() }}
             </div>
         </x-ui.card>
 
         {{-- MODAL CREATE --}}
-        @include('admin.memberships.modals.create', [
+        @include('admin.transaksi_membership.modals.create', [
             'members' => $members,
             'paketList' => $paketList,
+            'metodeOptions' => $metodeOptions,
         ])
 
-        {{-- MODAL DETAIL & EDIT (SATU PER MEMBERSHIP) --}}
-        @foreach ($memberships as $membership)
-            @include('admin.memberships.modals.detail', [
-                'membership' => $membership,
+        {{-- MODAL DETAIL & EDIT --}}
+        @foreach ($transaksis as $trx)
+            @include('admin.transaksi_membership.modals.detail', [
+                'trx' => $trx,
                 'metodeOptions' => $metodeOptions,
                 'today' => $today,
             ])
 
-            @include('admin.memberships.modals.edit', [
-                'membership' => $membership,
+            @include('admin.transaksi_membership.modals.edit', [
+                'trx' => $trx,
                 'members' => $members,
                 'paketList' => $paketList,
                 'metodeOptions' => $metodeOptions,
@@ -389,31 +359,27 @@
         </style>
     </div>
 
-    {{-- SCRIPT KONFIRMASI HAPUS TRANSAKSI --}}
+    {{-- SCRIPT KONFIRMASI CANCEL --}}
     <script>
-        function confirmDeleteMembership(id, memberName, paketName) {
-            const formId = 'delete-membership-' + id;
+        function confirmCancelTransaksiMembership(id, buyerName, paketName) {
+            const formId = 'cancel-transaksi-membership-' + id;
 
             if (typeof Swal === 'undefined') {
-                if (confirm(
-                        'Yakin ingin menghapus transaksi membership "' + paketName +
-                        '" untuk member ' + memberName + ' ?'
-                    )) {
+                if (confirm('Yakin ingin membatalkan transaksi "' + paketName + '" untuk member ' + buyerName + ' ?')) {
                     document.getElementById(formId).submit();
                 }
                 return;
             }
 
             Swal.fire({
-                title: 'Hapus Transaksi?',
-                text: 'Anda yakin ingin menghapus transaksi membership "' + paketName +
-                    '" untuk member ' + memberName +
-                    '? Jika transaksi sudah aktif / kadaluarsa, sistem akan menolak penghapusan.',
+                title: 'Batalkan Transaksi?',
+                text: 'Anda yakin ingin membatalkan transaksi "' + paketName + '" untuk member ' + buyerName +
+                    '? Sistem hanya mengizinkan pembatalan untuk transaksi yang belum aktif.',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#C73527',
                 cancelButtonColor: '#6C5A46',
-                confirmButtonText: 'Ya, Hapus!',
+                confirmButtonText: 'Ya, Batalkan!',
                 cancelButtonText: 'Batal',
                 background: '#21160F',
                 color: '#F8F2E7',

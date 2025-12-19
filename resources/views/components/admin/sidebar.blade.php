@@ -3,8 +3,10 @@
 @php
     $current = request()->route()?->getName() ?? '';
 
-    // Helper: route active (mendukung wildcard)
-    // - Kalau input "admin.rekening." => dianggap "admin.rekening.*"
+    /**
+     * Helper: route active (mendukung wildcard)
+     * - Kalau input "admin.rekening." => dianggap "admin.rekening.*"
+     */
     $active = function (string $pattern): bool {
         if (str_ends_with($pattern, '.')) {
             $pattern .= '*';
@@ -12,47 +14,68 @@
         return request()->routeIs($pattern);
     };
 
-    $startsWith = fn (string $prefix) => str($current)->startsWith($prefix);
-
     // ================== ACTIVE STATES ==================
     // Dashboard
     $dashboardActive = $active('admin.dashboard');
 
     // Member
-    $memberActive = $startsWith('admin.members.');
+    $memberActive = $active('admin.members.');
 
-    // Membership (parent + children)
-    $membershipPaketActive     = $startsWith('admin.paket_memberships');
-    $membershipPenjualanActive = $startsWith('admin.memberships');
-    $membershipGroupActive     = $startsWith('admin.membership_groups');
-    $membershipActive          = $membershipPaketActive || $membershipPenjualanActive || $membershipGroupActive;
+    // =========================
+    // MEMBERSHIP (refactor)
+    // =========================
+    $membershipPaketActive     = $active('admin.paket_memberships.');
+    $membershipTransaksiActive = $active('admin.transaksi_membership.');
 
-    // Produk
-    $produkMasterActive   = $startsWith('admin.produk');
-    $stokActive           = $startsWith('admin.stok_produk');
-    $penjualanActive      = $startsWith('admin.penjualan_produk');
-    $produkManagementOpen = $produkMasterActive || $stokActive || $penjualanActive;
+    // Optional: membership_groups kalau masih ada
+    $membershipGroupActive = Route::has('admin.membership_groups.index')
+        ? $active('admin.membership_groups.')
+        : false;
+
+    $membershipActive = $membershipPaketActive || $membershipTransaksiActive || $membershipGroupActive;
+
+    // =========================
+    // PRODUK (refactor transaksi-produk)
+    // =========================
+    $produkMasterActive = $active('admin.produk.');
+    $stokActive         = $active('admin.stok_produk.');
+
+    // Parent aktif jika berada di route admin.transaksi_produk.* (index/store/history/destroy)
+    $transaksiProdukActive = $active('admin.transaksi_produk.');
+
+    // Highlight submenu
+    $transaksiProdukHistoryActive = request()->routeIs('admin.transaksi_produk.history');
+    // selain history, anggap kasir (index/store/destroy) -> kasir aktif
+    $transaksiProdukKasirActive = $transaksiProdukActive && !$transaksiProdukHistoryActive;
+
+    $produkManagementOpen = $transaksiProdukActive || $produkMasterActive || $stokActive;
 
     // Latihan Harian
-    $latihanHarianActive = $startsWith('admin.latihan_harian');
+    $latihanHarianActive = $active('admin.latihan_harian.');
 
     // Lainnya
-    $coachActive      = $startsWith('admin.coaches');
-    $inventarisActive = $startsWith('admin.inventaris');
+    $coachActive      = $active('admin.coaches.');
+    $inventarisActive = $active('admin.inventaris.');
 
     // Kehadiran (operasional admin)
-    $izinActive    = $startsWith('admin.izin_latihan');
-    $absensiActive = $startsWith('admin.absensi');
+    $izinActive    = $active('admin.izin_latihan.');
+    $absensiActive = $active('admin.absensi.');
     $kehadiranOpen = $izinActive || $absensiActive;
 
     // Profil gym
-    $profilGymActive = $startsWith('admin.profil_gym');
+    $profilGymActive = $active('admin.profil_gym.');
 
-    // Rekening (SATU MENU)
-    $rekeningActive = $startsWith('admin.rekening');
+    // =========================
+    // REKENING (khusus: index beda prefix dengan aksi CRUD)
+    // =========================
+    $rekeningIndexActive = $active('admin.rekening.');
+    $infoRekeningActive  = $active('admin.info-rekening.');
+    $rekeningActive      = $rekeningIndexActive || $infoRekeningActive;
 
-    // Laporan / Analitik
-    $laporanActive = request()->routeIs('admin.laporan.*');
+    // =========================
+    // LAPORAN / ANALITIK (Development)
+    // =========================
+    $laporanActive = $active('admin.laporan.');
     $laporanOpen   = $laporanActive;
 
     // Default open
@@ -83,7 +106,6 @@
         @click="mobileOpen = false"
     ></div>
 
-    {{-- SIDEBAR --}}
     <aside
         class="flex flex-col fixed inset-y-0 left-0 w-64 bg-brand-black text-brand-white
                shadow-2xl transform transition-transform duration-200
@@ -179,6 +201,7 @@
                     class="space-y-1 mt-1 pl-4"
                     role="menu"
                 >
+                    {{-- Paket Membership --}}
                     <a
                         href="{{ route('admin.paket_memberships.index') }}"
                         class="group flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
@@ -191,31 +214,33 @@
                         <span>Paket Membership</span>
                     </a>
 
+                    {{-- Penjualan / Transaksi Membership (refactor) --}}
                     <a
-                        href="{{ route('admin.memberships.index') }}"
+                        href="{{ route('admin.transaksi_membership.index') }}"
                         class="group flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
-                            {{ $membershipPenjualanActive ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
+                            {{ $membershipTransaksiActive ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
                                                           : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
                         role="menuitem"
-                        aria-current="{{ $membershipPenjualanActive ? 'page' : 'false' }}"
+                        aria-current="{{ $membershipTransaksiActive ? 'page' : 'false' }}"
                     >
-                        <i data-lucide="ticket-percent" class="w-4 h-4 {{ $membershipPenjualanActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
+                        <i data-lucide="ticket-percent" class="w-4 h-4 {{ $membershipTransaksiActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
                         <span>Penjualan Membership</span>
                     </a>
 
-                    {{-- Kalau nanti kamu mau tampilkan menu group, tinggal aktifkan ini:
-                    <a
-                        href="{{ route('admin.membership_groups.index') }}"
-                        class="group flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
-                            {{ $membershipGroupActive ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
-                                                      : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
-                        role="menuitem"
-                        aria-current="{{ $membershipGroupActive ? 'page' : 'false' }}"
-                    >
-                        <i data-lucide="layers-2" class="w-4 h-4 {{ $membershipGroupActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
-                        <span>Group Membership</span>
-                    </a>
-                    --}}
+                    {{-- Optional: Membership Group --}}
+                    @if (Route::has('admin.membership_groups.index'))
+                        <a
+                            href="{{ route('admin.membership_groups.index') }}"
+                            class="group flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
+                                {{ $membershipGroupActive ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
+                                                          : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
+                            role="menuitem"
+                            aria-current="{{ $membershipGroupActive ? 'page' : 'false' }}"
+                        >
+                            <i data-lucide="users-2" class="w-4 h-4 {{ $membershipGroupActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
+                            <span>Anggota Paket (Group)</span>
+                        </a>
+                    @endif
                 </div>
 
                 {{-- Kelola Produk (Dropdown) --}}
@@ -266,16 +291,30 @@
                         <span>Stok Produk</span>
                     </a>
 
+                    {{-- Transaksi Produk (Kasir) --}}
                     <a
-                        href="{{ route('admin.penjualan_produk.index') }}"
+                        href="{{ route('admin.transaksi_produk.index') }}"
                         class="group flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
-                            {{ $penjualanActive ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
-                                               : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
+                            {{ $transaksiProdukKasirActive ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
+                                                           : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
                         role="menuitem"
-                        aria-current="{{ $penjualanActive ? 'page' : 'false' }}"
+                        aria-current="{{ $transaksiProdukKasirActive ? 'page' : 'false' }}"
                     >
-                        <i data-lucide="shopping-cart" class="w-4 h-4 {{ $penjualanActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
-                        <span>Penjualan Produk</span>
+                        <i data-lucide="shopping-cart" class="w-4 h-4 {{ $transaksiProdukKasirActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
+                        <span>Transaksi Produk (Kasir)</span>
+                    </a>
+
+                    {{-- Riwayat Transaksi Produk --}}
+                    <a
+                        href="{{ route('admin.transaksi_produk.history') }}"
+                        class="group flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
+                            {{ $transaksiProdukHistoryActive ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
+                                                             : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
+                        role="menuitem"
+                        aria-current="{{ $transaksiProdukHistoryActive ? 'page' : 'false' }}"
+                    >
+                        <i data-lucide="history" class="w-4 h-4 {{ $transaksiProdukHistoryActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
+                        <span>Riwayat Transaksi</span>
                     </a>
                 </div>
 
@@ -406,7 +445,7 @@
                     @endif
                 </a>
 
-                {{-- Rekening (SATU MENU) --}}
+                {{-- Rekening --}}
                 <a
                     href="{{ route('admin.rekening.index') }}"
                     class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
@@ -457,7 +496,7 @@
                         $lapAbsensiActive = request()->routeIs('admin.laporan.absensi.*');
                     @endphp
 
-                    {{-- Laporan Absensi (SUDAH ADA ROUTE) --}}
+                    {{-- Laporan Absensi --}}
                     <a
                         href="{{ route('admin.laporan.absensi.index') }}"
                         class="group flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
