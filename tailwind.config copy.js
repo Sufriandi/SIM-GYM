@@ -218,3 +218,5 @@ export default {
 
   plugins: [forms, typography, aspectRatio, containerQueries, animate],
 };
+
+

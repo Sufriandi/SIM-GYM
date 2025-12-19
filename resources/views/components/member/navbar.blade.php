@@ -4,7 +4,20 @@
     'pageSubtitle' => null,   // tetap di-abaikan di navbar
     'notificationCount' => 0,
 ])
+@php
+    use Illuminate\Support\Facades\Storage;
+    use Illuminate\Support\Str;
 
+    $authUser = auth()->user();
+    $avatarUrl = ($authUser && !empty($authUser->foto)) ? Storage::url($authUser->foto) : null;
+
+    $initials = Str::of($authUser?->name ?: 'AD')
+        ->trim()
+        ->explode(' ')
+        ->map(fn($p) => Str::upper(Str::substr($p, 0, 1)))
+        ->take(2)
+        ->join('');
+@endphp
 <header
     class="fixed top-0 left-0 md:left-64 right-0 h-16 flex items-center z-30
            bg-brand-shell/95 backdrop-blur-sm border-b border-brand-borderSoft shadow-header"
@@ -167,11 +180,21 @@
                     :aria-expanded="showProfile"
                 >
                     <div
-                        class="w-8 h-8 rounded-full bg-gradient-to-br from-gold-400 to-gold-600
-                               flex items-center justify-center text-xs font-bold text-brand-black shadow-md"
-                    >
-                        {{ strtoupper(substr(auth()->user()->name ?? 'MB', 0, 2)) }}
-                    </div>
+    class="w-8 h-8 rounded-full overflow-hidden border border-brand-borderSoft bg-brand-surface-50
+           flex items-center justify-center shadow-md"
+>
+    @if($avatarUrl)
+        <img src="{{ $avatarUrl }}" alt="Foto Profil" class="w-full h-full object-cover">
+    @else
+        <div
+            class="w-full h-full bg-gradient-to-br from-gold-400 to-gold-600
+                   flex items-center justify-center text-xs font-bold text-brand-black"
+        >
+            {{ $initials }}
+        </div>
+    @endif
+</div>
+
                     <div class="leading-tight hidden sm:block text-left">
                         <div
                             class="text-xs font-semibold text-text-main truncate max-w-[120px]

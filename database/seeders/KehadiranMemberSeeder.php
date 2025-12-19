@@ -2,47 +2,142 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\KehadiranMember;
-use App\Models\Member;
 use Carbon\Carbon;
-use Faker\Factory as Faker;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class KehadiranMemberSeeder extends Seeder
 {
     public function run(): void
     {
-        $faker = Faker::create('id_ID');
+        // ====== Konfigurasi ======
+        $minPerDay = 10;
+        $maxPerDay = 20;
 
-        $memberIds = Member::pluck('id');
+        // 3 bulan terakhir sampai hari ini
+        $end   = Carbon::today()->endOfDay();
+        $start = Carbon::today()->subMonthsNoOverflow(3)->startOfDay();
 
-        if ($memberIds->isEmpty()) {
+        // Jam operasional (random)
+        $openHour  = 6;   // 06:00
+        $closeHour = 22;  // 22:59
+
+        // ====== Validasi dasar ======
+        if (!Schema::hasTable('kehadiran_members')) {
+            $this->command?->warn("Tabel kehadiran_members tidak ditemukan. Seeder dibatalkan.");
             return;
         }
 
-        // KehadiranMember::truncate(); // opsional
+        $memberIds = DB::table('members')->pluck('id')->all();
+        $memberCount = count($memberIds);
 
-        for ($i = 1; $i <= 31; $i++) {
-            $memberId = $memberIds->random();
-
-            // tanggal dalam 30 hari terakhir
-            $tanggal = Carbon::today()->subDays(rand(0, 30));
-
-            // jam masuk antara 06:00 - 21:00
-            $jamMasuk = Carbon::createFromTime(rand(6, 21), rand(0, 59));
-            // jam keluar 1–3 jam setelah jam masuk
-            $jamKeluar = (clone $jamMasuk)->addHours(rand(1, 3));
-
-            KehadiranMember::create([
-                'member_id'          => $memberId,
-                'absensi_periode_id' => null, // kalau nanti pakai periode, bisa diisi dari seeder lain
-                'tanggal'            => $tanggal->toDateString(),
-                'jam_masuk'          => $jamMasuk->format('H:i:s'),
-                'jam_keluar'         => $jamKeluar->format('H:i:s'),
-                'ip_address'         => $faker->ipv4(),
-                'device_info'        => $faker->randomElement(['Android App', 'iOS App', 'Web Browser']),
-                'is_valid'           => $faker->boolean(90), // 90% valid
-            ]);
+        if ($memberCount === 0) {
+            $this->command?->warn("Tidak ada data members. Buat member dulu, baru jalankan seeder absensi.");
+            return;
         }
+
+        // ====== Deteksi kolom (biar sesuai DB terbaru Anda) ======
+        $hasTanggal   = Schema::hasColumn('kehadiran_members', 'tanggal');
+        $hasJamMasuk  = Schema::hasColumn('kehadiran_members', 'jam_masuk');
+        $hasPeriodeId = Schema::hasColumn('kehadiran_members', 'absensi_periode_id');
+        $hasCreatedAt = Schema::hasColumn('kehadiran_members', 'created_at');
+        $hasUpdatedAt = Schema::hasColumn('kehadiran_members', 'updated_at');
+
+        // Opsional: jika tabel absensi_periodes ada, kita coba “pasangkan” periode aktif yang sesuai tanggal
+        $periodes = collect();
+        if ($hasPeriodeId && Schema::hasTable('absensi_periodes')) {
+            $periodes = DB::table('absensi_periodes')
+                ->select('id', 'status', 'tanggal_mulai', 'tanggal_selesai')
+                ->get();
+        }
+
+        // Agar seeder bisa di-run berulang tanpa menumpuk (opsional).
+        // Hapus data di range 3 bulan terakhir saja.
+        if ($hasCreatedAt) {
+            DB::table('kehadiran_members')
+                ->whereBetween('created_at', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
+                ->delete();
+        }
+
+        // ====== Generate data ======
+        $batch = [];
+        $batchLimit = 1000;
+
+        $cursorDate = $start->copy()->startOfDay();
+        while ($cursorDate->lte($end)) {
+            $target = random_int($minPerDay, $maxPerDay);
+            $target = min($target, $memberCount);
+
+            // Ambil subset member acak tanpa duplikat (1 record per member per hari)
+            $pool = $memberIds;
+            shuffle($pool);
+            $picked = array_slice($pool, 0, $target);
+
+            // Tentukan periode (jika tersedia)
+            $periodeIdForDay = null;
+            if ($hasPeriodeId && $periodes->isNotEmpty()) {
+                $periode = $periodes->first(function ($p) use ($cursorDate) {
+                    if (empty($p->tanggal_mulai) || empty($p->tanggal_selesai)) return false;
+                    $d = $cursorDate->toDateString();
+                    return $p->status === 'aktif'
+                        && $d >= Carbon::parse($p->tanggal_mulai)->toDateString()
+                        && $d <= Carbon::parse($p->tanggal_selesai)->toDateString();
+                });
+
+                $periodeIdForDay = $periode?->id;
+            }
+
+            foreach ($picked as $memberId) {
+                // Random waktu check-in
+                $h = random_int($openHour, $closeHour);
+                $m = random_int(0, 59);
+                $s = random_int(0, 59);
+
+                $created = $cursorDate->copy()->setTime($h, $m, $s);
+
+                $row = [
+                    'member_id' => $memberId,
+                ];
+
+                if ($hasPeriodeId) {
+                    // Boleh null, sesuai sistem Anda yang kadang pakai absensi_periode_id, kadang null
+                    $row['absensi_periode_id'] = $periodeIdForDay;
+                }
+
+                if ($hasTanggal) {
+                    // Simpan tanggal (date) kalau kolom ada
+                    $row['tanggal'] = $cursorDate->toDateString();
+                }
+
+                if ($hasJamMasuk) {
+                    // Simpan jam masuk (time) kalau kolom ada
+                    $row['jam_masuk'] = $created->format('H:i:s');
+                }
+
+                if ($hasCreatedAt) {
+                    $row['created_at'] = $created->toDateTimeString();
+                }
+
+                if ($hasUpdatedAt) {
+                    $row['updated_at'] = $created->toDateTimeString();
+                }
+
+                $batch[] = $row;
+
+                if (count($batch) >= $batchLimit) {
+                    DB::table('kehadiran_members')->insert($batch);
+                    $batch = [];
+                }
+            }
+
+            $cursorDate->addDay();
+        }
+
+        if (!empty($batch)) {
+            DB::table('kehadiran_members')->insert($batch);
+        }
+
+        $this->command?->info("Seeder absensi selesai: {$start->toDateString()} s/d {$end->toDateString()} (min {$minPerDay}, max {$maxPerDay} per hari).");
     }
 }
