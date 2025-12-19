@@ -305,10 +305,10 @@
                     <x-ui.input type="date" name="end_date" value="{{ $end }}" class="w-full"/>
                 </div>
 
-                <div class="lg:col-span-3" x-show="advanced" x-cloak>
+                {{-- <div class="lg:col-span-3" x-show="advanced" x-cloak>
                     <x-ui.label>ID Member (opsional)</x-ui.label>
                     <x-ui.input type="number" min="1" name="member_id" value="{{ $memberId }}" placeholder="Contoh: 12" class="w-full"/>
-                </div>
+                </div> --}}
 
                 <div class="lg:col-span-3" x-show="advanced" x-cloak>
                     <x-ui.label>Urutkan</x-ui.label>
@@ -454,7 +454,7 @@
                                 <div class="text-sm font-extrabold text-text-main truncate">
                                     {{ $i + 1 }}. {{ $namaTop }}
                                 </div>
-                                <div class="text-xs text-text-muted">ID Member: {{ $midTop }}</div>
+                                {{-- <div class="text-xs text-text-muted">ID Member: {{ $midTop }}</div> --}}
                             </div>
                             <div class="text-sm font-extrabold text-text-main">{{ $totTop }}</div>
                         </div>
