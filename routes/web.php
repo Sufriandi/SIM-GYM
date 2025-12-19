@@ -167,6 +167,25 @@ Route::middleware(['auth', 'admin'])
         
 
         // =========================================================
+        // REKENING (INDEX GABUNGAN) + CRUD REKENING/QRIS
+        // =========================================================
+        Route::resource('rekening', RekeningController::class)
+            ->only(['index']);
+        // admin.rekening.index  => GET /admin/rekening
+
+        Route::resource('info-rekening', InfoRekeningController::class)
+            ->only(['store', 'update', 'destroy'])
+            ->parameters([
+                'info-rekening' => 'infoRekening',
+            ]);
+
+        Route::resource('info-qris', InfoQrisController::class)
+            ->only(['store', 'update', 'destroy'])
+            ->parameters([
+                'info-qris' => 'infoQris',
+            ]);
+
+        // =========================================================
         // RUTE ABSENSI (ADMIN)
         // =========================================================
         Route::prefix('absensi')->name('absensi.')->group(function () {

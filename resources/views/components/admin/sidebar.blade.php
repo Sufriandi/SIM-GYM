@@ -5,15 +5,15 @@
 
     $startsWith = fn (string $prefix) => str($current)->startsWith($prefix);
 
-    // =======================
-    // ACTIVE STATES (TOP LEVEL)
-    // =======================
-    $dashboardActive = $current === 'admin.dashboard';
-
-    // Pastikan hanya match admin.members.*
-    $memberActive = $startsWith('admin.members.');
+    // Menu states (top level)
+    $dashboardActive = $active('admin.dashboard');
+    $memberActive = str($current)->startsWith('admin.members.');
 
     // Membership (parent + children)
+    $membershipPaketActive = $active('admin.paket_memberships');
+    $membershipPenjualanActive = $active('admin.memberships');
+    $membershipGroupActive = $active('admin.membership_groups');
+    $membershipActive = $membershipPaketActive || $membershipPenjualanActive || $membershipGroupActive;
     $membershipPaketActive     = $startsWith('admin.paket_memberships');
     $membershipPenjualanActive = $startsWith('admin.memberships');
     $membershipGroupActive     = $startsWith('admin.membership_groups');
@@ -39,6 +39,9 @@
 
     // Profil gym
     $profilGymActive = $startsWith('admin.profil_gym');
+
+    // === REKENING (SATU MENU) ===
+    $rekeningActive = $active('admin.rekening.');
 
     // Laporan / Analitik
     $laporanActive = request()->routeIs('admin.laporan.*');
@@ -356,9 +359,11 @@
                         <i data-lucide="qr-code" class="w-4 h-4 {{ $absensiActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
                         <span>Absensi QR &amp; Data</span>
                     </a>
+                    </a>
                 </div>
             </div>
 
+            {{-- ================== KONFIGURASI ================== --}}
             {{-- ================== KONFIGURASI ================== --}}
             <div class="space-y-2 mt-4">
                 <div class="px-4 text-[11px] font-bold tracking-wider uppercase text-brand-silver/70 mb-3">
@@ -376,6 +381,26 @@
                     <i data-lucide="settings-2"
                        class="w-5 h-5 transition-transform duration-300 {{ $profilGymActive ? 'text-gold-300' : 'group-hover:scale-110' }}"></i>
                     <span>Kelola Profil Gym</span>
+                    @if ($profilGymActive)
+                        <div
+                            class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full animate-pulse">
+                        </div>
+                    @endif
+                </a>
+
+                {{-- Rekening (SATU MENU) --}}
+                <a href="{{ route('admin.rekening.index') }}"
+                    class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
+                        {{ $rekeningActive ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20' : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
+                    aria-current="{{ $rekeningActive ? 'page' : 'false' }}">
+                    <i data-lucide="credit-card"
+                        class="w-5 h-5 transition-transform duration-300 {{ $rekeningActive ? 'text-gold-300' : 'group-hover:scale-110' }}"></i>
+                    <span>Rekening</span>
+                    @if ($rekeningActive)
+                        <div
+                            class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full animate-pulse">
+                        </div>
+                    @endif
                 </a>
             </div>
 
