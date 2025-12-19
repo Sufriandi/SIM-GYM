@@ -467,73 +467,7 @@
             </div>
         </x-ui.card>
 
-        <x-ui.card class="xl:col-span-8 rounded-3xl border border-brand-borderSoft bg-white p-5">
-            <div class="flex items-start justify-between gap-3 flex-wrap">
-                <div>
-                    <div class="text-lg font-bold text-text-main">Data Absensi</div>
-                    <div class="text-sm text-text-muted">Kolom: No, Tanggal, Member, Jam Masuk, Keterangan.</div>
-                </div>
-            </div>
-
-            <div class="mt-4 w-full overflow-x-auto custom-scrollbar">
-                <table class="w-full border-collapse text-sm">
-                    <thead>
-                        <tr class="text-left text-text-muted border-b border-brand-borderSoft">
-                            <th class="py-3 pr-4 w-16">No</th>
-                            <th class="py-3 pr-4 w-40">Tanggal</th>
-                            <th class="py-3 pr-4">Member</th>
-                            <th class="py-3 pr-4 w-32">Jam Masuk</th>
-                            <th class="py-3 pr-2">Keterangan</th>
-                        </tr>
-                    </thead>
-
-                    <tbody class="divide-y divide-brand-borderSoft">
-                        @forelse ($rows as $idx => $row)
-                            @php
-                                $no = method_exists($rows, 'firstItem') ? (($rows->firstItem() ?? 1) + $idx) : ($idx + 1);
-
-                                $tanggalLabel = $row->tanggal
-                                    ? Carbon::parse($row->tanggal)->translatedFormat('d M Y')
-                                    : '-';
-
-                                $jamLabel = '-';
-                                if (!empty($row->jam_masuk)) {
-                                    try { $jamLabel = Carbon::parse($row->jam_masuk)->format('H:i'); }
-                                    catch (\Throwable $e) { $jamLabel = (string)$row->jam_masuk; }
-                                }
-
-                                $memberName = $row->user_name ?? $row->name ?? '-';
-                            @endphp
-
-                            <tr class="hover:bg-gray-50 transition">
-                                <td class="py-3 pr-4 font-bold text-text-main">{{ $no }}</td>
-                                <td class="py-3 pr-4 text-text-main">{{ $tanggalLabel }}</td>
-                                <td class="py-3 pr-4">
-                                    <div class="font-extrabold text-text-main">{{ $memberName }}</div>
-                                    <div class="text-xs text-text-muted">ID Member: {{ $row->member_id ?? '-' }}</div>
-                                </td>
-                                <td class="py-3 pr-4 text-text-main">{{ $jamLabel }}</td>
-                                <td class="py-3 pr-2 text-text-main">
-                                    {{ $row->keterangan ?? '-' }}
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="5" class="py-8 text-center text-text-muted">
-                                    Tidak ada data absensi pada filter ini.
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            @if (method_exists($rows, 'links'))
-                <div class="mt-4">
-                    {{ $rows->links() }}
-                </div>
-            @endif
-        </x-ui.card>
+        
     </div>
 
     {{-- SCRIPT: Dashboard Chart --}}
