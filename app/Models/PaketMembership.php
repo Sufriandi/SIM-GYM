@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PaketMembership extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'nama',
@@ -17,8 +18,8 @@ class PaketMembership extends Model
         'deskripsi',
     ];
 
-    public function memberships()
+    public function transaksiMemberships()
     {
-        return $this->hasMany(Membership::class, 'paket_id');
+        return $this->hasMany(TransaksiMembership::class, 'paket_id');
     }
 }

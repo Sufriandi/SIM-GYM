@@ -7,39 +7,114 @@ use App\Models\Member;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class MemberController extends Controller
 {
-    /**
-     * Tampilkan daftar member (index).
-     */
     public function index(Request $request)
     {
-        $search = $request->input('search');
+        $search = trim((string) $request->input('search', ''));
+        $status = (string) $request->input('status', ''); // aktif | belum_aktif | expired | ''
+        $sort   = (string) $request->input('sort', 'name_asc'); // name_asc|name_desc|daftar_newest|daftar_oldest
 
-        $query = Member::with('user');
+        // Base query
+        $query = Member::query()
+            ->with(['user' => fn($q) => $q->withTrashed()])
+            ->join('users', 'users.id', '=', 'members.user_id')
+            ->whereNull('members.deleted_at')
+            ->select('members.*');
 
-        if ($search) {
+        // SEARCH
+        if ($search !== '') {
             $query->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                    ->orWhereHas('user', function ($uq) use ($search) {
-                        $uq->where('username', 'like', "%{$search}%")
-                            ->orWhere('no_hp', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%");
-                    });
+                $q->where('users.name', 'like', "%{$search}%")
+                    ->orWhere('users.username', 'like', "%{$search}%")
+                    ->orWhere('users.no_hp', 'like', "%{$search}%")
+                    ->orWhere('users.email', 'like', "%{$search}%");
             });
         }
 
-        $members = $query->orderBy('nama')->paginate(10);
+        /**
+         * STATUS membership bergantung tabel transaksi.
+         * Auto-detect: transaksi_memberships / transaksi_membership
+         */
+        $periodeTable = null;
+        foreach (['transaksi_memberships', 'transaksi_membership'] as $tbl) {
+            if (Schema::hasTable($tbl)) {
+                $periodeTable = $tbl;
+                break;
+            }
+        }
 
-        return view('admin.members.index', compact('members', 'search'));
+        if ($periodeTable) {
+            $today = now()->toDateString();
+
+            /**
+             * Subquery: latest transaksi per BUYER (per member)
+             * FIX UTAMA: gunakan buyer_member_id (bukan member_id)
+             * Tambahan: abaikan transaksi yang canceled
+             */
+            $latest = DB::table($periodeTable)
+                ->select('buyer_member_id', DB::raw('MAX(id) as latest_id'))
+                ->whereNull('canceled_at')
+                ->groupBy('buyer_member_id');
+
+            $query->leftJoinSub($latest, 'tm_latest', function ($join) {
+                $join->on('tm_latest.buyer_member_id', '=', 'members.id');
+            });
+
+            $query->leftJoin(DB::raw($periodeTable . ' as tm'), function ($join) {
+                $join->on('tm.id', '=', 'tm_latest.latest_id');
+            });
+
+            // FILTER STATUS (aktif | expired | belum_aktif)
+            if ($status === 'aktif') {
+                $query->whereNotNull('tm.id')
+                    ->whereDate('tm.tanggal_mulai', '<=', $today)
+                    ->whereDate('tm.tanggal_akhir', '>=', $today);
+            } elseif ($status === 'expired') {
+                $query->whereNotNull('tm.id')
+                    ->whereDate('tm.tanggal_akhir', '<', $today);
+            } elseif ($status === 'belum_aktif') {
+                // belum_aktif = belum pernah transaksi (tm null) ATAU transaksi terakhir belum mulai (mulai > today)
+                $query->where(function ($q) use ($today) {
+                    $q->whereNull('tm.id')
+                        ->orWhereDate('tm.tanggal_mulai', '>', $today);
+                });
+            }
+        }
+        // Jika tabel transaksi belum ada: filter status diabaikan (tidak crash)
+
+        // SORT
+        switch ($sort) {
+            case 'name_desc':
+                $query->orderBy('users.name', 'desc');
+                break;
+
+            case 'daftar_newest':
+                $query->orderBy('members.tanggal_daftar', 'desc');
+                break;
+
+            case 'daftar_oldest':
+                $query->orderBy('members.tanggal_daftar', 'asc');
+                break;
+
+            case 'name_asc':
+            default:
+                $query->orderBy('users.name', 'asc');
+                break;
+        }
+
+        $members = $query->paginate(20)->appends([
+            'search' => $search,
+            'status' => $status,
+            'sort'   => $sort,
+        ]);
+
+        return view('admin.members.index', compact('members', 'search', 'status', 'sort'));
     }
 
-    /**
-     * Store member baru (admin tambah member).
-     * Di sini kita buat USER + MEMBER sekaligus.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -49,55 +124,40 @@ class MemberController extends Controller
             'no_hp'         => ['nullable', 'string', 'max:20', 'unique:users,no_hp'],
             'password'      => ['required', 'string', 'min:8', 'confirmed'],
             'alamat'        => ['nullable', 'string'],
-            'tanggal_mulai' => ['nullable', 'date'],
-            'tanggal_akhir' => ['nullable', 'date', 'after_or_equal:tanggal_mulai'],
+            'jenis_kelamin' => ['nullable', 'in:laki-laki,perempuan'],
             'foto'          => ['nullable', 'image', 'max:2048'],
         ]);
 
         DB::beginTransaction();
+        $fotoPath = null;
 
         try {
-            // 1. Buat user
+            if ($request->hasFile('foto')) {
+                $fotoPath = $request->file('foto')->store('users', 'public');
+            }
+
             $user = User::create([
-                'name'     => $request->nama,
-                'username' => $request->username,
-                'email'    => $request->email,
-                'no_hp'    => $request->no_hp,
-                'password' => $request->password, // auto di-hash oleh cast
-                'role'     => 'member',
+                'name'          => $request->nama,
+                'username'      => $request->username,
+                'email'         => $request->email,
+                'no_hp'         => $request->no_hp,
+                'alamat'        => $request->alamat,
+                'jenis_kelamin' => $request->jenis_kelamin,
+                'foto'          => $fotoPath,
+                'password'      => $request->password, // hashed by cast
+                'role'          => 'member',
             ]);
 
-            // Event created di model User otomatis membuat satu record Member.
-            // Kita ambil record member-nya dan update detailnya.
+            // dibuat otomatis oleh event/booted di User (jika ada)
             $member = $user->member;
 
-            if (!$member) {
-                // jaga-jaga kalau event tidak jalan
+            // fallback kalau event tidak jalan
+            if (! $member) {
                 $member = Member::create([
                     'user_id'        => $user->id,
-                    'nama'           => $request->nama,
-                    'tanggal_daftar' => now(),
+                    'tanggal_daftar' => now()->toDateString(),
                 ]);
             }
-
-            // 2. Upload foto kalau ada
-            $fotoPath = $member->foto;
-            if ($request->hasFile('foto')) {
-                if ($fotoPath && Storage::disk('public')->exists($fotoPath)) {
-                    Storage::disk('public')->delete($fotoPath);
-                }
-
-                $fotoPath = $request->file('foto')->store('members', 'public');
-            }
-
-            // 3. Update data member
-            $member->update([
-                'nama'           => $request->nama,
-                'alamat'         => $request->alamat,
-                'tanggal_mulai'  => $request->tanggal_mulai,
-                'tanggal_akhir'  => $request->tanggal_akhir,
-                'foto'           => $fotoPath,
-            ]);
 
             DB::commit();
 
@@ -106,54 +166,52 @@ class MemberController extends Controller
                 ->with('success', 'Member baru berhasil ditambahkan.');
         } catch (\Throwable $th) {
             DB::rollBack();
+
+            if (!empty($fotoPath) && Storage::disk('public')->exists($fotoPath)) {
+                Storage::disk('public')->delete($fotoPath);
+            }
+
             return back()
                 ->withInput()
                 ->with('error', 'Terjadi kesalahan saat menyimpan member: ' . $th->getMessage());
         }
     }
 
-    /**
-     * Update data member (dan no_hp di user).
-     */
     public function update(Request $request, Member $member)
     {
         $user = $member->user;
 
         $request->validate([
             'nama'          => ['required', 'string', 'max:255'],
+            'username'      => ['required', 'string', 'max:255', 'unique:users,username,' . ($user->id ?? 'NULL')],
+            'email'         => ['nullable', 'string', 'email', 'max:255', 'unique:users,email,' . ($user->id ?? 'NULL')],
             'no_hp'         => ['nullable', 'string', 'max:20', 'unique:users,no_hp,' . ($user->id ?? 'NULL')],
             'alamat'        => ['nullable', 'string'],
-            'tanggal_mulai' => ['nullable', 'date'],
-            'tanggal_akhir' => ['nullable', 'date', 'after_or_equal:tanggal_mulai'],
+            'jenis_kelamin' => ['nullable', 'in:laki-laki,perempuan'],
             'foto'          => ['nullable', 'image', 'max:2048'],
         ]);
 
         DB::beginTransaction();
 
         try {
-            // Data member yang boleh di-update
-            $dataMember = [
-                'nama'          => $request->nama,
-                'alamat'        => $request->alamat,
-                'tanggal_mulai' => $request->tanggal_mulai,
-                'tanggal_akhir' => $request->tanggal_akhir,
-            ];
-
-            // Foto baru?
-            if ($request->hasFile('foto')) {
-                if ($member->foto && Storage::disk('public')->exists($member->foto)) {
-                    Storage::disk('public')->delete($member->foto);
-                }
-                $dataMember['foto'] = $request->file('foto')->store('members', 'public');
-            }
-
-            $member->update($dataMember);
-
-            // Update no_hp di user (kalau relasi ada)
             if ($user) {
-                $user->update([
-                    'no_hp' => $request->no_hp,
-                ]);
+                $dataUser = [
+                    'name'          => $request->nama,
+                    'username'      => $request->username,
+                    'email'         => $request->email,
+                    'no_hp'         => $request->no_hp,
+                    'alamat'        => $request->alamat,
+                    'jenis_kelamin' => $request->jenis_kelamin,
+                ];
+
+                if ($request->hasFile('foto')) {
+                    if ($user->foto && Storage::disk('public')->exists($user->foto)) {
+                        Storage::disk('public')->delete($user->foto);
+                    }
+                    $dataUser['foto'] = $request->file('foto')->store('users', 'public');
+                }
+
+                $user->update($dataUser);
             }
 
             DB::commit();
@@ -163,39 +221,62 @@ class MemberController extends Controller
                 ->with('success', 'Data member berhasil diperbarui.');
         } catch (\Throwable $th) {
             DB::rollBack();
+
             return back()
                 ->withInput()
                 ->with('error', 'Terjadi kesalahan saat mengupdate member: ' . $th->getMessage());
         }
     }
 
-    /**
-     * Hapus member.
-     * NOTE: untuk sekarang hanya hapus record member.
-     * Kalau mau sekalian hapus user, hati-hati dengan relasi ke tabel lain.
-     */
     public function destroy(Member $member)
     {
+        DB::beginTransaction();
+
         try {
-            // hapus foto kalau ada
-            if ($member->foto && Storage::disk('public')->exists($member->foto)) {
-                Storage::disk('public')->delete($member->foto);
-            }
+            $user = $member->user;
 
             $member->delete();
 
-            // Kalau mau: $member->user?->delete();
+            if ($user) {
+                $user->delete();
+            }
+
+            DB::commit();
 
             return redirect()
                 ->route('admin.members.index')
-                ->with('success', 'Member berhasil dihapus.');
+                ->with('success', 'Member dan akun pengguna berhasil dinonaktifkan (Soft Delete).');
         } catch (\Throwable $th) {
+            DB::rollBack();
+
             return back()
-                ->with('error', 'Tidak dapat menghapus member: ' . $th->getMessage());
+                ->with('error', 'Gagal menonaktifkan member: ' . $th->getMessage());
         }
     }
 
-    // method create/show/edit bisa dikosongkan karena kamu pakai modal di index
+    public function restore($id)
+    {
+        $member = Member::withTrashed()->findOrFail($id);
+
+        DB::beginTransaction();
+
+        try {
+            $member->restore();
+
+            if ($member->user) {
+                $member->user->restore();
+            }
+
+            DB::commit();
+
+            return back()->with('success', 'Member dan akun berhasil diaktifkan kembali.');
+        } catch (\Throwable $th) {
+            DB::rollBack();
+
+            return back()->with('error', 'Gagal memulihkan member: ' . $th->getMessage());
+        }
+    }
+
     public function create() {}
     public function show(Member $member) {}
     public function edit(Member $member) {}

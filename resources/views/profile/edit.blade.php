@@ -1,29 +1,396 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Profile') }}
-        </h2>
-    </x-slot>
+{{-- resources/views/profile/edit.blade.php --}}
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
-                <div class="max-w-xl">
-                    @include('profile.partials.update-profile-information-form')
-                </div>
-            </div>
+@php
+    use Illuminate\Support\Facades\Storage;
+    use Illuminate\Support\Str;
 
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
-                <div class="max-w-xl">
-                    @include('profile.partials.update-password-form')
-                </div>
-            </div>
+    /** @var \App\Models\User $user */
+    $user = $user ?? auth()->user();
 
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
-                <div class="max-w-xl">
-                    @include('profile.partials.delete-user-form')
+    $pageTitle = $pageTitle ?? 'Pengaturan Profil';
+
+    // Tentukan route name yang dipakai (admin / umum)
+    $isAdminRoute   = request()->routeIs('admin.*');
+    $routeUpdate    = $isAdminRoute ? 'admin.profile.update'   : 'profile.update';
+    $routePassword  = $isAdminRoute ? 'admin.profile.password' : 'profile.password';
+
+    // Logika perhitungan data profil
+    $fotoUrl = !empty($user?->foto) ? Storage::url($user->foto) : null;
+    $initials = Str::of($user?->name ?: 'User')
+        ->trim()
+        ->explode(' ')
+        ->map(fn($p) => Str::upper(Str::substr($p, 0, 1)))
+        ->take(2)
+        ->join('');
+
+    // Penentuan tab awal
+    $tabFromQuery = request('tab', 'profile');
+
+    // Jika ada error/success dari password, otomatis buka tab Keamanan
+    $openSecurityOnLoad =
+        (session()->has('password_success') || ($errors->hasBag('password') && $errors->password->any()))
+        || $tabFromQuery === 'security';
+
+    // Style Dasar Input (Clean & Modern) — light tetap sama, dark ikut bawaan (kalau kamu sudah pakai CSS var)
+    $inputBase = "w-full rounded-lg border bg-white/70 dark:bg-transparent backdrop-blur-sm text-sm text-text-main px-4 py-3
+                  border-gray-200 dark:border-brand-borderSoft/40 shadow-inner
+                  focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-primary-dark transition-all duration-300";
+
+    $helpText = "text-[11px] text-gray-500 dark:text-text-muted mt-1";
+
+    // Kelas override LIGHT-ONLY untuk Card (dark balik ke bawaan card)
+    $cardLightOverride =
+        "rounded-xl overflow-hidden shadow-2xl transition-all duration-500
+         bg-white/50 dark:bg-transparent
+         backdrop-blur-md
+         border border-gray-100 dark:border-transparent";
+@endphp
+
+<x-layouts.admin
+    :title="$pageTitle . ' – BETA GYM'"
+    :page-title="$pageTitle"
+    page-subtitle="Kelola data profil dan keamanan akun Anda."
+>
+    <div
+        x-data="{
+            tab: '{{ $openSecurityOnLoad ? 'security' : 'profile' }}',
+            photoPreview: null,
+            photoName: '',
+
+            pickTab(name) {
+                this.tab = name;
+                const url = new URL(window.location);
+                name === 'security' ? url.searchParams.set('tab', name) : url.searchParams.delete('tab');
+                window.history.pushState({}, '', url);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            },
+
+            onPickPhoto(e) {
+                const f = e.target.files?.[0];
+                if (!f) { this.photoPreview = null; this.photoName = ''; return; }
+                this.photoName = f.name;
+                const r = new FileReader();
+                r.onload = (ev) => this.photoPreview = ev.target.result;
+                r.readAsDataURL(f);
+            },
+        }"
+        class="space-y-8"
+    >
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            {{-- PANEL KIRI: RINGKASAN PROFIL --}}
+            <x-ui.card class="lg:col-span-4 h-fit {{ $cardLightOverride }}">
+                {{-- “header” ala kamu: gradient hanya untuk light --}}
+                <div class="p-6 bg-gradient-to-br from-white to-brand-shell/50 dark:bg-transparent">
+
+                    {{-- Avatar Section --}}
+                    <div class="flex flex-col items-center text-center">
+                        <div class="relative mb-4 group cursor-pointer" @click="$refs.fileInput.click()" title="Klik untuk mengganti foto">
+                            <div class="w-28 h-28 rounded-full overflow-hidden border-4 border-white dark:border-brand-borderSoft/40
+                                        ring-4 ring-primary-dark/30 bg-gray-100 dark:bg-brand-surface-50
+                                        flex items-center justify-center shadow-lg transition-all group-hover:ring-primary-dark/60">
+                                <img x-show="photoPreview" :src="photoPreview" class="w-full h-full object-cover" alt="Preview Foto">
+                                @if ($fotoUrl)
+                                    <img x-show="!photoPreview" src="{{ $fotoUrl }}" class="w-full h-full object-cover" alt="Foto Profil">
+                                @else
+                                    <span x-show="!photoPreview" class="text-3xl font-extrabold text-primary-dark">{{ $initials }}</span>
+                                @endif
+                            </div>
+
+                            <div class="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                            </div>
+
+                            <span class="absolute -bottom-1 -right-1 rounded-full px-2 py-0.5 text-[10px] font-bold shadow-md
+                                {{ $user?->email_verified_at ? 'bg-success text-white' : 'bg-warning text-gray-800' }}">
+                                {{ $user?->email_verified_at ? 'Verified' : 'Unverified' }}
+                            </span>
+                        </div>
+
+                        <div class="min-w-0">
+                            <div class="text-xl font-extrabold text-text-main truncate">{{ $user?->name }}</div>
+                            <div class="text-sm text-gray-600 dark:text-text-muted truncate mt-0.5">{{ $user?->email }}</div>
+                        </div>
+
+                        <div class="mt-3 flex flex-wrap justify-center gap-2">
+                            <span class="inline-flex items-center rounded-full bg-primary-dark px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"></path>
+                                </svg>
+                                {{ $user?->role ? Str::title($user->role) : 'User' }}
+                            </span>
+
+                            @if(!empty($user?->username))
+                                <span class="inline-flex items-center rounded-full bg-gray-200 dark:bg-brand-surface-100 px-3 py-1 text-xs text-gray-600 dark:text-text-muted">
+                                    <span class="font-mono">{{ '@' . $user->username }}</span>
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+
+                    <hr class="my-6 border-t border-gray-200 dark:border-brand-borderSoft/40">
+
+                    {{-- Detail Kontak Singkat --}}
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="rounded-lg border border-gray-200 dark:border-brand-borderSoft/40 bg-white dark:bg-transparent px-4 py-3 shadow-sm dark:shadow-none">
+                            <div class="text-[10px] font-medium text-gray-500 dark:text-text-muted flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-10a2 2 0 01-2-2v-3.28z"></path>
+                                </svg>
+                                No. HP
+                            </div>
+                            <div class="text-sm font-semibold text-text-main mt-1">{{ $user?->no_hp ?: '-' }}</div>
+                        </div>
+
+                        <div class="rounded-lg border border-gray-200 dark:border-brand-borderSoft/40 bg-white dark:bg-transparent px-4 py-3 shadow-sm dark:shadow-none">
+                            <div class="text-[10px] font-medium text-gray-500 dark:text-text-muted flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V7a4 4 0 00-4-4H7a4 4 0 00-4 4v3m14 0V7a4 4 0 00-4-4h-2m-4 10v4a2 2 0 002 2h4a2 2 0 002-2v-4a2 2 0 00-2-2h-4a2 2 0 00-2 2z"></path>
+                                </svg>
+                                J. Kelamin
+                            </div>
+                            <div class="text-sm font-semibold text-text-main mt-1">
+                                {{ $user?->jenis_kelamin ? Str::title(str_replace('-', ' ', $user->jenis_kelamin)) : '-' }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 rounded-lg border border-gray-200 dark:border-brand-borderSoft/40 bg-white dark:bg-transparent px-4 py-3 shadow-sm dark:shadow-none">
+                        <div class="text-[10px] font-medium text-gray-500 dark:text-text-muted flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            Alamat
+                        </div>
+                        <div class="text-sm text-gray-700 dark:text-text-muted line-clamp-2 mt-1">
+                            {{ $user?->alamat ?: '-' }}
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex items-center justify-end pt-4 border-t border-gray-100 dark:border-brand-borderSoft/40">
+                        <button
+                            type="button"
+                            @click="pickTab('security')"
+                            class="text-xs font-semibold text-primary-dark hover:underline flex items-center"
+                        >
+                            Ganti Password?
+                        </button>
+                    </div>
                 </div>
-            </div>
+            </x-ui.card>
+
+            {{-- PANEL KANAN: FORM TABS --}}
+            <x-ui.card class="lg:col-span-8 {{ $cardLightOverride }}">
+                {{-- Tabs Header --}}
+                <div class="px-6 pt-6 pb-4 bg-white/70 dark:bg-transparent border-b border-gray-100 dark:border-transparent">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-2xl font-bold text-text-main">Pengaturan Akun</h3>
+                            <p class="text-sm text-gray-500 dark:text-text-muted mt-1">Perbarui data profil atau ubah kata sandi.</p>
+                        </div>
+
+                        <div class="flex items-center gap-1 p-1 rounded-full bg-gray-100 dark:bg-transparent shadow-inner dark:shadow-none">
+                            <button
+                                type="button"
+                                @click="pickTab('profile')"
+                                class="px-5 py-2 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2"
+                                :class="tab === 'profile'
+                                    ? 'bg-primary-dark text-white shadow-md'
+                                    : 'bg-transparent text-gray-600 dark:text-text-muted hover:text-primary-dark'"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                </svg>
+                                Profil
+                            </button>
+
+                            <button
+                                type="button"
+                                @click="pickTab('security')"
+                                class="px-5 py-2 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2"
+                                :class="tab === 'security'
+                                    ? 'bg-primary-dark text-white shadow-md'
+                                    : 'bg-transparent text-gray-600 dark:text-text-muted hover:text-primary-dark'"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v3h8z"></path>
+                                </svg>
+                                Keamanan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- CONTENT: PROFIL --}}
+                <div x-show="tab==='profile'" x-cloak class="p-6">
+                    <div class="mb-5 border-l-4 border-gold-600 pl-3">
+                        <h4 class="text-lg font-bold text-text-main">Data Diri</h4>
+                        <p class="text-xs text-gray-500 dark:text-text-muted mt-0.5">Pastikan data yang Anda masukkan valid.</p>
+                    </div>
+
+                    <form method="POST" action="{{ route($routeUpdate) }}" enctype="multipart/form-data" class="space-y-6">
+                        @csrf
+                        @method('PUT')
+
+                        <input
+                            x-ref="fileInput"
+                            type="file"
+                            name="foto"
+                            accept="image/*"
+                            class="hidden"
+                            @change="onPickPhoto($event)"
+                        >
+
+                        @error('foto', 'profile')
+                            <div class="rounded-md bg-danger-soft/20 p-3 text-sm text-danger border border-danger/30">
+                                <strong>Error Foto:</strong> {{ $message }}
+                            </div>
+                        @enderror
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="space-y-5">
+                                <div>
+                                    <x-ui.label for="name">Nama Lengkap</x-ui.label>
+                                    <input id="name" name="name" type="text"
+                                        value="{{ old('name', $user?->name) }}"
+                                        class="{{ $inputBase }} @error('name','profile') border-danger ring-danger-soft @enderror"
+                                        required>
+                                    @error('name', 'profile') <p class="text-xs text-danger mt-1">{{ $message }}</p> @enderror
+                                </div>
+
+                                <div>
+                                    <x-ui.label for="email">Email</x-ui.label>
+                                    <input id="email" name="email" type="email"
+                                        value="{{ old('email', $user?->email) }}"
+                                        class="{{ $inputBase }} @error('email','profile') border-danger ring-danger-soft @enderror"
+                                        required>
+                                    @error('email', 'profile') <p class="text-xs text-danger mt-1">{{ $message }}</p> @enderror
+                                </div>
+
+                                <div>
+                                    <x-ui.label for="no_hp">No. HP</x-ui.label>
+                                    <input id="no_hp" name="no_hp" type="text"
+                                        value="{{ old('no_hp', $user?->no_hp) }}"
+                                        placeholder="cth: 0812..."
+                                        class="{{ $inputBase }} @error('no_hp','profile') border-danger ring-danger-soft @enderror">
+                                    @error('no_hp', 'profile') <p class="text-xs text-danger mt-1">{{ $message }}</p> @enderror
+                                </div>
+                            </div>
+
+                            <div class="space-y-5">
+                                <div>
+                                    <x-ui.label for="username">Username</x-ui.label>
+                                    <input id="username" name="username" type="text"
+                                        value="{{ old('username', $user?->username) }}"
+                                        placeholder="cth: admin_gym"
+                                        class="{{ $inputBase }} @error('username','profile') border-danger ring-danger-soft @enderror"
+                                        readonly>
+                                    @error('username', 'profile') <p class="text-xs text-danger mt-1">{{ $message }}</p> @enderror
+                                    <p class="{{ $helpText }}">Digunakan untuk login alternatif.</p>
+                                </div>
+
+                                <div>
+                                    <x-ui.label for="jenis_kelamin">Jenis Kelamin</x-ui.label>
+                                    <select id="jenis_kelamin" name="jenis_kelamin"
+                                        class="{{ $inputBase }} @error('jenis_kelamin','profile') border-danger ring-danger-soft @enderror">
+                                        <option value="">- Pilih -</option>
+                                        <option value="laki-laki" {{ old('jenis_kelamin', $user?->jenis_kelamin) === 'laki-laki' ? 'selected' : '' }}>Laki-laki</option>
+                                        <option value="perempuan" {{ old('jenis_kelamin', $user?->jenis_kelamin) === 'perempuan' ? 'selected' : '' }}>Perempuan</option>
+                                    </select>
+                                    @error('jenis_kelamin', 'profile') <p class="text-xs text-danger mt-1">{{ $message }}</p> @enderror
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-2">
+                            <x-ui.label for="alamat">Alamat Lengkap</x-ui.label>
+                            <textarea id="alamat" name="alamat" rows="3"
+                                class="{{ $inputBase }} @error('alamat','profile') border-danger ring-danger-soft @enderror"
+                                placeholder="Alamat lengkap...">{{ old('alamat', $user?->alamat) }}</textarea>
+                            @error('alamat', 'profile') <p class="text-xs text-danger mt-1">{{ $message }}</p> @enderror
+                        </div>
+
+                        <div class="pt-4 flex items-center justify-end gap-3 border-t border-gray-100 dark:border-brand-borderSoft/40">
+                            <x-ui.button-primary type="submit" class="!shadow-lg !shadow-primary-dark/30">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Simpan Perubahan
+                            </x-ui.button-primary>
+                        </div>
+                    </form>
+                </div>
+
+                {{-- CONTENT: KEAMANAN --}}
+                <div x-show="tab==='security'" x-cloak class="p-6">
+                    <div class="mb-5 border-l-4 border-gold-600 pl-3">
+                        <h4 class="text-lg font-bold text-text-main">Ubah Kata Sandi</h4>
+                        <p class="text-xs text-gray-500 dark:text-text-muted mt-0.5">Disarankan menggunakan kombinasi huruf & angka minimal 8 karakter.</p>
+                    </div>
+
+                    {{-- inner card untuk form password: light override, dark ikut bawaan --}}
+                    <x-ui.card class="rounded-xl border border-gray-200 dark:border-transparent bg-white dark:bg-transparent p-6 shadow-sm dark:shadow-none">
+                        <form method="POST" action="{{ route($routePassword) }}" class="space-y-5">
+                            @csrf
+                            @method('PUT')
+
+                            <div class="flex flex-col gap-5">
+                                <div>
+                                    <x-ui.label for="current_password">Password Saat Ini</x-ui.label>
+                                    <input id="current_password" name="current_password" type="password" autocomplete="current-password"
+                                        class="{{ $inputBase }} @error('current_password','password') border-danger ring-danger-soft @enderror" required>
+                                    @error('current_password', 'password') <p class="text-xs text-danger mt-1">{{ $message }}</p> @enderror
+                                </div>
+
+                                <div>
+                                    <x-ui.label for="password">Password Baru</x-ui.label>
+                                    <input id="password" name="password" type="password" autocomplete="new-password"
+                                        class="{{ $inputBase }} @error('password','password') border-danger ring-danger-soft @enderror" required>
+                                    @error('password', 'password') <p class="text-xs text-danger mt-1">{{ $message }}</p> @enderror
+                                </div>
+
+                                <div>
+                                    <x-ui.label for="password_confirmation">Konfirmasi Password</x-ui.label>
+                                    <input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password"
+                                        class="{{ $inputBase }}" required>
+                                </div>
+                            </div>
+
+                            <div class="pt-4 flex items-center justify-end border-t border-gray-100 dark:border-brand-borderSoft/40">
+                                <x-ui.button-primary type="submit" class="!bg-gray-800 hover:!bg-gray-900 !shadow-lg !shadow-gray-800/30">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v3h8z"></path>
+                                    </svg>
+                                    Update Password
+                                </x-ui.button-primary>
+                            </div>
+                        </form>
+                    </x-ui.card>
+
+                    <div class="mt-6 rounded-lg border border-yellow-200 dark:border-brand-borderSoft/40 bg-yellow-50 dark:bg-transparent px-5 py-3 shadow-sm dark:shadow-none">
+                        <div class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-yellow-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                            </svg>
+                            <div>
+                                <h5 class="text-sm font-bold text-yellow-800 dark:text-text-main">Catatan Keamanan</h5>
+                                <ul class="mt-1 text-xs text-yellow-700 dark:text-text-muted list-disc pl-4 space-y-1">
+                                    <li>Password Anda disimpan dalam bentuk terenkripsi (hash).</li>
+                                    <li>Jika lupa password saat ini, silakan gunakan fitur "Lupa Password" di halaman login.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <style>[x-cloak]{display:none !important;}</style>
+            </x-ui.card>
+
         </div>
     </div>
-</x-app-layout>
+</x-layouts.admin>

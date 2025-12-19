@@ -10,12 +10,20 @@ return new class extends Migration
     {
         Schema::create('paket_memberships', function (Blueprint $table) {
             $table->id();
-            $table->string('nama'); // contoh: "Perhari", "1 Bulan", "Paket Couple"
-            $table->enum('tipe', ['single', 'couple', 'triple']);
-            $table->unsignedInteger('durasi'); // durasi dalam HARI
-            $table->decimal('harga', 12, 2);
-            $table->text('deskripsi')->nullable();
+
+            $table->string('nama', 100);
+            $table->enum('tipe', ['single', 'double', 'triple']); // final
+            $table->unsignedInteger('durasi'); // hari
+
+            // harga dalam rupiah tanpa desimal (disarankan)
+            $table->unsignedBigInteger('harga');
+
+            $table->string('deskripsi', 255)->nullable();
+
+            $table->softDeletes(); // agar paket bisa dinonaktifkan
             $table->timestamps();
+
+            $table->index(['tipe', 'durasi'], 'pm_tipe_durasi_idx');
         });
     }
 

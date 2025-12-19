@@ -6,21 +6,39 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+
+            // Identitas utama
             $table->string('name');
-            $table->string('email')->unique();
+            $table->string('username')->unique();
+
+            // Kontak
+            $table->string('email')->nullable()->unique();
+            $table->string('no_hp')->nullable()->unique();
+
+            // Profil tambahan
+            $table->text('alamat')->nullable();
+            $table->enum('jenis_kelamin', ['laki-laki', 'perempuan'])->nullable();
+            $table->string('foto')->nullable();
+
+            // Role
+            $table->string('role')->default('member');
+
+            // Auth bawaan
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
+
+            // AKTIFKAN SOFT DELETES
+            $table->softDeletes();
+
             $table->timestamps();
         });
 
+        // ... table password_reset_tokens dan sessions tetap sama ...
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
@@ -37,9 +55,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('users');

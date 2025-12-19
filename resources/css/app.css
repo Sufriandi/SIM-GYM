@@ -12,62 +12,50 @@
 @tailwind components;
 @tailwind utilities;
 
-.swal2-container.swal2-top-end {
-    margin-top: 65px !important;
+:root {
+  /* LIGHT THEME (angka = R G B) */
+  --brand-bg: 252 252 250;
+  --brand-shell: 245 230 214;
+  --brand-nav: 33 22 15;
+  --brand-sidebar: 38 24 16;
+  --brand-footer: 27 19 13;
+
+  --brand-card: 248 242 231;
+  --brand-cardSoft: 251 247 238;
+
+  --brand-surface-50: 253 251 247;
+  --brand-surface-100: 246 239 224;
+  --brand-surface-200: 236 224 199;
+
+  --brand-borderSoft: 227 213 197;
+  --brand-borderStrong: 166 124 57;
+
+  --text-main: 32 25 17;
+  --text-muted: 108 90 70;
 }
 
-/* === BETA GYM GOLD SCROLLBAR (GLOBAL) === */
+.dark {
+  /* DARK THEME */
+  --brand-bg: 14 13 12;
+  --brand-shell: 20 17 14;
+  --brand-nav: 10 10 10;
+  --brand-sidebar: 12 10 9;
+  --brand-footer: 8 8 8;
 
-/* Firefox */
-* {
-    scrollbar-width: thin; /* atau 'auto' kalau mau agak besar */
-    scrollbar-color: #d4a757 #111111;
+  --brand-card: 24 22 19;
+  --brand-cardSoft: 28 26 22;
+
+  --brand-surface-50: 32 30 26;
+  --brand-surface-100: 39 36 31;
+  --brand-surface-200: 48 44 38;
+
+  --brand-borderSoft: 65 57 46;
+  --brand-borderStrong: 212 167 87;
+
+  --text-main: 245 240 233;
+  --text-muted: 182 170 155;
 }
 
-/* Chrome, Edge, Safari */
-/* === BETA GYM GOLD SCROLLBAR (HANYA UNTUK .custom-scrollbar) === */
-
-.custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: #111; /* boleh kamu ganti sesuai tema dashboard */
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #d4a757;
-    border-radius: 999px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #c08f3e;
-}
-
-/* Optional: kalau kamu pakai class custom-scrollbar di Blade,
-   kita samakan saja dengan global supaya tidak beda-beda */
-.custom-scrollbar::-webkit-scrollbar {
-    width: 12px;
-    height: 10px;
-}
-
-[x-cloak] {
-    display: none !important;
-}
-@tailwind base;
-
-/* GLOBAL HEADING */
-@layer base {
-    h1,
-    h2 {
-        @apply font-heading;
-        font-weight: 700 !important;
-    }
-}
-
-@tailwind components;
-@tailwind utilities;
 
 .swal2-container.swal2-top-end {
     margin-top: 65px !important;

@@ -6,12 +6,36 @@
 ])
 
 @php
-    // Card dasar – dipakai di hampir semua halaman (termasuk Data Produk)
-    $baseClasses = 'rounded-3xl border border-brand-borderSoft bg-brand-card shadow-card';
+    /**
+     * Prinsip:
+     * - Light: tetap seperti desain sekarang.
+     * - Dark: tambah ring + border opacity + surface sedikit berbeda agar card tidak menyatu.
+     * - Tidak mengganggu class override dari pemanggil (tetap bisa di-override via $attributes->merge).
+     */
 
-    // Versi highlight – warna sedikit lebih terang & shadow lebih kuat,
-    // tapi TIDAK mengubah layout (tidak ada border-3, radius aneh, dsb).
-    $highlightClasses = 'rounded-3xl border border-brand-borderStrong bg-brand-cardSoft shadow-card-strong';
+    // Card dasar (lebih kontras di dark, tapi tetap brand)
+    $baseClasses = implode(' ', [
+        'rounded-3xl',
+        'border border-brand-borderSoft/80 dark:border-brand-borderSoft/35',
+        'bg-brand-card dark:bg-brand-card/70',
+        'shadow-card',
+        // garis pemisah halus supaya card tidak menyatu di dark
+        'ring-1 ring-black/5 dark:ring-brand-borderSoft/20',
+        // feel
+        'backdrop-blur-[1px]',
+        'transition-colors duration-200',
+    ]);
+
+    // Card highlight (lebih kuat, tapi tetap konsisten)
+    $highlightClasses = implode(' ', [
+        'rounded-3xl',
+        'border border-brand-borderStrong/90 dark:border-brand-borderStrong/55',
+        'bg-brand-cardSoft dark:bg-brand-cardSoft/70',
+        'shadow-card-strong',
+        'ring-1 ring-brand-borderStrong/20 dark:ring-brand-borderStrong/25',
+        'backdrop-blur-[1px]',
+        'transition-colors duration-200',
+    ]);
 @endphp
 
 <section
