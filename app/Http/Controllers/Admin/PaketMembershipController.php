@@ -8,11 +8,18 @@ use Illuminate\Http\Request;
 
 class PaketMembershipController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $paketMemberships = PaketMembership::orderBy('tipe')
+        $q = $request->get('q');
+        $tipe = $request->get('tipe');
+
+        $paketMemberships = PaketMembership::query()
+            ->when($q, fn($s) => $s->where('nama', 'like', "%{$q}%"))
+            ->when($tipe, fn($s) => $s->where('tipe', $tipe))
+            ->orderBy('tipe')
             ->orderBy('durasi')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
         return view('admin.paket_memberships.index', compact('paketMemberships'));
     }
@@ -22,9 +29,9 @@ class PaketMembershipController extends Controller
         $validated = $request->validate([
             'nama'      => ['required', 'string', 'max:100'],
             'tipe'      => ['required', 'in:single,double,triple'],
-            'durasi'    => ['required', 'integer', 'min:1'],
-            'harga'     => ['required', 'numeric', 'min:0'],
-            'deskripsi' => ['nullable', 'string'],
+            'durasi'    => ['required', 'integer', 'min:1', 'max:3650'],
+            'harga'     => ['required', 'integer', 'min:0', 'max:2000000000'],
+            'deskripsi' => ['nullable', 'string', 'max:255'],
         ]);
 
         PaketMembership::create($validated);
@@ -37,9 +44,9 @@ class PaketMembershipController extends Controller
         $validated = $request->validate([
             'nama'      => ['required', 'string', 'max:100'],
             'tipe'      => ['required', 'in:single,double,triple'],
-            'durasi'    => ['required', 'integer', 'min:1'],
-            'harga'     => ['required', 'numeric', 'min:0'],
-            'deskripsi' => ['nullable', 'string'],
+            'durasi'    => ['required', 'integer', 'min:1', 'max:3650'],
+            'harga'     => ['required', 'integer', 'min:0', 'max:2000000000'],
+            'deskripsi' => ['nullable', 'string', 'max:255'],
         ]);
 
         $paketMembership->update($validated);
@@ -49,8 +56,17 @@ class PaketMembershipController extends Controller
 
     public function destroy(PaketMembership $paketMembership)
     {
+        // Soft delete (paket dinonaktifkan, histori transaksi aman)
         $paketMembership->delete();
 
-        return back()->with('success', 'Paket membership berhasil dihapus.');
+        return back()->with('success', 'Paket membership berhasil dinonaktifkan.');
+    }
+
+    public function restore($id)
+    {
+        $paket = PaketMembership::withTrashed()->findOrFail($id);
+        $paket->restore();
+
+        return back()->with('success', 'Paket membership berhasil diaktifkan kembali.');
     }
 }

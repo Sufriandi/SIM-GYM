@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('username')->unique();
 
-            // Kontak (sering NULL)
+            // Kontak
             $table->string('email')->nullable()->unique();
             $table->string('no_hp')->nullable()->unique();
 
@@ -32,12 +32,13 @@ return new class extends Migration
             $table->string('password');
             $table->rememberToken();
 
-            // Jika Anda mau “hapus” tanpa hilangkan histori
-            // $table->softDeletes();
+            // AKTIFKAN SOFT DELETES
+            $table->softDeletes();
 
             $table->timestamps();
         });
 
+        // ... table password_reset_tokens dan sessions tetap sama ...
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');

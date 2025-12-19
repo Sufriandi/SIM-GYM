@@ -3,13 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes; // Tambahkan ini
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    // Tambahkan SoftDeletes di sini
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -36,10 +38,6 @@ class User extends Authenticatable
         ];
     }
 
-
-    /**
-     * Otomatis buat record members hanya jika role = member.
-     */
     protected static function booted(): void
     {
         static::created(function (User $user) {
@@ -50,23 +48,14 @@ class User extends Authenticatable
                 ['tanggal_daftar' => now()->toDateString()]
             );
         });
-
-        // Opsional: jika suatu saat role berubah jadi member, buat member-nya.
-        // static::updated(function (User $user) {
-        //     if ($user->wasChanged('role') && $user->role === 'member') {
-        //         $user->member()->firstOrCreate(
-        //             ['user_id' => $user->id],
-        //             ['tanggal_daftar' => now()]
-        //         );
-        //     }
-        // });
     }
 
     /**
-     * Relasi: user punya satu member (hanya untuk role=member).
+     * Relasi: user punya satu member.
+     * Ditambahkan withTrashed agar jika User dihapus, data Member tetap bisa diakses lewat User.
      */
     public function member()
     {
-        return $this->hasOne(\App\Models\Member::class);
+        return $this->hasOne(\App\Models\Member::class)->withTrashed();
     }
 }

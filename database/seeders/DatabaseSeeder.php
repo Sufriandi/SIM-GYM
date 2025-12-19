@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -13,12 +14,12 @@ class DatabaseSeeder extends Seeder
         // 1. Akun ADMIN
         // ==============================
         User::updateOrCreate(
-            ['username' => 'admin'], // lebih stabil daripada email jika email nullable
+            ['username' => 'admin'],
             [
                 'name'     => 'Admin BETA GYM',
-                'email'    => 'admin@sim.gym', // boleh tetap isi
+                'email'    => 'admin@sim.gym',
                 'no_hp'    => '6304230002',
-                'password' => 'password', // auto-hash oleh cast 'hashed'
+                'password' => Hash::make('password'),
                 'role'     => 'admin',
             ]
         );
@@ -34,7 +35,7 @@ class DatabaseSeeder extends Seeder
                 'no_hp'         => '6304230003',
                 'alamat'        => 'Jl. Contoh No. 1, Banjarmasin',
                 'jenis_kelamin' => 'laki-laki',
-                'password'      => 'password', // auto-hash
+                'password'      => 'password',
                 'role'          => 'member',
             ]
         );
@@ -58,15 +59,18 @@ class DatabaseSeeder extends Seeder
         }
 
         // ==============================
-        // 4. Seeder lain
+        // 4. Seeder lain (urutan penting)
         // ==============================
         $this->call([
             PaketMembershipSeeder::class,
-            LatihanHarianSeeder::class,
 
-            // Set periode di tabel members (user role member sudah dibuat di atas)
+            // Buat row members terlebih dahulu (hanya tanggal_daftar)
             MemberSeeder::class,
 
+            // Baru buat transaksi membership -> akan mengisi tanggal_mulai/akhir di members
+            TransaksiMembershipSeeder::class,
+
+            LatihanHarianSeeder::class,
             ProdukSeeder::class,
             CoachSeeder::class,
             InventarisAlatSeeder::class,

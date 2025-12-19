@@ -46,13 +46,26 @@ class LoginRequest extends FormRequest
             ? 'email'
             : (is_numeric($login) ? 'no_hp' : 'username');
 
-        if (!Auth::attempt([$field => $login, 'password' => $this->password], $this->boolean('remember'))) {
+        // 1. Cek apakah user ada (termasuk yang sudah di-soft delete)
+        $user = \App\Models\User::withTrashed()->where($field, $login)->first();
+
+        if (! $user || ! \Illuminate\Support\Facades\Hash::check($this->password, $user->password)) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
                 'login' => trans('auth.failed'),
             ]);
         }
+
+        // 2. Cek apakah user sedang di-soft delete (Non-aktif)
+        if ($user->trashed()) {
+            throw ValidationException::withMessages([
+                'login' => 'Akun Anda telah dinonaktifkan. Silakan hubungi admin BETA GYM.',
+            ]);
+        }
+
+        // 3. Jika semua aman, lakukan login
+        Auth::login($user, $this->boolean('remember'));
 
         RateLimiter::clear($this->throttleKey());
     }
