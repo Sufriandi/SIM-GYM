@@ -1,9 +1,38 @@
 {{-- resources/views/admin/izin_latihan/modals/detail.blade.php --}}
 @php
     use Illuminate\Support\Facades\Storage;
-@endphp
+    use Illuminate\Support\Str;
+    use Carbon\Carbon;
 
-@props(['izin'])
+    $memberName = $izin->member?->user?->name ?? '[Member dihapus]';
+    $memberUsername = $izin->member?->user?->username; // tanpa '@'
+
+    $akhirMembership = $izin->member?->tanggal_akhir
+        ? Carbon::parse($izin->member->tanggal_akhir)
+        : null;
+
+    $processedAt = $izin->tanggal_persetujuan ? Carbon::parse($izin->tanggal_persetujuan) : null;
+
+    $badgeVariant = match ($izin->status) {
+        'disetujui' => 'success',
+        'ditolak'   => 'danger',
+        default     => 'warning',
+    };
+
+    $statusLabel = match ($izin->status) {
+        'disetujui' => 'DISETUJUI',
+        'ditolak'   => 'DITOLAK',
+        default     => 'PENDING',
+    };
+
+    $adminNote = trim((string) ($izin->keterangan_admin ?? ''));
+
+    $showAdminBox =
+        $izin->status !== 'pending'
+        || $adminNote !== ''
+        || $izin->tanggal_persetujuan
+        || $izin->durasi_izin_disetujui !== null;
+@endphp
 
 <div
     x-show="openDetailId === {{ $izin->id }}"
@@ -23,21 +52,21 @@
             <div>
                 <h2 class="text-xl font-semibold text-text-main">Detail Izin Member</h2>
                 <p class="text-sm text-text-muted mt-0.5">
-                    Lihat informasi lengkap pengajuan izin latihan.
+                    Member:
+                    <span class="font-semibold text-gold-600">
+                        {{ $memberName }}
+                        {!! $memberUsername ? ' <span class="text-text-muted">(' . e($memberUsername) . ')</span>' : '' !!}
+                    </span>
                 </p>
             </div>
 
-            <div class="flex items-center gap-3">
-                
-
-                <button
-                    type="button"
-                    class="rounded-full p-1.5 hover:bg-brand-surface-50 transition"
-                    @click="openDetailId = null"
-                >
-                    <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
-                </button>
-            </div>
+            <button
+                type="button"
+                class="rounded-full p-1.5 hover:bg-brand-surface-50 transition"
+                @click="openDetailId = null"
+            >
+                <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
+            </button>
         </div>
 
         {{-- ISI MODAL --}}
@@ -47,12 +76,8 @@
                 <div class="lg:col-span-2 space-y-4">
                     {{-- DATA PENGAJUAN --}}
                     <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-5 py-4">
-                        <h3 class="text-base font-semibold text-text-main mb-1">
-                            Data Pengajuan Izin
-                        </h3>
-                        <p class="text-xs text-text-muted mb-4">
-                            Detail permintaan izin yang diajukan member.
-                        </p>
+                        <h3 class="text-base font-semibold text-text-main mb-1">Data Pengajuan Izin</h3>
+                        <p class="text-xs text-text-muted mb-4">Detail permintaan izin yang diajukan member.</p>
 
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
@@ -75,33 +100,22 @@
                             </div>
                         </div>
 
-                        @if ($izin->member)
-                            <div class="mt-5 pt-4 border-t border-brand-borderSoft/70">
-                                <p class="text-xs text-text-muted">Akhir Membership</p>
-                                <p class="text-lg font-semibold text-gold-700">
-                                    {{ \Carbon\Carbon::parse($izin->member->tanggal_akhir)->translatedFormat('d F Y') }}
-                                </p>
-                            </div>
-                        @endif
+                        <div class="mt-5 pt-4 border-t border-brand-borderSoft/70">
+                            <p class="text-xs text-text-muted">Akhir Membership</p>
+                            <p class="text-lg font-semibold text-gold-700">
+                                {{ $akhirMembership ? $akhirMembership->translatedFormat('d F Y') : '-' }}
+                            </p>
+                        </div>
                     </div>
 
                     {{-- ALASAN MEMBER --}}
                     <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-5 py-4">
-                        <h3 class="text-base font-semibold text-text-main mb-2">
-                            Alasan Pengajuan Member
-                        </h3>
+                        <h3 class="text-base font-semibold text-text-main mb-2">Alasan Pengajuan Member</h3>
 
                         @php
-                            // Ambil teks asli
                             $alasanRaw = $izin->alasan ?? '';
-
-                            // Trim spasi & newline di awal/akhir
                             $alasanTrimmed = trim($alasanRaw);
-
-                            // Jika setelah trim masih ada isi, convert newline -> <br>, kalau kosong tampilkan '-'
-                            $alasanHtml = $alasanTrimmed !== ''
-                                ? nl2br(e($alasanTrimmed))
-                                : '-';
+                            $alasanHtml = $alasanTrimmed !== '' ? nl2br(e($alasanTrimmed)) : '-';
                         @endphp
 
                         <div class="mt-1 p-3 rounded-xl bg-brand-surface-50 border border-brand-borderSoft text-sm text-text-main min-h-[80px]">
@@ -110,13 +124,11 @@
                     </div>
                 </div>
 
-                {{-- KANAN: BUKTI & AKSI --}}
+                {{-- KANAN: BUKTI & KET ADMIN / AKSI --}}
                 <div class="space-y-4">
                     {{-- BUKTI ALASAN --}}
                     <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-5 py-4">
-                        <h3 class="text-base font-semibold text-text-main mb-3">
-                            Bukti Alasan
-                        </h3>
+                        <h3 class="text-base font-semibold text-text-main mb-3">Bukti Alasan</h3>
 
                         @if ($izin->bukti_alasan)
                             @php
@@ -130,11 +142,7 @@
                                 </div>
                             @else
                                 <div class="w-full rounded-xl overflow-hidden border border-brand-borderSoft bg-brand-surface-50 mb-3">
-                                    <img
-                                        src="{{ $url }}"
-                                        alt="Bukti Izin"
-                                        class="w-full h-40 object-cover"
-                                    >
+                                    <img src="{{ $url }}" alt="Bukti Izin" class="w-full h-40 object-cover">
                                 </div>
                             @endif
 
@@ -150,35 +158,83 @@
                         @endif
                     </div>
 
-                    {{-- KOTAK INFO AKSI (HANYA PENDING) --}}
+                    {{-- KETERANGAN ADMIN (khusus processed / history) --}}
+                    @if ($showAdminBox)
+                        <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-5 py-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="text-base font-semibold text-text-main">Keterangan Admin</h3>
+                                <x-ui.badge :variant="$badgeVariant">{{ $statusLabel }}</x-ui.badge>
+                            </div>
+
+                            <div class="space-y-2 text-xs">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-text-muted">Diproses</span>
+                                    <span class="text-text-main font-semibold">
+                                        {{ $processedAt ? $processedAt->translatedFormat('d F Y, H:i') : '-' }}
+                                    </span>
+                                </div>
+
+                                <div class="flex items-center justify-between">
+                                    <span class="text-text-muted">Disetujui</span>
+                                    <span class="text-text-main font-semibold">
+                                        @if ($izin->status === 'disetujui')
+                                            {{ (int) ($izin->durasi_izin_disetujui ?? 0) }} Hari
+                                        @else
+                                            0 Hari
+                                        @endif
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="mt-3 p-3 rounded-xl bg-brand-surface-50 border border-brand-borderSoft text-sm text-text-main">
+                                {!! nl2br(e($adminNote !== '' ? $adminNote : 'Tidak ada keterangan.')) !!}
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- AKSI ADMIN (jika status pending) --}}
                     @if ($izin->status === 'pending')
                         <div class="rounded-2xl border border-warning bg-warning-soft/10 px-5 py-4">
                             <h3 class="text-xs font-semibold tracking-wide text-warning uppercase mb-2">
                                 Menunggu Aksi Admin
                             </h3>
                             <p class="text-xs text-text-muted mb-4">
-                                Aksi persetujuan penuh dilakukan melalui formulir persetujuan.
+                                Pilih tindakan yang akan dilakukan untuk izin ini.
                             </p>
-                            {{-- Tombol Proses Persetujuan di dalam modal DETAIL --}}
-                        <x-ui.button-primary
-                            type="button"
-                            class="w-full justify-center"
-                            @click="
-                                // tutup modal detail untuk izin ini
-                                openDetailId = null;
 
-                                // buka modal approve untuk izin yang sama
-                                openApproveId = {{ $izin->id }};
-                            "
-                        >
-                            Proses Persetujuan Sekarang
-                        </x-ui.button-primary>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {{-- SETUJUI --}}
+                                <x-ui.button-success
+                                    type="button"
+                                    class="w-full justify-center gap-2"
+                                    @click="
+                                        openDetailId = null;
+                                        openApproveId = {{ $izin->id }};
+                                    "
+                                >
+                                    <i data-lucide="circle-check" class="w-5 h-5"></i>
+                                    Setujui
+                                </x-ui.button-success>
+
+                                {{-- TOLAK --}}
+                                <x-ui.button-primary
+                                    type="button"
+                                    class="w-full justify-center gap-2"
+                                    @click="
+                                        openDetailId = null;
+                                        openRejectId = {{ $izin->id }};
+                                    "
+                                >
+                                    <i data-lucide="circle-x" class="w-5 h-5"></i>
+                                    Tolak
+                                </x-ui.button-primary>
+                            </div>
                         </div>
                     @endif
                 </div>
             </div>
 
-            {{-- FOOTER MOBILE: TOMBOL TUTUP --}}
+            {{-- FOOTER MOBILE --}}
             <div class="mt-6 flex justify-end lg:hidden">
                 <x-ui.button-secondary type="button" @click="openDetailId = null">
                     Tutup

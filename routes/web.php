@@ -30,6 +30,9 @@ use App\Http\Controllers\Admin\InfoQrisController;
 // Controller Absensi (Admin)
 use App\Http\Controllers\Admin\KehadiranMemberController as AdminKehadiranMemberController;
 
+// Controller Laporan / Analitik (Admin)
+use App\Http\Controllers\Admin\AbsensiReportController;
+
 // Controller Member
 use App\Http\Controllers\Member\DashboardController as MemberDashboardController;
 use App\Http\Controllers\Member\IzinLatihanController as MemberIzinLatihanController;
@@ -64,14 +67,18 @@ Route::get('/dashboard', function () {
 
 /*
 |--------------------------------------------------------------------------
-| 3. RUTE PROFIL UMUM (Bawaan Breeze)
+| 3. RUTE PROFIL (UMUM)
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
+
+Route::middleware(['auth'])
+    ->prefix('profile')
+    ->name('profile.')
+    ->group(function () {
+        Route::get('/edit', [ProfileController::class, 'edit'])->name('edit');
+        Route::put('/update', [ProfileController::class, 'update'])->name('update');
+        Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password');
+    });
 
 /*
 |--------------------------------------------------------------------------
@@ -85,6 +92,8 @@ Route::middleware(['auth', 'admin'])
 
         // ================== DASHBOARD ==================
         Route::get('dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+        
 
         // ================== INVENTARIS ALAT ==================
         Route::resource('inventaris', InventarisAlatController::class)
@@ -170,6 +179,8 @@ Route::middleware(['auth', 'admin'])
         Route::resource('profil_gym', ProfilGymController::class)
             ->parameters(['profil_gym' => 'profilGym']);
 
+        
+
         // =========================================================
         // REKENING (INDEX GABUNGAN) + CRUD REKENING/QRIS
         // =========================================================
@@ -189,6 +200,26 @@ Route::middleware(['auth', 'admin'])
         Route::prefix('absensi')->name('absensi.')->group(function () {
             Route::get('/', [AdminKehadiranMemberController::class, 'index'])->name('index');
             Route::get('/print', [AdminKehadiranMemberController::class, 'print'])->name('print');
+        });
+        // =========================================================
+                    // LAPORAN / ANALITIK (ADMIN)
+        // =========================================================
+        Route::prefix('laporan')->name('laporan.')->group(function () {
+
+            // Tidak dibuat redirect. Kalau belum ada halaman index laporan, biarkan tidak ada.
+
+            // Laporan Absensi
+            Route::get('/absensi', [AbsensiReportController::class, 'index'])
+                ->name('absensi.index');
+                Route::get('/absensi/pdf', [AbsensiReportController::class, 'exportPdf'])
+                ->name('absensi.pdf');
+
+            // Placeholder (sementara belum ada)
+            Route::get('/membership', fn () => abort(404))->name('membership.index');
+            Route::get('/produk', fn () => abort(404))->name('produk.index');
+            Route::get('/stok', fn () => abort(404))->name('stok.index');
+            Route::get('/member', fn () => abort(404))->name('member.index');
+            Route::get('/keuangan', fn () => abort(404))->name('keuangan.index');
         });
     });
 

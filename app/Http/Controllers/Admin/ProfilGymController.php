@@ -9,21 +9,12 @@ use Illuminate\Support\Facades\Storage;
 
 class ProfilGymController extends Controller
 {
-    /**
-     * Tampilkan profil gym (hanya 1 data).
-     */
     public function index()
     {
-        // Ambil data pertama (jika belum ada, null)
         $profil = ProfilGym::first();
-
         return view('admin.profil_gym.index', compact('profil'));
     }
 
-    /**
-     * Form untuk membuat data pertama profil gym.
-     * Karena data hanya 1, jika sudah ada maka redirect ke edit.
-     */
     public function create()
     {
         $profil = ProfilGym::first();
@@ -34,28 +25,27 @@ class ProfilGymController extends Controller
         return view('admin.profil_gym.create');
     }
 
-    /**
-     * Simpan data profil gym pertama kali.
-     */
     public function store(Request $request)
     {
-        $data = $this->validateData($request);
+        $section = $request->input('_section', 'info');
+        $profil  = ProfilGym::first();
 
-        // Handle upload file (logo, favicon, hero_image)
-        $uploadMap = [
-            'logo'       => 'profil_gym/logo',
-            'favicon'    => 'profil_gym/favicon',
-            'hero_image' => 'profil_gym/hero',
-        ];
-
-        foreach ($uploadMap as $field => $folder) {
-            if ($request->hasFile($field)) {
-                $data[$field] = $request->file($field)->store($folder, 'public');
-            } else {
-                // pastikan tidak menyimpan null eksplisit
-                unset($data[$field]);
-            }
+        // Kalau data sudah ada, amankan: treat sebagai update profil pertama
+        if ($profil) {
+            return $this->update($request, $profil);
         }
+
+        // Kalau belum ada profil tapi user submit section kontak, tolak
+        if ($section === 'kontak') {
+            return back()
+                ->withInput()
+                ->with('error', 'Silakan simpan Informasi Utama terlebih dahulu (minimal Nama Gym) sebelum mengisi Kontak & Sosial Media.');
+        }
+
+        $data = $this->validateBySection($request, 'info');
+
+        // Upload hanya untuk section info
+        $data = $this->handleUploads($request, $data, null);
 
         ProfilGym::create($data);
 
@@ -64,48 +54,25 @@ class ProfilGymController extends Controller
             ->with('success', 'Profil gym berhasil dibuat.');
     }
 
-    /**
-     * Detail profil gym.
-     */
     public function show(ProfilGym $profilGym)
     {
         return view('admin.profil_gym.show', compact('profilGym'));
     }
 
-    /**
-     * Form edit profil gym.
-     */
     public function edit(ProfilGym $profilGym)
     {
         return view('admin.profil_gym.edit', compact('profilGym'));
     }
 
-    /**
-     * Update data profil gym.
-     */
     public function update(Request $request, ProfilGym $profilGym)
     {
-        $data = $this->validateData($request);
+        $section = $request->input('_section', 'info');
 
-        $uploadMap = [
-            'logo'       => 'profil_gym/logo',
-            'favicon'    => 'profil_gym/favicon',
-            'hero_image' => 'profil_gym/hero',
-        ];
+        $data = $this->validateBySection($request, $section);
 
-        foreach ($uploadMap as $field => $folder) {
-            if ($request->hasFile($field)) {
-                // hapus file lama kalau ada
-                if ($profilGym->$field && Storage::disk('public')->exists($profilGym->$field)) {
-                    Storage::disk('public')->delete($profilGym->$field);
-                }
-
-                // simpan file baru
-                $data[$field] = $request->file($field)->store($folder, 'public');
-            } else {
-                // kalau tidak upload baru, jangan timpa path lama dengan null
-                unset($data[$field]);
-            }
+        // Upload hanya untuk section info
+        if ($section === 'info') {
+            $data = $this->handleUploads($request, $data, $profilGym);
         }
 
         $profilGym->update($data);
@@ -115,12 +82,8 @@ class ProfilGymController extends Controller
             ->with('success', 'Profil gym berhasil diperbarui.');
     }
 
-    /**
-     * Hapus profil gym (jarang digunakan dalam config).
-     */
     public function destroy(ProfilGym $profilGym)
     {
-        // hapus file-file terkait kalau ada
         foreach (['logo', 'favicon', 'hero_image'] as $field) {
             if ($profilGym->$field && Storage::disk('public')->exists($profilGym->$field)) {
                 Storage::disk('public')->delete($profilGym->$field);
@@ -135,15 +98,26 @@ class ProfilGymController extends Controller
     }
 
     /**
-     * Validasi data profil gym.
+     * Validasi berdasarkan section form yang disubmit.
      */
-    private function validateData(Request $request)
+    private function validateBySection(Request $request, string $section): array
     {
-        return $request->validate([
-            'nama'         => 'required|string|max:255',
-            'deskripsi'    => 'nullable|string',
+        $section = in_array($section, ['info', 'kontak'], true) ? $section : 'info';
 
-            // kontak & sosmed
+        $rulesInfo = [
+            'nama'       => 'required|string|max:255',
+            'deskripsi'  => 'nullable|string',
+            'lokasi'     => 'nullable|string',
+            'jam_buka'   => 'nullable',
+            'jam_tutup'  => 'nullable',
+
+            // file (opsional)
+            'logo'       => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'favicon'    => 'nullable|image|mimes:jpg,jpeg,png,webp|max:1024',
+            'hero_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+        ];
+
+        $rulesKontak = [
             'instagram'    => 'nullable|string|max:255',
             'tiktok'       => 'nullable|string|max:255',
             'youtube'      => 'nullable|string|max:255',
@@ -151,16 +125,39 @@ class ProfilGymController extends Controller
             'whatsapp'     => 'nullable|string|max:30',
             'email_kontak' => 'nullable|email|max:255',
             'maps_url'     => 'nullable|string|max:500',
+        ];
 
-            // alamat & jam operasional
-            'lokasi'       => 'nullable|string',
-            'jam_buka'     => 'nullable',
-            'jam_tutup'    => 'nullable',
+        $rules = $section === 'kontak' ? $rulesKontak : $rulesInfo;
 
-            // file image (opsional)
-            'logo'         => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-            'favicon'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:1024',
-            'hero_image'   => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
-        ]);
+        return $request->validate($rules);
+    }
+
+    /**
+     * Handle upload file + hapus file lama jika update.
+     */
+    private function handleUploads(Request $request, array $data, ?ProfilGym $profilGym): array
+    {
+        $uploadMap = [
+            'logo'       => 'profil_gym/logo',
+            'favicon'    => 'profil_gym/favicon',
+            'hero_image' => 'profil_gym/hero',
+        ];
+
+        foreach ($uploadMap as $field => $folder) {
+            if ($request->hasFile($field)) {
+
+                // hapus file lama kalau update
+                if ($profilGym && $profilGym->$field && Storage::disk('public')->exists($profilGym->$field)) {
+                    Storage::disk('public')->delete($profilGym->$field);
+                }
+
+                $data[$field] = $request->file($field)->store($folder, 'public');
+            } else {
+                // jangan timpa path lama dengan null
+                unset($data[$field]);
+            }
+        }
+
+        return $data;
     }
 }

@@ -4,6 +4,20 @@
     'pageSubtitle' => null,   // kita abaikan di navbar supaya tidak dobel
     'notificationCount' => 0,
 ])
+@php
+    use Illuminate\Support\Facades\Storage;
+    use Illuminate\Support\Str;
+
+    $authUser = auth()->user();
+    $avatarUrl = ($authUser && !empty($authUser->foto)) ? Storage::url($authUser->foto) : null;
+
+    $initials = Str::of($authUser?->name ?: 'AD')
+        ->trim()
+        ->explode(' ')
+        ->map(fn($p) => Str::upper(Str::substr($p, 0, 1)))
+        ->take(2)
+        ->join('');
+@endphp
 
 <header
     class="fixed top-0 left-0 md:left-64 right-0 h-16 flex items-center z-30
@@ -11,14 +25,38 @@
     x-data="{
         showNotifications: false,
         showProfile: false,
-        searchQuery: ''
+        searchQuery: '',
+
+        // ===== THEME (tanpa DB, pakai localStorage) =====
+        theme: 'light',
+
+        initTheme() {
+            const saved = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            // Default ikut sistem kalau belum pernah pilih
+            this.theme = saved ?? (prefersDark ? 'dark' : 'light');
+            this.applyTheme();
+        },
+
+        applyTheme() {
+            document.documentElement.classList.toggle('dark', this.theme === 'dark');
+            document.documentElement.dataset.theme = this.theme;
+        },
+
+        toggleTheme() {
+            this.theme = (this.theme === 'dark') ? 'light' : 'dark';
+            localStorage.setItem('theme', this.theme);
+            this.applyTheme();
+        },
     }"
+    x-init="initTheme()"
     @click.away="showNotifications = false; showProfile = false"
     role="banner"
 >
     <div
         class="w-full px-4 lg:px-8 flex items-center justify-between gap-3 md:gap-4
-               flex-wrap" {{-- supaya di layar kecil boleh turun ke baris kedua tanpa bikin scroll horizontal --}}
+               flex-wrap"
     >
 
         {{-- KIRI: tombol mobile + breadcrumb --}}
@@ -196,11 +234,21 @@
                     :aria-expanded="showProfile"
                 >
                     <div
-                        class="w-8 h-8 rounded-full bg-gradient-to-br from-gold-400 to-gold-600
-                               flex items-center justify-center text-xs font-bold text-brand-black shadow-md"
-                    >
-                        {{ strtoupper(substr(auth()->user()->name ?? 'AD', 0, 2)) }}
-                    </div>
+    class="w-8 h-8 rounded-full overflow-hidden border border-brand-borderSoft bg-brand-surface-50
+           flex items-center justify-center shadow-md"
+>
+    @if($avatarUrl)
+        <img src="{{ $avatarUrl }}" alt="Foto Profil" class="w-full h-full object-cover">
+    @else
+        <div
+            class="w-full h-full bg-gradient-to-br from-gold-400 to-gold-600
+                   flex items-center justify-center text-xs font-bold text-brand-black"
+        >
+            {{ $initials }}
+        </div>
+    @endif
+</div>
+
                     <div class="leading-tight hidden sm:block text-left">
                         <div
                             class="text-xs font-semibold text-text-main truncate max-w-[100px]
@@ -229,7 +277,7 @@
                     x-transition:leave="transition ease-in duration-150"
                     x-transition:leave-start="opacity-100"
                     x-transition:leave-end="opacity-0"
-                    class="absolute right-0 mt-2 w-56 bg-brand-card border border-brand-borderSoft
+                    class="absolute right-0 mt-2 w-64 bg-brand-card border border-brand-borderSoft
                            rounded-2xl shadow-2xl overflow-hidden z-50"
                 >
                     <div class="px-4 py-3 border-b border-brand-borderSoft bg-brand-shell/70">
@@ -243,19 +291,37 @@
 
                     <div class="py-2">
                         <a
-                            href="#"
+                            href="{{ route('profile.edit') }}"
                             class="flex items-center gap-3 px-4 py-2.5 hover:bg-brand-gunmetal/20 transition-colors"
                         >
                             <i data-lucide="user" class="w-4 h-4 text-text-muted"></i>
                             <span class="text-sm text-text-main">Profil Saya</span>
                         </a>
-                        <a
-                            href="#"
-                            class="flex items-center gap-3 px-4 py-2.5 hover:bg-brand-gunmetal/20 transition-colors"
+
+                        {{-- === GANTI "PENGATURAN" MENJADI MODE / TEMA === --}}
+                        <button
+                            type="button"
+                            @click="toggleTheme()"
+                            class="w-full flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-brand-gunmetal/20 transition-colors text-left"
                         >
-                            <i data-lucide="settings" class="w-4 h-4 text-text-muted"></i>
-                            <span class="text-sm text-text-main">Pengaturan</span>
-                        </a>
+                            <div class="flex items-center gap-3 min-w-0">
+                                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-brand-shell border border-brand-borderSoft">
+                                    <i data-lucide="moon" class="w-4 h-4 text-text-muted" x-show="theme === 'light'"></i>
+                                    <i data-lucide="sun" class="w-4 h-4 text-text-muted" x-show="theme === 'dark'"></i>
+                                </span>
+                                <div class="min-w-0">
+                                    <div class="text-sm text-text-main font-medium">Mode / Tema</div>
+                                    <div class="text-[11px] text-text-muted" x-text="theme === 'dark' ? 'Gelap' : 'Terang'"></div>
+                                </div>
+                            </div>
+
+                            <div class="relative w-11 h-6 rounded-full transition"
+                                 :class="theme === 'dark' ? 'bg-primary-dark' : 'bg-neutral-300'">
+                                <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition"
+                                      :class="theme === 'dark' ? 'translate-x-5' : ''"></span>
+                            </div>
+                        </button>
+
                         <a
                             href="#"
                             class="flex items-center gap-3 px-4 py-2.5 hover:bg-brand-gunmetal/20 transition-colors"

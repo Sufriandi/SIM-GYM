@@ -18,6 +18,18 @@
 
     {{-- Lucide Icons --}}
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+    (function () {
+    const saved = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    // Default: ikut sistem kalau belum pernah pilih
+    const theme = saved || (prefersDark ? 'dark' : 'light');
+
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    document.documentElement.dataset.theme = theme;
+    })();
+    </script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>

@@ -74,72 +74,70 @@ class KehadiranMemberController extends Controller
      * Halaman admin: QR aktif + daftar kehadiran.
      *
      * - QR & kartu periode tetap ikut mode (harian/mingguan/bulanan).
-     * - Tabel "Daftar Kehadiran" SELALU menampilkan data 1 bulan
-     *   (bulan dari tanggal filter, atau bulan hari ini jika kosong).
+     * - Tabel "Daftar Kehadiran" SELALU menampilkan data 1 bulan penuh,
      */
     public function index(Request $request)
-    {
-        // Mode periode untuk QR
-        $requestedMode = $request->get('mode');
-        $periodeAktif  = $this->getOrCreateActivePeriodeForToday($requestedMode);
+{
+    $requestedMode = $request->get('mode');
+    $periodeAktif  = $this->getOrCreateActivePeriodeForToday($requestedMode);
 
-        // ==========================
-        // RANGE BULAN UNTUK TABEL
-        // ==========================
-        if ($request->filled('tanggal')) {
-            $baseDate = Carbon::parse($request->input('tanggal'));
+    $start = Carbon::parse($periodeAktif->tanggal_mulai)->toDateString();
+    $end   = Carbon::parse($periodeAktif->tanggal_selesai)->toDateString();
+
+    $query = KehadiranMember::with(['member.user'])
+        ->where(function ($q) use ($periodeAktif, $start, $end) {
+            $q->where('absensi_periode_id', $periodeAktif->id)
+              ->orWhere(function ($qq) use ($start, $end) {
+                  $qq->whereNull('absensi_periode_id')
+                     ->whereBetween('tanggal', [$start, $end]);
+              });
+        });
+
+    // Filter tanggal spesifik (opsional)
+    if ($request->filled('tanggal')) {
+        $tanggal = Carbon::parse($request->input('tanggal'))->toDateString();
+
+        // optional safety: pastikan tanggal masih dalam range periode aktif
+        if ($tanggal < $start || $tanggal > $end) {
+            $query->whereRaw('1=0'); // force kosong
         } else {
-            $baseDate = now();
+            $query->whereDate('tanggal', $tanggal);
         }
-
-        $startOfMonth = $baseDate->copy()->startOfMonth()->toDateString();
-        $endOfMonth   = $baseDate->copy()->endOfMonth()->toDateString();
-
-        // Query dasar: semua kehadiran dalam 1 bulan tersebut
-        $query = KehadiranMember::with(['member.user'])
-            ->whereBetween('tanggal', [$startOfMonth, $endOfMonth]);
-
-        // Filter tanggal spesifik (optional) tapi tetap dalam bulan yang sama
-        if ($request->filled('tanggal')) {
-            $query->whereDate('tanggal', $request->input('tanggal'));
-        }
-
-        // Sorting
-        $sort = $request->input('sort', 'newest');
-
-        if ($sort === 'oldest') {
-            $query->orderBy('tanggal', 'asc')
-                  ->orderBy('jam_masuk', 'asc');
-        } else {
-            // default: terbaru
-            $query->orderBy('tanggal', 'desc')
-                  ->orderBy('jam_masuk', 'desc');
-        }
-
-        // Paginate 15 data / halaman
-        $kehadiran = $query
-            ->paginate(15)
-            ->appends($request->only(['mode', 'tanggal', 'sort']));
-
-        // URL yang akan di-QR-kan
-        $qrUrl = route('member.absensi.scan', ['token' => $periodeAktif->kode_qr]);
-
-        $pageTitle   = 'Absensi Member';
-        $modeOptions = [
-            'harian'   => 'Harian',
-            'mingguan' => 'Mingguan',
-            'bulanan'  => 'Bulanan',
-        ];
-
-        return view('admin.absensi.index', compact(
-            'periodeAktif',
-            'kehadiran',
-            'qrUrl',
-            'pageTitle',
-            'modeOptions',
-            'sort'
-        ));
     }
+
+    // Sorting
+    $sort = $request->input('sort', 'newest');
+    if ($sort === 'oldest') {
+        $query->orderBy('tanggal', 'asc')
+              ->orderBy('jam_masuk', 'asc');
+    } else {
+        $query->orderBy('tanggal', 'desc')
+              ->orderBy('jam_masuk', 'desc');
+    }
+
+    $kehadiran = $query
+        ->paginate(20)
+        ->appends($request->only(['mode', 'tanggal', 'sort']));
+
+    $qrUrl = route('member.absensi.scan', ['token' => $periodeAktif->kode_qr]);
+
+    $pageTitle   = 'Absensi Member';
+    $modeOptions = [
+        'harian'   => 'Harian',
+        'mingguan' => 'Mingguan',
+        'bulanan'  => 'Bulanan',
+    ];
+
+    return view('admin.absensi.index', compact(
+        'periodeAktif',
+        'kehadiran',
+        'qrUrl',
+        'pageTitle',
+        'modeOptions',
+        'sort'
+    ));
+}
+
 
     /**
      * Halaman khusus cetak (QR + daftar kehadiran).

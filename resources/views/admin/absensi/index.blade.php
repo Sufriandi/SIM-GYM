@@ -319,7 +319,7 @@
                     <tbody class="divide-y divide-brand-borderSoft/60">
                         @forelse ($kehadiran as $row)
                             @php
-                                $rowName     = $row->member->nama ?? '';
+                                $rowName     = optional($row->member->user)->name ?? '';
                                 $rowUsername = optional($row->member->user)->username ?? '';
                             @endphp
 
@@ -340,7 +340,8 @@
 
                                 {{-- MEMBER (NAMA SAJA) --}}
                                 <td class="px-6 py-4 align-middle text-sm font-semibold text-brand-text">
-                                    {{ $row->member->nama ?? '-' }}
+                                    {{ optional($row->member->user)->name ?? '-' }}
+
                                 </td>
 
                                 {{-- JAM MASUK --}}
