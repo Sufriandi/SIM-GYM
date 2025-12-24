@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -32,11 +33,10 @@ class Member extends Model
         });
     }
 
-    /**
-     * Relasi: member dimiliki oleh satu user.
-     * withTrashed agar histori transaksi tetap bisa menarik nama User
-     * meskipun akun User/Member sudah di-soft delete.
-     */
+    // =========================================================
+    // RELASI DASAR
+    // =========================================================
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class)->withTrashed();
@@ -65,20 +65,14 @@ class Member extends Model
     }
 
     // =========================================================
-    // RELASI MEMBERSHIP BARU (TRANSAKSI + PESERTA)
+    // RELASI MEMBERSHIP (TRANSAKSI + PESERTA)
     // =========================================================
 
-    /**
-     * Transaksi membership yang dibeli member ini (sebagai buyer).
-     */
     public function transaksiMembershipsAsBuyer(): HasMany
     {
         return $this->hasMany(\App\Models\TransaksiMembership::class, 'buyer_member_id');
     }
 
-    /**
-     * Baris peserta transaksi membership (member ini ikut transaksi sebagai peserta).
-     */
     public function transaksiMembershipParticipants(): HasMany
     {
         return $this->hasMany(\App\Models\TransaksiMembershipMember::class, 'member_id');
@@ -89,88 +83,108 @@ class Member extends Model
         return $this->hasMany(\App\Models\TransaksiProduk::class, 'buyer_member_id');
     }
 
-    /**
-     * Query transaksi membership yang sedang aktif untuk member ini,
-     * baik dia sebagai buyer maupun peserta.
-     *
-     * Ini dikembalikan sebagai query builder (bukan relasi Eloquent),
-     * karena relasi OR (buyer OR participant) sulit dibuat sebagai hasOne murni.
-     */
-    public function activeMembershipTransactionQuery()
-    {
-        $today = Carbon::today();
+    // =========================================================
+    // HELPERS MEMBERSHIP (1 sumber logika)
+    // =========================================================
 
-        return \App\Models\TransaksiMembership::query()
+    /**
+     * Normalisasi input tanggal menjadi string Y-m-d.
+     */
+    protected function normalizeDate($date): string
+    {
+        if ($date instanceof Carbon) {
+            return $date->toDateString();
+        }
+
+        return Carbon::parse($date)->toDateString();
+    }
+
+    /**
+     * Query transaksi membership yang "milik" member ini (buyer atau participant).
+     */
+    protected function membershipOwnershipQuery(Builder $q): Builder
+    {
+        return $q->where(function ($qq) {
+            $qq->where('buyer_member_id', $this->id)
+                ->orWhereHas('participants', fn($p) => $p->where('member_id', $this->id));
+        });
+    }
+
+    /**
+     * Apakah member ini pernah punya transaksi membership (selain canceled).
+     */
+    public function hasEverMembership(): bool
+    {
+        $q = \App\Models\TransaksiMembership::query()
+            ->whereNull('canceled_at');
+
+        $this->membershipOwnershipQuery($q);
+
+        return $q->exists();
+    }
+
+    /**
+     * Apakah member aktif pada tanggal tertentu.
+     * Ini yang dipakai untuk "gate" absensi.
+     */
+    public function hasActiveMembershipOn($date): bool
+    {
+        $d = $this->normalizeDate($date);
+
+        $q = \App\Models\TransaksiMembership::query()
+            ->whereNull('canceled_at')
+            ->whereDate('tanggal_mulai', '<=', $d)
+            ->whereDate('tanggal_akhir', '>=', $d);
+
+        $this->membershipOwnershipQuery($q);
+
+        return $q->exists();
+    }
+
+    /**
+     * Query transaksi membership aktif pada tanggal tertentu (default: hari ini).
+     */
+    public function activeMembershipTransactionQuery($date = null): Builder
+    {
+        $d = $this->normalizeDate($date ?: Carbon::today());
+
+        $q = \App\Models\TransaksiMembership::query()
             ->with('paket')
             ->whereNull('canceled_at')
-            ->whereDate('tanggal_mulai', '<=', $today)
-            ->whereDate('tanggal_akhir', '>=', $today)
-            ->where(function ($q) {
-                $q->where('buyer_member_id', $this->id)
-                    ->orWhereHas('participants', function ($p) {
-                        $p->where('member_id', $this->id);
-                    });
-            })
-            ->orderByDesc('tanggal_akhir');
+            ->whereDate('tanggal_mulai', '<=', $d)
+            ->whereDate('tanggal_akhir', '>=', $d);
+
+        $this->membershipOwnershipQuery($q);
+
+        return $q->orderByDesc('tanggal_akhir');
     }
 
-    /**
-     * Akses cepat: transaksi membership aktif (1 record) atau null.
-     */
+    // =========================================================
+    // ACCESSORS (tetap kompatibel)
+    // =========================================================
+
     public function getActiveMembershipTransactionAttribute()
     {
-        return $this->activeMembershipTransactionQuery()->first();
+        return $this->activeMembershipTransactionQuery(Carbon::today())->first();
     }
 
-    /**
-     * Akses cepat: paket aktif saat ini (model) atau null.
-     */
     public function getActivePaketMembershipAttribute()
     {
         return $this->active_membership_transaction?->paket;
     }
 
-    /**
-     * Akses cepat: nama paket aktif saat ini (string).
-     */
     public function getNamaPaketAktifAttribute(): ?string
     {
         return $this->active_paket_membership?->nama;
     }
 
-    /**
-     * Status membership untuk member ini (global):
-     * - aktif       : ada transaksi aktif (sebagai buyer/peserta)
-     * - expired     : pernah ada transaksi tapi tidak ada yang aktif saat ini
-     * - belum_aktif : belum pernah ada transaksi sama sekali
-     */
     public function getStatusMembershipAttribute(): string
     {
-        $today = Carbon::today();
-
-        $hasEver = \App\Models\TransaksiMembership::query()
-            ->whereNull('canceled_at')
-            ->where(function ($q) {
-                $q->where('buyer_member_id', $this->id)
-                    ->orWhereHas('participants', fn($p) => $p->where('member_id', $this->id));
-            })
-            ->exists();
-
-        if (! $hasEver) {
+        if (! $this->hasEverMembership()) {
             return 'belum_aktif';
         }
 
-        $isActive = \App\Models\TransaksiMembership::query()
-            ->whereNull('canceled_at')
-            ->whereDate('tanggal_mulai', '<=', $today)
-            ->whereDate('tanggal_akhir', '>=', $today)
-            ->where(function ($q) {
-                $q->where('buyer_member_id', $this->id)
-                    ->orWhereHas('participants', fn($p) => $p->where('member_id', $this->id));
-            })
-            ->exists();
-
-        return $isActive ? 'aktif' : 'expired';
+        return $this->hasActiveMembershipOn(Carbon::today()) ? 'aktif' : 'expired';
     }
 
     public function getTotalTransaksiProdukAttribute(): int
@@ -180,9 +194,10 @@ class Member extends Model
 
     /**
      * Boolean helper: apakah member aktif sekarang.
+     * (tetap ada agar kompatibel)
      */
     public function getMembershipAktifAttribute(): bool
     {
-        return $this->status_membership === 'aktif';
+        return $this->hasActiveMembershipOn(Carbon::today());
     }
 }

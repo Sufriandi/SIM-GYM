@@ -31,8 +31,16 @@ return new class extends Migration
             $table->date('tanggal_mulai');
             $table->date('tanggal_akhir');
 
-            $table->enum('jenis_transaksi', ['sale', 'adjustment'])->default('sale');
-            $table->enum('metode_pembayaran', ['cash', 'transfer', 'qris'])->nullable();
+            /**
+             * pembayaran  : transaksi berbayar (cash/transfer/qris) untuk aktivasi/perpanjangan membership
+             * kompensasi  : penambahan masa aktif tanpa pembayaran (izin latihan/bonus hari)
+             */
+            $table->enum('jenis_transaksi', ['pembayaran', 'kompensasi'])
+                ->default('pembayaran');
+
+            // Nullable untuk kasus kompensasi (tidak ada pembayaran)
+            $table->enum('metode_pembayaran', ['cash', 'transfer', 'qris'])
+                ->nullable();
 
             $table->string('keterangan')->nullable();
             $table->dateTime('canceled_at')->nullable();

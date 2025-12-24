@@ -93,7 +93,7 @@ Route::middleware(['auth', 'admin'])
         // ================== DASHBOARD ==================
         Route::get('dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
-        
+
 
         // ================== INVENTARIS ALAT ==================
         Route::resource('inventaris', InventarisAlatController::class)
@@ -156,11 +156,24 @@ Route::middleware(['auth', 'admin'])
         // URL: kebab-case, route name: snake_case
         // =========================================================
 
-        // Transaksi membership (penjualan + riwayat + cancel)
-        Route::resource('transaksi-membership', TransaksiMembershipController::class)
-            ->parameters(['transaksi-membership' => 'transaksiMembership'])
-            ->names('transaksi_membership')
-            ->only(['index', 'store', 'show', 'update', 'destroy']);
+        // Transaksi membership (pembayaran + kompensasi manual + detail + cancel)
+        Route::prefix('transaksi-membership')->name('transaksi_membership.')->group(function () {
+
+            // KOMPENSASI MANUAL (bonus/trial admin) - harus route baru
+            Route::post('/kompensasi-manual', [TransaksiMembershipController::class, 'storeKompensasiManual'])
+                ->name('kompensasi_manual.store');
+
+            // PEMBAYARAN (create dari modal pembayaran)
+            Route::get('/', [TransaksiMembershipController::class, 'index'])->name('index');
+            Route::post('/', [TransaksiMembershipController::class, 'store'])->name('store');
+
+            // DETAIL (kalau memang dipakai via route, optional)
+            Route::get('/{transaksiMembership}', [TransaksiMembershipController::class, 'show'])->name('show');
+
+            // CANCEL (destroy)
+            Route::delete('/{transaksiMembership}', [TransaksiMembershipController::class, 'destroy'])->name('destroy');
+        });
+
 
         // Master paket membership
         Route::resource('paket_memberships', PaketMembershipController::class)
@@ -179,7 +192,7 @@ Route::middleware(['auth', 'admin'])
         Route::resource('profil_gym', ProfilGymController::class)
             ->parameters(['profil_gym' => 'profilGym']);
 
-        
+
 
         // =========================================================
         // REKENING (INDEX GABUNGAN) + CRUD REKENING/QRIS
@@ -202,7 +215,7 @@ Route::middleware(['auth', 'admin'])
             Route::get('/print', [AdminKehadiranMemberController::class, 'print'])->name('print');
         });
         // =========================================================
-                    // LAPORAN / ANALITIK (ADMIN)
+        // LAPORAN / ANALITIK (ADMIN)
         // =========================================================
         Route::prefix('laporan')->name('laporan.')->group(function () {
 
@@ -211,15 +224,15 @@ Route::middleware(['auth', 'admin'])
             // Laporan Absensi
             Route::get('/absensi', [AbsensiReportController::class, 'index'])
                 ->name('absensi.index');
-                Route::get('/absensi/pdf', [AbsensiReportController::class, 'exportPdf'])
+            Route::get('/absensi/pdf', [AbsensiReportController::class, 'exportPdf'])
                 ->name('absensi.pdf');
 
             // Placeholder (sementara belum ada)
-            Route::get('/membership', fn () => abort(404))->name('membership.index');
-            Route::get('/produk', fn () => abort(404))->name('produk.index');
-            Route::get('/stok', fn () => abort(404))->name('stok.index');
-            Route::get('/member', fn () => abort(404))->name('member.index');
-            Route::get('/keuangan', fn () => abort(404))->name('keuangan.index');
+            Route::get('/membership', fn() => abort(404))->name('membership.index');
+            Route::get('/produk', fn() => abort(404))->name('produk.index');
+            Route::get('/stok', fn() => abort(404))->name('stok.index');
+            Route::get('/member', fn() => abort(404))->name('member.index');
+            Route::get('/keuangan', fn() => abort(404))->name('keuangan.index');
         });
     });
 
@@ -248,8 +261,12 @@ Route::middleware(['auth', 'member'])
         });
 
         Route::prefix('absensi')->name('absensi.')->group(function () {
-            Route::get('scan', [MemberKehadiranMemberController::class, 'scan'])->name('scan');
-            Route::post('/', [MemberKehadiranMemberController::class, 'store'])->name('store');
+            Route::get('scan/{token}', [MemberKehadiranMemberController::class, 'scan'])
+                ->name('scan');
+
+            Route::post('scan/{token}', [MemberKehadiranMemberController::class, 'store'])
+                ->name('store');
+
             Route::get('/', function () {
                 return redirect()->route('member.kehadiran.index');
             })->name('index_redirect');

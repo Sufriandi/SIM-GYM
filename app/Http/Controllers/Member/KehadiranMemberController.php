@@ -5,28 +5,12 @@ namespace App\Http\Controllers\Member;
 use App\Http\Controllers\Controller;
 use App\Models\AbsensiPeriode;
 use App\Models\KehadiranMember;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
 
 class KehadiranMemberController extends Controller
 {
-    /**
-     * Helper: cek apakah membership member sedang aktif hari ini.
-     */
-    protected function hasActiveMembership($member): bool
-    {
-        if (! $member->tanggal_mulai || ! $member->tanggal_akhir) {
-            return false;
-        }
-
-        $today = Carbon::today();
-        $mulai = Carbon::parse($member->tanggal_mulai)->startOfDay();
-        $akhir = Carbon::parse($member->tanggal_akhir)->endOfDay();
-
-        return $today->betweenIncluded($mulai, $akhir);
-    }
-
     /**
      * Halaman riwayat kehadiran member.
      * Route: member.kehadiran.index (GET /member/kehadiran)
@@ -52,13 +36,9 @@ class KehadiranMemberController extends Controller
 
     /**
      * Halaman yang dibuka setelah scan QR.
-     * Route: member.absensi.scan (GET /member/absensi/scan?token=xxx)
-     *
-     * Skenario A:
-     * - Cek "sudah absen" berdasarkan member + tanggal saja,
-     *   supaya 1 hari hanya boleh 1 kali absen, meskipun QR / periode berbeda.
+     * Route: member.absensi.scan (GET /member/absensi/scan/{token})
      */
-    public function scan(Request $request)
+    public function scan(string $token)
     {
         $user   = Auth::user();
         $member = $user->member ?? null;
@@ -67,37 +47,33 @@ class KehadiranMemberController extends Controller
             abort(403, 'Hanya akun yang terhubung dengan data member yang dapat mengakses fitur ini.');
         }
 
-        // ===== BATASAN MEMBERSHIP AKTIF =====
-        if (! $this->hasActiveMembership($member)) {
+        $tanggalAbsen = now()->toDateString();
+
+        // ===== GATE: membership harus aktif pada tanggal absen =====
+        if (! $member->hasActiveMembershipOn($tanggalAbsen)) {
             return redirect()
                 ->route('member.kehadiran.index')
                 ->with('error', 'Membership Anda tidak aktif. Silakan perpanjang membership terlebih dahulu sebelum melakukan absensi.');
         }
 
-        $token = $request->query('token');
-
         if (! $token) {
-            // Token tidak ada / QR tidak valid
             return view('member.kehadiran.scan_invalid');
         }
 
-        $today = now()->toDateString();
-
-        // Cari periode aktif yang cocok dengan token + tanggal hari ini
+        // Cari periode aktif yang cocok dengan token + tanggal absen
         $periodeAktif = AbsensiPeriode::aktif()
             ->where('kode_qr', $token)
-            ->whereDate('tanggal_mulai', '<=', $today)
-            ->whereDate('tanggal_selesai', '>=', $today)
+            ->whereDate('tanggal_mulai', '<=', $tanggalAbsen)
+            ->whereDate('tanggal_selesai', '>=', $tanggalAbsen)
             ->first();
 
         if (! $periodeAktif) {
-            // Periode tidak ditemukan atau sudah tidak aktif
             return view('member.kehadiran.scan_invalid', compact('token'));
         }
 
-        // Cek apakah member sudah punya kehadiran apa pun di tanggal hari ini
+        // Cek apakah member sudah punya kehadiran apa pun di tanggal hari ini (1x per hari)
         $sudahAbsen = KehadiranMember::where('member_id', $member->id)
-            ->whereDate('tanggal', $today)
+            ->whereDate('tanggal', $tanggalAbsen)
             ->exists();
 
         if ($sudahAbsen) {
@@ -113,18 +89,10 @@ class KehadiranMemberController extends Controller
 
     /**
      * Simpan kehadiran setelah konfirmasi.
-     * Route: member.absensi.store (POST /member/absensi)
-     *
-     * Skenario A:
-     * - Tetap cek "sudah absen" berdasarkan member + tanggal saja
-     *   untuk menghindari race condition / double submit.
+     * Route: member.absensi.store (POST /member/absensi/scan/{token})
      */
-    public function store(Request $request)
+    public function store(Request $request, string $token)
     {
-        $request->validate([
-            'token' => 'required|string',
-        ]);
-
         $user   = Auth::user();
         $member = $user->member ?? null;
 
@@ -132,28 +100,37 @@ class KehadiranMemberController extends Controller
             abort(403, 'Hanya akun yang terhubung dengan data member yang dapat mencatat kehadiran.');
         }
 
-        // ===== BATASAN MEMBERSHIP AKTIF (lagi) =====
-        // Supaya kalau user skip halaman scan dan langsung kirim POST,
-        // tetap tertahan di sini.
-        if (! $this->hasActiveMembership($member)) {
+        $tanggalAbsen = now()->toDateString();
+
+        // ===== GATE: membership harus aktif pada tanggal absen =====
+        if (! $member->hasActiveMembershipOn($tanggalAbsen)) {
             return redirect()
                 ->route('member.kehadiran.index')
                 ->with('error', 'Membership Anda tidak aktif. Silakan perpanjang membership terlebih dahulu sebelum melakukan absensi.');
         }
 
-        $today   = now()->toDateString();
-        $nowTime = now()->format('H:i:s');
+        if (! $token) {
+            return redirect()
+                ->route('member.kehadiran.index')
+                ->with('error', 'QR tidak valid.');
+        }
 
         // Cari periode absensi aktif berdasarkan token + tanggal hari ini
         $periodeAktif = AbsensiPeriode::aktif()
-            ->where('kode_qr', $request->input('token'))
-            ->whereDate('tanggal_mulai', '<=', $today)
-            ->whereDate('tanggal_selesai', '>=', $today)
-            ->firstOrFail();
+            ->where('kode_qr', $token)
+            ->whereDate('tanggal_mulai', '<=', $tanggalAbsen)
+            ->whereDate('tanggal_selesai', '>=', $tanggalAbsen)
+            ->first();
 
-        // Cegah absen dobel di hari yang sama (mode apa pun / periode apa pun)
+        if (! $periodeAktif) {
+            return redirect()
+                ->route('member.kehadiran.index')
+                ->with('error', 'QR tidak valid atau periode sudah tidak aktif.');
+        }
+
+        // Cegah dobel absen di hari yang sama (mode apa pun / periode apa pun)
         $sudahAbsen = KehadiranMember::where('member_id', $member->id)
-            ->whereDate('tanggal', $today)
+            ->whereDate('tanggal', $tanggalAbsen)
             ->exists();
 
         if ($sudahAbsen) {
@@ -162,15 +139,14 @@ class KehadiranMemberController extends Controller
                 ->with('error', 'Anda sudah mencatat kehadiran hari ini.');
         }
 
-        // Simpan kehadiran. absensi_periode_id tetap diisi
         KehadiranMember::create([
             'member_id'          => $member->id,
             'absensi_periode_id' => $periodeAktif->id,
-            'tanggal'            => $today,
-            'jam_masuk'          => $nowTime,
+            'tanggal'            => $tanggalAbsen,
+            'jam_masuk'          => now()->format('H:i:s'),
             'ip_address'         => $request->ip(),
-            'device_info'        => $request->userAgent(),
-            // 'is_valid'        => true, // bisa diaktifkan kalau mau
+            'device_info'        => substr((string) $request->userAgent(), 0, 255),
+            'is_valid'           => true,
         ]);
 
         return redirect()

@@ -31,7 +31,7 @@
                 </div>
             @endisset
 
-            <form method="POST" action="{{ route('member.absensi.store') }}" class="space-y-4">
+            <form method="POST" action="{{ route('member.absensi.store', ['token' => $token]) }}" class="space-y-4">
                 @csrf
 
                 {{-- token dari QR --}}
@@ -46,12 +46,12 @@
 
                 <div class="flex items-center justify-between gap-3 pt-4">
                     <a href="{{ route('member.kehadiran.index') }}"
-                       class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border border-brand-borderSoft text-brand-textSoft hover:bg-brand-surface-50">
+                        class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border border-brand-borderSoft text-brand-textSoft hover:bg-brand-surface-50">
                         Batal
                     </a>
 
                     <button type="submit"
-                            class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-primary-dark text-white border border-primary-dark hover:bg-primary-dark/90">
+                        class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-primary-dark text-white border border-primary-dark hover:bg-primary-dark/90">
                         <i data-lucide="check-square" class="w-4 h-4 mr-2"></i>
                         Catat Kehadiran
                     </button>
