@@ -1,11 +1,14 @@
+{{-- resources/views/admin/transaksi_membership/index.blade.php --}}
+
 @php
     use Illuminate\Support\Str;
     use Illuminate\Support\Carbon;
 
     $pageTitle = $pageTitle ?? 'Penjualan Membership';
 
-    // modal create otomatis terbuka jika ada error validasi
-    $openCreateOnLoad = $errors->any() ? 'true' : 'false';
+    // open modal berdasarkan section error
+    $openCreateOnLoad = $errors->any() && old('_section') === 'trx_membership_create' ? 'true' : 'false';
+    $openKompensasiOnLoad = $errors->any() && old('_section') === 'trx_membership_kompensasi_create' ? 'true' : 'false';
 
     $today = Carbon::today();
 
@@ -15,7 +18,6 @@
         'qris' => 'QRIS',
     ];
 
-    // mapping status internal -> label + badge
     $statusMeta = [
         'belum_aktif' => ['label' => 'Belum Aktif', 'variant' => 'info'],
         'aktif' => ['label' => 'Aktif', 'variant' => 'success'],
@@ -23,26 +25,32 @@
         'canceled' => ['label' => 'Dibatalkan', 'variant' => 'danger'],
         'unknown' => ['label' => 'Tidak Diketahui', 'variant' => 'neutral'],
     ];
+
+    $jenisMeta = [
+        'pembayaran' => ['label' => 'Pembayaran', 'variant' => 'success'],
+        'kompensasi' => ['label' => 'Kompensasi', 'variant' => 'info'],
+    ];
 @endphp
 
 <x-layouts.admin :title="$pageTitle . ' – BETA GYM'" :page-title="$pageTitle"
-    page-subtitle="Catat transaksi membership dan pantau status masa aktif member.">
+    page-subtitle="Catat transaksi membership dan pantau status masa aktif member (auto-extend dari histori transaksi).">
 
     <div x-data="{
         openCreate: {{ $openCreateOnLoad }},
+        openKompensasi: {{ $openKompensasiOnLoad }},
         openDetailId: null,
-        openEditId: null,
     
         // filter frontend
         searchTerm: '',
         statusFilter: 'all',
-        metodeFilter: 'all',
+        metodeFilter: 'all', // tetap dipertahankan (untuk transaksi pembayaran)
+        jenisFilter: 'all',
     }"
         x-effect="
             const main  = document.querySelector('main');
             const html  = document.documentElement;
             const body  = document.body;
-            const locked = openCreate || openDetailId || openEditId;
+            const locked = openCreate || openKompensasi || openDetailId;
 
             const targets = [html, body, main].filter(Boolean);
 
@@ -67,13 +75,13 @@
 
         {{-- HEADER --}}
         <x-ui.section-header :title="$pageTitle"
-            subtitle="Setiap transaksi akan menambah atau memperpanjang masa aktif membership member (berdasarkan transaksi terakhir)." />
+            subtitle="Setiap transaksi akan menambah atau memperpanjang masa aktif membership member (berdasarkan histori transaksi valid)." />
         <hr class="border-t border-brand-borderSoft mb-6">
 
         {{-- SEARCH + FILTER + ACTION --}}
         <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
 
-            {{-- SEARCH + FILTER (frontend only) --}}
+            {{-- SEARCH + FILTER --}}
             <div class="relative w-full max-w-md" x-data="{ showFilter: false }">
                 <div
                     class="flex items-center w-full rounded-full border border-brand-borderSoft bg-brand-card shadow-sm h-[42px]">
@@ -86,7 +94,6 @@
 
                     <div class="h-6 w-px bg-brand-borderSoft mx-1"></div>
 
-                    {{-- BUTTON FILTER --}}
                     <button type="button" @click="showFilter = !showFilter"
                         class="flex items-center gap-2 px-5 py-2 text-sm font-medium text-text-muted hover:text-text-main mr-1 rounded-full hover:bg-brand-surface-50">
                         <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
@@ -94,16 +101,29 @@
                     </button>
                 </div>
 
-                {{-- FILTER DROPDOWN (status + metode, purely frontend) --}}
+                {{-- FILTER DROPDOWN --}}
                 <div x-show="showFilter" x-cloak @click.outside="showFilter = false"
                     class="absolute top-[48px] left-0 w-full bg-brand-card border border-brand-borderSoft rounded-2xl shadow-xl p-5 z-10">
                     <div class="space-y-4">
                         <div class="flex justify-between items-center pb-2 border-b border-brand-borderSoft/50">
                             <h4 class="text-sm font-semibold text-text-main">Filter</h4>
                             <button type="button" class="text-xs text-danger hover:underline"
-                                @click="statusFilter = 'all'; metodeFilter = 'all';">
+                                @click="statusFilter='all'; metodeFilter='all'; jenisFilter='all';">
                                 Reset
                             </button>
+                        </div>
+
+                        {{-- JENIS --}}
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">
+                                Jenis transaksi
+                            </label>
+                            <select x-model="jenisFilter"
+                                class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2">
+                                <option value="all">Semua jenis</option>
+                                <option value="pembayaran">Pembayaran</option>
+                                <option value="kompensasi">Kompensasi</option>
+                            </select>
                         </div>
 
                         {{-- STATUS --}}
@@ -121,7 +141,7 @@
                             </select>
                         </div>
 
-                        {{-- METODE PEMBAYARAN --}}
+                        {{-- METODE (tetap ada di FILTER, meski kolom tabel dihapus) --}}
                         <div>
                             <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">
                                 Metode pembayaran
@@ -133,22 +153,31 @@
                                     <option value="{{ $value }}">{{ $label }}</option>
                                 @endforeach
                             </select>
+                            <p class="text-[11px] text-text-muted mt-1">
+                                Catatan: transaksi kompensasi tidak punya metode pembayaran (—). Jika Anda memilih
+                                metode tertentu, transaksi kompensasi otomatis tidak tampil.
+                            </p>
                         </div>
                     </div>
                 </div>
             </div>
 
             {{-- ACTION BUTTONS --}}
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap justify-end">
                 <x-ui.button-primary type="button" @click="openCreate = true">
                     <i data-lucide="plus" class="w-5 h-5 mr-1"></i>
-                    Tambah Transaksi Membership
+                    Tambah Membership
                 </x-ui.button-primary>
+
+                <x-ui.button-secondary type="button" @click="openKompensasi = true">
+                    <i data-lucide="gift" class="w-5 h-5 mr-1"></i>
+                    Tambah Bonus/Trial
+                </x-ui.button-secondary>
             </div>
         </div>
 
-        {{-- CARD TABEL TRANSAKSI --}}
-        <x-ui.card class="border-brand-borderSoft ">
+        {{-- CARD TABLE --}}
+        <x-ui.card class="border-brand-borderSoft">
             <div class="px-6 py-4 border-b border-brand-borderSoft flex items-center justify-between">
                 <div>
                     <h3 class="text-lg font-bold text-text-main">Daftar Transaksi Membership</h3>
@@ -164,35 +193,40 @@
                 </div>
             </div>
 
-            {{-- WRAPPER TABEL TRANSAKSI --}}
+            {{-- TABLE (desktop rapi, mobile tetap bisa scroll) --}}
             <div class="w-full overflow-x-auto custom-scrollbar">
-                <table class="w-full border-collapse text-xs md:text-sm md:min-w-[900px]">
+                <table class="w-full border-collapse text-xs md:text-sm md:min-w-[860px]">
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
                             <th
                                 class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[6%]">
-                                No</th>
+                                No
+                            </th>
+
                             <th
-                                class="p-3 text-left   text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[24%]">
-                                Pembeli</th>
+                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[18%]">
+                                Nama
+                            </th>
+
                             <th
-                                class="p-3 text-left   text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[20%]">
-                                Paket</th>
+                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[30%]">
+                                Paket
+                            </th>
+
                             <th
-                                class="p-3 text-left   text-[11px] font-semibold uppercase tracking-wide text-text-muted whitespace-nowrap w-[16%]">
-                                Berlaku Sampai</th>
+                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted whitespace-nowrap w-[18%]">
+                                Berlaku Sampai
+                            </th>
+
                             <th
-                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[10%]">
-                                Metode</th>
-                            <th
-                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[10%]">
-                                Status</th>
-                            <th
-                                class="p-3 text-left   text-[11px] font-semibold uppercase tracking-wide text-text-muted hidden xl:table-cell w-[18%]">
-                                Keterangan</th>
+                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[12%]">
+                                Status
+                            </th>
+
                             <th
                                 class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted whitespace-nowrap w-[8%]">
-                                Detail</th>
+                                Detail
+                            </th>
                         </tr>
                     </thead>
 
@@ -202,42 +236,43 @@
                                 $buyer = $trx->buyer;
                                 $paket = $trx->paket;
 
-                                $mulai = $trx->tanggal_mulai ? Carbon::parse($trx->tanggal_mulai) : null;
                                 $akhir = $trx->tanggal_akhir ? Carbon::parse($trx->tanggal_akhir) : null;
                                 $canceledAt = $trx->canceled_at ? Carbon::parse($trx->canceled_at) : null;
 
-                                // status dari accessor model (lebih konsisten)
                                 $statusKey = $trx->status ?? 'unknown';
                                 $meta = $statusMeta[$statusKey] ?? $statusMeta['unknown'];
-                                $statusLabel = $meta['label'];
-                                $statusVariant = $meta['variant'];
 
                                 $akhirText = $akhir ? $akhir->format('d M Y') : '—';
 
-                                // peserta tambahan = participants selain primary
                                 $extraNames = $trx->participants
                                     ->where('role', 'member')
                                     ->map(fn($p) => $p->member?->user?->name)
                                     ->filter()
                                     ->values();
 
+                                // untuk filter metode saja (kolom tabel sudah dihapus)
                                 $metodeValue = $trx->metode_pembayaran;
-                                $metodeLabel = $metodeValue
-                                    ? $metodeOptions[$metodeValue] ?? Str::title($metodeValue)
-                                    : '—';
+
+                                $buyerName = $buyer?->user?->name ?? '[Member dihapus]';
+                                $paketName = $paket?->nama ?? '[Paket dihapus]';
+
+                                // untuk filter jenis (kolom tabel tidak perlu menampilkan)
+                                $jenisValue = $trx->jenis_transaksi ?? '';
                             @endphp
 
                             <tr x-data="{
-                                buyerName: @js($buyer?->user?->name ?? ''),
-                                paketName: @js($paket?->nama ?? ''),
+                                buyerName: @js($buyerName),
+                                paketName: @js($paketName),
                                 status: @js($statusKey),
                                 metode: @js($metodeValue ?? ''),
+                                jenis: @js($jenisValue ?? ''),
                             }"
                                 x-show="
                                     (!searchTerm
                                         || buyerName.toLowerCase().includes(searchTerm.toLowerCase())
                                         || paketName.toLowerCase().includes(searchTerm.toLowerCase()))
-&& (statusFilter === 'all' || statusFilter === status)
+&& (jenisFilter === 'all' || jenisFilter === jenis)
+                                    && (statusFilter === 'all' || statusFilter === status)
                                     && (metodeFilter === 'all' || metodeFilter === metode)
                                 "
                                 class="hover:bg-brand-surface-50 transition-colors duration-150">
@@ -247,59 +282,59 @@
                                     {{ $loop->iteration + ($transaksis->currentPage() - 1) * $transaksis->perPage() }}
                                 </td>
 
-                                {{-- PEMBELI + ANGGOTA TAMBAHAN --}}
+                                {{-- NAMA --}}
                                 <td class="p-3 text-left align-middle">
                                     <div
-                                        class="text-sm font-semibold {{ $buyer ? 'text-text-main' : 'text-danger italic' }} max-w-[230px] md:max-w-[260px] truncate">
-                                        {{ $buyer?->user?->name ?? '[Member dihapus]' }}
+                                        class="text-sm font-semibold {{ $buyer ? 'text-text-main' : 'text-danger italic' }} max-w-[160px] truncate">
+                                        {{ $buyerName }}
                                     </div>
 
                                     @if ($extraNames->isNotEmpty())
-                                        <div class="mt-1 text-[11px] text-text-muted">
-                                            Anggota tambahan: {{ $extraNames->join(', ') }}
+                                        <div class="mt-1 text-[11px] text-text-muted truncate max-w-[160px]">
+                                            +{{ $extraNames->count() }} anggota
                                         </div>
                                     @endif
                                 </td>
 
                                 {{-- PAKET --}}
                                 <td class="p-3 text-left align-middle">
-                                    <span class="text-sm font-semibold text-text-main max-w-[220px] line-clamp-1">
-                                        {{ $paket?->nama ?? '[Paket dihapus]' }}
-                                    </span>
-                                </td>
-
-                                {{-- BERLAKU SAMPAI --}}
-                                <td class="p-3 text-left align-middle whitespace-nowrap">
-                                    <div class="text-sm text-text-main">
-                                        {{ $akhirText }}
+                                    <div class="text-sm font-semibold text-text-main max-w-[320px] truncate">
+                                        {{ $paketName }}
                                     </div>
-                                </td>
 
-                                {{-- METODE --}}
-                                <td class="p-3 text-center align-middle">
-                                    <x-ui.badge variant="neutral">
-                                        {{ $metodeLabel }}
-                                    </x-ui.badge>
-                                </td>
+                                    {{-- tampilkan jenis (ringan, tidak bikin padat) --}}
+                                    @if (!empty($jenisValue))
+                                        @php
+                                            $jenisBadge = $jenisMeta[$jenisValue] ?? [
+                                                'label' => Str::title($jenisValue ?: '—'),
+                                                'variant' => 'neutral',
+                                            ];
+                                        @endphp
+                                        <div class="mt-1">
+                                            <x-ui.badge :variant="$jenisBadge['variant']">
+                                                {{ $jenisBadge['label'] }}
+                                            </x-ui.badge>
+                                        </div>
+                                    @endif
 
-                                {{-- STATUS --}}
-                                <td class="p-3 text-center align-middle">
-                                    <x-ui.badge :variant="$statusVariant">
-                                        {{ $statusLabel }}
-                                    </x-ui.badge>
-
+                                    {{-- optional cancel info (tidak memadati tabel) --}}
                                     @if ($canceledAt)
                                         <div class="mt-1 text-[11px] text-text-muted">
-                                            {{ $canceledAt->format('d M Y H:i') }}
+                                            Dibatalkan: {{ $canceledAt->format('d M Y H:i') }}
                                         </div>
                                     @endif
                                 </td>
 
-                                {{-- KETERANGAN --}}
-                                <td class="p-3 text-left align-middle hidden xl:table-cell">
-                                    <div class="text-xs text-text-muted max-w-[260px] truncate">
-                                        {{ $trx->keterangan ? Str::limit($trx->keterangan, 80) : '—' }}
-                                    </div>
+                                {{-- BERLAKU SAMPAI --}}
+                                <td class="p-3 text-left align-middle whitespace-nowrap">
+                                    <div class="text-sm text-text-main">{{ $akhirText }}</div>
+                                </td>
+
+                                {{-- STATUS --}}
+                                <td class="p-3 text-center align-middle">
+                                    <x-ui.badge :variant="$meta['variant']">
+                                        {{ $meta['label'] }}
+                                    </x-ui.badge>
                                 </td>
 
                                 {{-- DETAIL --}}
@@ -307,14 +342,14 @@
                                     <button type="button"
                                         class="inline-flex items-center justify-center gap-1 text-gold-600 hover:text-gold-500 font-semibold text-xs md:text-sm transition-colors whitespace-nowrap"
                                         @click="openDetailId = {{ $trx->id }}">
-                                        <span>Lihat Detail</span>
+                                        <span>Detail</span>
                                         <i data-lucide="arrow-right" class="w-4 h-4"></i>
                                     </button>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="p-6 text-center text-text-muted italic">
+                                <td colspan="6" class="p-6 text-center text-text-muted italic">
                                     Belum ada transaksi membership yang tercatat.
                                 </td>
                             </tr>
@@ -323,32 +358,30 @@
                 </table>
             </div>
 
-            {{-- PAGINATION --}}
             <div class="mt-6">
                 {{ $transaksis->onEachSide(1)->links() }}
             </div>
         </x-ui.card>
 
-        {{-- MODAL CREATE --}}
+        {{-- MODAL: PEMBAYARAN --}}
         @include('admin.transaksi_membership.modals.create', [
             'members' => $members,
             'paketList' => $paketList,
             'metodeOptions' => $metodeOptions,
         ])
 
-        {{-- MODAL DETAIL & EDIT --}}
+        {{-- MODAL: KOMPENSASI MANUAL --}}
+        @include('admin.transaksi_membership.modals.kompensasi_create', [
+            'members' => $members,
+            'paketList' => $paketList,
+        ])
+
+        {{-- MODAL DETAIL --}}
         @foreach ($transaksis as $trx)
             @include('admin.transaksi_membership.modals.detail', [
                 'trx' => $trx,
                 'metodeOptions' => $metodeOptions,
                 'today' => $today,
-            ])
-
-            @include('admin.transaksi_membership.modals.edit', [
-                'trx' => $trx,
-                'members' => $members,
-                'paketList' => $paketList,
-                'metodeOptions' => $metodeOptions,
             ])
         @endforeach
 
