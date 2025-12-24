@@ -26,7 +26,7 @@ class CoachController extends Controller
                     ->orWhere('deskripsi', 'like', "%{$search}%");
             })
             ->latest()
-            ->paginate(10)
+            ->paginate(20)
             ->withQueryString(); // biar query ?search=... ikut di pagination
 
         $pageTitle = 'Daftar Coach';

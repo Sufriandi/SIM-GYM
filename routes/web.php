@@ -5,6 +5,11 @@ use Illuminate\Support\Facades\Auth;
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MarketplaceController;
+use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\ContactController;
+use App\Http\Controllers\GuestCoachController;
 
 // Controller Admin
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -46,7 +51,32 @@ use App\Http\Controllers\Member\KehadiranMemberController as MemberKehadiranMemb
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::name('guest.')->group(function () {
+
+    Route::get('/', [HomeController::class, 'index'])->name('home');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // === MARKETPLACE ROUTES ===
+    
+    // 1. Index (Katalog)
+    Route::get('/marketplace', [MarketplaceController::class, 'index'])->name('marketplace.index');
+
+    // 2. Cart & Checkout
+    Route::get('/marketplace/cart', [MarketplaceController::class, 'cart'])->name('marketplace.cart');
+
+    // 3. Detail Produk (Wildcard {slug})
+    Route::get('/marketplace/{slug}', [MarketplaceController::class, 'show'])->name('marketplace.show');
+
+    // === COACH ROUTES ===
+    Route::get('/coaches', [GuestCoachController::class, 'index'])->name('coaches.index');
+    Route::get('/coaches/{slug}', [GuestCoachController::class, 'show'])->name('coaches.show');
+});
+
+    // === FUNCTIONAL ROUTES (CART ACTIONS) ===
+    Route::post('/cart/add/{id}', [MarketplaceController::class, 'addToCart']);
+    Route::get('/cart/remove/{id}', [MarketplaceController::class, 'removeFromCart']);
+    Route::post('/cart/update', [MarketplaceController::class, 'updateCart']);
+    
 
 /*
 |--------------------------------------------------------------------------

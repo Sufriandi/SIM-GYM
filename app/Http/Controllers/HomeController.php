@@ -2,18 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PaketMembership;
 use Illuminate\Http\Request;
 
 class HomeController extends Controller
 {
-    /**
-     * Show the application dashboard.
-     *
-     * @return \Illuminate\Contracts\Support\Renderable
-     */
-    public function index()
+    public function index(Request $request)
     {
-        // Ganti 'welcome' dengan nama view yang kamu inginkan untuk halaman depan.
-        return view('welcome');
+        // Ambil paket membership untuk ditampilkan di landing.
+        
+        $paketMemberships = PaketMembership::query()
+            ->orderBy('harga')
+            ->limit(3)
+            ->get();
+
+        return view('home', [
+            'pageTitle' => 'BETA GYM – Build a Better You',
+            'paketMemberships' => $paketMemberships,
+        ]);
     }
 }
