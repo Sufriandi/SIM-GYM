@@ -35,25 +35,25 @@
 }
 
 .dark {
-  /* DARK THEME */
-  --brand-bg: 14 13 12;
-  --brand-shell: 20 17 14;
-  --brand-nav: 10 10 10;
-  --brand-sidebar: 12 10 9;
-  --brand-footer: 8 8 8;
+  /* DARK THEME - Premium Black & Gold */
+  --brand-bg: 8 8 8;              /* Deep black untuk background utama */
+  --brand-shell: 15 15 15;        /* Sedikit lebih terang dari bg */
+  --brand-nav: 10 10 10;          /* Navbar hitam premium */
+  --brand-sidebar: 12 12 12;      /* Sidebar konsisten dengan nav */
+  --brand-footer: 8 8 8;          /* Footer sama dengan bg utama */
 
-  --brand-card: 24 22 19;
-  --brand-cardSoft: 28 26 22;
+  --brand-card: 18 18 18;         /* Card dengan kontras subtle */
+  --brand-cardSoft: 22 22 22;     /* Card soft lebih terang sedikit */
 
-  --brand-surface-50: 32 30 26;
-  --brand-surface-100: 39 36 31;
-  --brand-surface-200: 48 44 38;
+  --brand-surface-50: 25 25 25;   /* Surface levels dengan gradasi halus */
+  --brand-surface-100: 30 30 30;
+  --brand-surface-200: 35 35 35;
 
-  --brand-borderSoft: 65 57 46;
-  --brand-borderStrong: 212 167 87;
+  --brand-borderSoft: 45 45 45;   /* Border soft - subtle gray */
+  --brand-borderStrong: 212 167 87; /* Border strong - gold accent tetap */
 
-  --text-main: 245 240 233;
-  --text-muted: 182 170 155;
+  --text-main: 250 250 250;       /* Text putih bersih */
+  --text-muted: 160 160 160;      /* Text muted - gray terang */
 }
 
 
@@ -61,40 +61,60 @@
     margin-top: 65px !important;
 }
 
-/* === BETA GYM GOLD SCROLLBAR (GLOBAL) === */
+/* === PREMIUM GOLD SCROLLBAR (GLOBAL) === */
 
 /* Firefox */
 * {
-    scrollbar-width: thin; /* atau 'auto' kalau mau agak besar */
-    scrollbar-color: #d4a757 #111111;
+    scrollbar-width: thin;
+    scrollbar-color: #d4a757 #0a0a0a; /* Gold thumb, black track */
 }
 
-/* Chrome, Edge, Safari */
-/* === BETA GYM GOLD SCROLLBAR (HANYA UNTUK .custom-scrollbar) === */
+/* Chrome, Edge, Safari - Global Scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0a0a0a; /* Matching dark theme background */
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #d4a757 0%, #c08f3e 100%); /* Gold gradient */
+    border-radius: 999px;
+    border: 2px solid #0a0a0a; /* Subtle border untuk depth */
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #e5b866 0%, #d4a757 100%); /* Lighter gold on hover */
+}
+
+/* === CUSTOM SCROLLBAR CLASS (untuk komponen spesifik) === */
 
 .custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-    background: #111; /* boleh kamu ganti sesuai tema dashboard */
+    background: #0a0a0a;
+    border-radius: 8px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #d4a757;
+    background: linear-gradient(180deg, #d4a757 0%, #c08f3e 100%);
     border-radius: 999px;
+    border: 2px solid #0a0a0a;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #c08f3e;
+    background: linear-gradient(180deg, #e5b866 0%, #d4a757 100%);
 }
 
-/* Optional: kalau kamu pakai class custom-scrollbar di Blade,
-   kita samakan saja dengan global supaya tidak beda-beda */
-.custom-scrollbar::-webkit-scrollbar {
-    width: 12px;
-    height: 10px;
+/* Firefox - Custom Scrollbar */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #d4a757 #0a0a0a;
 }
 
 [x-cloak] {
