@@ -7,9 +7,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MarketplaceController;
-use App\Http\Controllers\ScheduleController;
-use App\Http\Controllers\ContactController;
 use App\Http\Controllers\GuestCoachController;
+
 
 // Controller Admin
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -72,12 +71,36 @@ Route::name('guest.')->group(function () {
     Route::get('/coaches/{slug}', [GuestCoachController::class, 'show'])->name('coaches.show');
 });
 
-    // === FUNCTIONAL ROUTES (CART ACTIONS) ===
-    Route::post('/cart/add/{id}', [MarketplaceController::class, 'addToCart']);
-    Route::get('/cart/remove/{id}', [MarketplaceController::class, 'removeFromCart']);
-    Route::post('/cart/update', [MarketplaceController::class, 'updateCart']);
-    
 
+// // halaman cart (pastikan route name ini memang dipakai di controller)
+// Route::get('/marketplace/cart', [MarketplaceController::class, 'cart'])
+//     ->name('guest.marketplace.cart');
+
+// // actions
+// Route::post('/cart/add/{id}', [MarketplaceController::class, 'addToCart'])
+//     ->name('guest.marketplace.cart.add');
+
+// // remove via POST (untuk AJAX tanpa reload)
+// Route::post('/cart/remove/{id}', [MarketplaceController::class, 'removeFromCart'])
+//     ->name('guest.marketplace.cart.remove');
+
+// // fallback lama (kalau masih ada link GET remove di tempat lain)
+// Route::get('/cart/remove/{id}', [MarketplaceController::class, 'removeFromCart']);
+
+// // qty via POST (AJAX)
+// Route::post('/cart/{id}/quantity', [MarketplaceController::class, 'updateCartQuantity'])
+//     ->name('guest.marketplace.cart.quantity');
+
+// // guard: kalau keakses GET (misal refresh), jangan 405
+// Route::get('/cart/{id}/quantity', function () {
+//     return redirect()->route('guest.marketplace.cart');
+// });
+Route::middleware('auth')->group(function () {
+    Route::post('/cart/add/{id}', [MarketplaceController::class, 'add'])->name('cart.add');
+    Route::get('/marketplace/cart', [MarketplaceController::class, 'index'])->name('guest.marketplace.cart');
+});
+
+    
 /*
 |--------------------------------------------------------------------------
 | 2. PENGALIH DASHBOARD (REDIRECTOR)
