@@ -26,13 +26,13 @@ class StokProdukController extends Controller
 
         // Query Awal: Ambil semua Produk (yang memiliki stok)
         $query = Produk::query();
-        
+
         // --- 1. Terapkan Filter Pencarian (Search/Q) ---
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('nama', 'like', '%' . $search . '%')
-                  ->orWhere('deskripsi', 'like', '%' . $search . '%')
-                  ->orWhere('kategori', 'like', '%' . $search . '%');
+                    ->orWhere('deskripsi', 'like', '%' . $search . '%')
+                    ->orWhere('kategori', 'like', '%' . $search . '%');
             });
         }
 
@@ -69,9 +69,9 @@ class StokProdukController extends Controller
 
         // Mengambil semua produk untuk dropdown di modal Tambah Stok
         $allProduk = Produk::select('id', 'nama', 'stok', 'kategori', 'deskripsi')->orderBy('nama')->get();
-        
+
         // Menghitung total entri riwayat stok untuk tombol 'Riwayat'
-        $totalRiwayatStok = StokProduk::count(); 
+        $totalRiwayatStok = StokProduk::count();
         View::share('totalRiwayatStok', $totalRiwayatStok);
 
         // Mengirimkan parameter filter kembali ke view agar Live Search dan Filter Lanjutan terisi dengan benar
@@ -94,7 +94,7 @@ class StokProdukController extends Controller
     {
         $validated = $request->validate([
             'produk_id' => 'required|exists:produks,id',
-            'stok' => 'required|integer|min:1', 
+            'stok' => 'required|integer|min:1',
             'keterangan' => 'nullable|string|max:255'
         ]);
 
@@ -105,7 +105,7 @@ class StokProdukController extends Controller
         // --- LOGIKA UTAMA PERBAIKAN: Cek dan Update Log Inisialisasi NOL ---
         $initialLog = StokProduk::where('produk_id', $produk->id)
             ->where('jumlah', 0)
-            ->where('keterangan', 'Inisialisasi produk baru.') 
+            ->where('keterangan', 'Inisialisasi produk baru.')
             ->orderBy('tanggal', 'desc')
             ->first();
 
@@ -119,12 +119,11 @@ class StokProdukController extends Controller
             if ($initialLog) {
                 // UPDATE log yang sudah ada (mengubah status dari PENYESUAIAN (0) menjadi MASUK)
                 $initialLog->update([
-                    'jumlah' => $jumlah, 
+                    'jumlah' => $jumlah,
                     'tanggal' => now(),
                     'keterangan' => $validated['keterangan'] ?? 'Stok awal dimasukkan.' // Keterangan yang menunjukkan stok masuk
                 ]);
                 $successMessage = "Stok awal {$produk->nama} berhasil diupdate dan ditambahkan sebanyak {$jumlah} unit.";
-
             } else {
                 // CREATE log baru (Standar Penambahan Stok)
                 StokProduk::create([
@@ -174,13 +173,13 @@ class StokProdukController extends Controller
             'stok_baru' => 'required|integer', // Nilai stok akhir yang diinput user
             'keterangan' => 'required|string|max:255' // Dibuat WAJIB diisi karena ini penyesuaian manual
         ]);
-        
-        $produk = Produk::findOrFail($id); 
+
+        $produk = Produk::findOrFail($id);
         $jumlahBaru = (int)$validated['stok_baru'];
         $jumlahLama = $produk->stok;
 
         $selisih = $jumlahBaru - $jumlahLama; // Selisih bisa positif (masuk) atau negatif (keluar)
-        
+
         // Menentukan rute kembali. Jika ada 'history_back' di request, kembali ke history.
         $redirectRoute = $request->has('history_back') ? 'admin.stok_produk.history' : 'admin.stok_produk.index';
 
@@ -196,7 +195,7 @@ class StokProdukController extends Controller
             if ($selisih != 0) {
                 StokProduk::create([
                     'produk_id' => $produk->id,
-                    'jumlah' => $selisih, 
+                    'jumlah' => $selisih,
                     'tanggal' => now(),
                     'keterangan' => $validated['keterangan']
                 ]);
@@ -227,7 +226,7 @@ class StokProdukController extends Controller
             // Catat log stok dikurangi penuh sebelum dihapus permanen
             StokProduk::create([
                 'produk_id' => $produk->id,
-                'jumlah' => -$produk->stok, 
+                'jumlah' => -$produk->stok,
                 'tanggal' => now(),
                 'keterangan' => 'Produk dihapus.'
             ]);
@@ -258,9 +257,9 @@ class StokProdukController extends Controller
         // Order berdasarkan tanggal dan ID terbaru (paling baru di atas)
         $riwayat_stok = StokProduk::with('produk')
             ->orderBy('tanggal', 'desc')
-            ->orderBy('id', 'desc') 
-            ->paginate(15);
-        
+            ->orderBy('id', 'desc')
+            ->paginate(20);
+
         return view('admin.stok_produk.history', compact('riwayat_stok', 'pageTitle'));
     }
 
@@ -271,7 +270,7 @@ class StokProdukController extends Controller
     public function showHistoryDetail(StokProduk $stokProduk)
     {
         $pageTitle = 'Detail Pergerakan Stok';
-        
+
         // Load data produk
         $stokProduk->load('produk');
 
