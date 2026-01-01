@@ -20,7 +20,7 @@ class MembershipController extends Controller
     {
         $memberships = Membership::with(['member.user', 'paket', 'groupMembers.member.user'])
             ->latest('tanggal_transaksi')
-            ->paginate(15);
+            ->paginate(20);
 
         /**
          * Dropdown member (hanya user.role = member)

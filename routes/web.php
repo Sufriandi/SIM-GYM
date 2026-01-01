@@ -5,6 +5,10 @@ use Illuminate\Support\Facades\Auth;
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MarketplaceController;
+use App\Http\Controllers\GuestCoachController;
+
 
 // Controller Admin
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -46,8 +50,57 @@ use App\Http\Controllers\Member\KehadiranMemberController as MemberKehadiranMemb
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::name('guest.')->group(function () {
 
+    Route::get('/', [HomeController::class, 'index'])->name('home');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // === MARKETPLACE ROUTES ===
+    
+    // 1. Index (Katalog)
+    Route::get('/marketplace', [MarketplaceController::class, 'index'])->name('marketplace.index');
+
+    // 2. Cart & Checkout
+    Route::get('/marketplace/cart', [MarketplaceController::class, 'cart'])->name('marketplace.cart');
+
+    // 3. Detail Produk (Wildcard {slug})
+    Route::get('/marketplace/{slug}', [MarketplaceController::class, 'show'])->name('marketplace.show');
+
+    // === COACH ROUTES ===
+    Route::get('/coaches', [GuestCoachController::class, 'index'])->name('coaches.index');
+    Route::get('/coaches/{slug}', [GuestCoachController::class, 'show'])->name('coaches.show');
+});
+
+
+// // halaman cart (pastikan route name ini memang dipakai di controller)
+// Route::get('/marketplace/cart', [MarketplaceController::class, 'cart'])
+//     ->name('guest.marketplace.cart');
+
+// // actions
+// Route::post('/cart/add/{id}', [MarketplaceController::class, 'addToCart'])
+//     ->name('guest.marketplace.cart.add');
+
+// // remove via POST (untuk AJAX tanpa reload)
+// Route::post('/cart/remove/{id}', [MarketplaceController::class, 'removeFromCart'])
+//     ->name('guest.marketplace.cart.remove');
+
+// // fallback lama (kalau masih ada link GET remove di tempat lain)
+// Route::get('/cart/remove/{id}', [MarketplaceController::class, 'removeFromCart']);
+
+// // qty via POST (AJAX)
+// Route::post('/cart/{id}/quantity', [MarketplaceController::class, 'updateCartQuantity'])
+//     ->name('guest.marketplace.cart.quantity');
+
+// // guard: kalau keakses GET (misal refresh), jangan 405
+// Route::get('/cart/{id}/quantity', function () {
+//     return redirect()->route('guest.marketplace.cart');
+// });
+Route::middleware('auth')->group(function () {
+    Route::post('/cart/add/{id}', [MarketplaceController::class, 'add'])->name('cart.add');
+    Route::get('/marketplace/cart', [MarketplaceController::class, 'index'])->name('guest.marketplace.cart');
+});
+
+    
 /*
 |--------------------------------------------------------------------------
 | 2. PENGALIH DASHBOARD (REDIRECTOR)

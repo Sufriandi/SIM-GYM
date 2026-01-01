@@ -37,7 +37,8 @@ class TransaksiProdukController extends Controller
     {
         $pageTitle = 'Transaksi Produk (Kasir)';
 
-        $produks = Produk::orderBy('nama')->get(['id', 'nama', 'harga', 'stok', 'foto']);
+        $produks = Produk::orderBy('nama')->get();
+
 
 
         $members = Member::with('user')
@@ -88,7 +89,7 @@ class TransaksiProdukController extends Controller
         $daftar_transaksi = $query
             ->orderBy('tanggal_transaksi', 'desc')
             ->orderBy('id', 'desc')
-            ->paginate(15)
+            ->paginate(20)
             ->withQueryString();
 
         $members = Member::with('user')

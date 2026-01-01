@@ -62,7 +62,7 @@ export default {
           DEFAULT: "#D4A757",
         },
 
-        // BRAND => pakai CSS variables (biar otomatis berubah saat .dark)
+        // BRAND => pakai CSS variables (otomatis berubah saat .dark)
         brand: {
           bg: cssVar("--brand-bg"),
           shell: cssVar("--brand-shell"),
@@ -82,15 +82,14 @@ export default {
           borderSoft: cssVar("--brand-borderSoft"),
           borderStrong: cssVar("--brand-borderStrong"),
 
-          // kalau kamu pakai brand.text / brand.textSoft di beberapa tempat
           text: cssVar("--text-main"),
           textSoft: cssVar("--text-muted"),
 
           white: "#FFFFFF",
-          black: "#0C0C0C",
-          gunmetal: "#2C2C2C",
-          steel: "#4B4B4B",
-          silver: "#C8C8C8",
+          black: "#080808",           // Pure black premium
+          gunmetal: "#1A1A1A",        // Dark gunmetal
+          steel: "#2D2D2D",           // Steel gray
+          silver: "#C8C8C8",          // Silver tetap
         },
 
         accent: {
@@ -108,15 +107,29 @@ export default {
         },
 
         primary: {
-          DEFAULT: "#D4A757",
-          dark: "#A67C39",
-          soft: "#F8F2E7",
+          DEFAULT: "#D4A757",         // Gold utama
+          dark: "#A67C39",            // Gold gelap
+          soft: "#F8F2E7",            // Gold soft untuk light theme
         },
-        secondary: { DEFAULT: "#2C2C2C" },
-        success: { DEFAULT: "#22C55E", soft: "#DCFCE7" },
-        warning: { DEFAULT: "#EAB308", soft: "#FEF9C3" },
-        danger: { DEFAULT: "#C73527", soft: "#FEE2E2" },
-        info: { DEFAULT: "#0EA5E9", soft: "#E0F2FE" },
+        secondary: { 
+          DEFAULT: "#1A1A1A"          // Dark gunmetal instead of brown
+        },
+        success: { 
+          DEFAULT: "#22C55E", 
+          soft: "#DCFCE7" 
+        },
+        warning: { 
+          DEFAULT: "#EAB308", 
+          soft: "#FEF9C3" 
+        },
+        danger: { 
+          DEFAULT: "#C73527", 
+          soft: "#FEE2E2" 
+        },
+        info: { 
+          DEFAULT: "#0EA5E9", 
+          soft: "#E0F2FE" 
+        },
 
         neutral: {
           50: "#F9FAFB",
@@ -127,24 +140,25 @@ export default {
           500: "#6B7280",
           600: "#4B5563",
           700: "#374151",
-          800: "#1F2933",
+          800: "#1F2937",
           900: "#111827",
         },
 
-        // Alias helper => juga pakai CSS vars
+        // Alias helper
         "text-main": cssVar("--text-main"),
         "text-muted": cssVar("--text-muted"),
       },
 
       boxShadow: {
         header: "0 4px 18px rgba(0,0,0,0.06)",
-        card: "0 10px 30px rgba(0,0,0,0.06)",
-        "card-strong": "0 18px 45px rgba(0,0,0,0.12)",
-        sidebar: "0 0 40px rgba(0,0,0,0.35)",
+        card: "0 10px 30px rgba(0,0,0,0.08)",
+        "card-strong": "0 18px 45px rgba(0,0,0,0.15)",
+        sidebar: "0 0 40px rgba(0,0,0,0.4)",
         "btn-primary": "0 10px 25px rgba(199,53,39,0.35)",
         "btn-primary-hover": "0 16px 40px rgba(199,53,39,0.55)",
         "btn-soft": "0 8px 20px rgba(0,0,0,0.12)",
-        "gold-glow": "0 0 25px rgba(212,167,87,0.45)",
+        "gold-glow": "0 0 30px rgba(212,167,87,0.5)",
+        "gold-glow-strong": "0 0 40px rgba(212,167,87,0.7)",
       },
 
       borderRadius: {
@@ -164,34 +178,80 @@ export default {
       },
 
       backgroundImage: {
+        // Premium Gold Gradients
         "brand-gold":
           "linear-gradient(135deg, #A67C39 0%, #D4A757 40%, #F3D79C 100%)",
         "brand-gold-soft":
           "linear-gradient(145deg, #FBF7EE 0%, #F3D79C 45%, #FBEECF 100%)",
+        "brand-gold-shine":
+          "linear-gradient(135deg, #D4A757 0%, #EAC176 50%, #D4A757 100%)",
+        
+        // Premium Black Gradients (untuk dark mode)
         "brand-dark":
-          "linear-gradient(145deg, #000000 0%, #0C0C0C 45%, #2C2C2C 100%)",
+          "linear-gradient(145deg, #000000 0%, #0A0A0A 45%, #1A1A1A 100%)",
+        "brand-dark-subtle":
+          "linear-gradient(135deg, #080808 0%, #121212 50%, #1A1A1A 100%)",
+        "brand-gunmetal":
+          "linear-gradient(145deg, #0A0A0A 0%, #1A1A1A 45%, #2D2D2D 100%)",
+        
+        // Shell & Overlay Effects
         "brand-shell":
-          "radial-gradient(circle at top, rgba(212,167,87,0.18), transparent 60%)",
+          "radial-gradient(circle at top, rgba(212,167,87,0.12), transparent 70%)",
+        "brand-shell-dark":
+          "radial-gradient(circle at top, rgba(212,167,87,0.08), transparent 65%)",
+        
+        // Accent & Ember (tetap untuk light theme)
         "brand-ember":
           "linear-gradient(135deg, #8E261D 0%, #C73527 35%, #D4A757 100%)",
         "brand-sand":
           "linear-gradient(135deg, #F8F2E7 0%, #FCFCFA 40%, #FFFFFF 100%)",
         "brand-diagonal-light":
           "linear-gradient(120deg, #FBF7EE 0%, #F4E6D4 45%, #FBF7EE 100%)",
+        
+        // Overlay Effects
         "brand-overlay-dark":
-          "linear-gradient(180deg, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)",
+          "linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 60%, transparent 100%)",
+        "brand-overlay-premium":
+          "linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 70%, transparent 100%)",
         "brand-radial-spot":
-          "radial-gradient(circle at 20% 0%, rgba(212,167,87,0.32), transparent 55%)",
+          "radial-gradient(circle at 20% 0%, rgba(212,167,87,0.25), transparent 60%)",
+        "brand-radial-gold":
+          "radial-gradient(circle at center, rgba(212,167,87,0.15), transparent 70%)",
+        
+        // Accent Gradients
         "accent-gradient":
           "linear-gradient(135deg, #C73527 0%, #8E261D 100%)",
         "accent-fire":
           "linear-gradient(120deg, #6E1C16 0%, #C73527 40%, #F97373 100%)",
+        
+        // Premium Black + Gold Combo
+        "premium-dark-gold":
+          "linear-gradient(135deg, #000000 0%, #0A0A0A 30%, rgba(212,167,87,0.1) 100%)",
+        "premium-gold-black":
+          "linear-gradient(135deg, rgba(212,167,87,0.15) 0%, #0A0A0A 60%, #000000 100%)",
       },
 
-      transitionDuration: { fast: "150ms", normal: "220ms", slow: "350ms" },
-      transitionTimingFunction: { smooth: "cubic-bezier(0.22, 0.61, 0.36, 1)" },
-      scale: { 98: "0.98", 101: "1.01", 102: "1.02" },
-      opacity: { 15: "0.15", 35: "0.35" },
+      transitionDuration: { 
+        fast: "150ms", 
+        normal: "220ms", 
+        slow: "350ms",
+        slower: "500ms"
+      },
+      transitionTimingFunction: { 
+        smooth: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+        premium: "cubic-bezier(0.4, 0, 0.2, 1)"
+      },
+      scale: { 
+        98: "0.98", 
+        101: "1.01", 
+        102: "1.02",
+        103: "1.03"
+      },
+      opacity: { 
+        15: "0.15", 
+        35: "0.35",
+        85: "0.85"
+      },
 
       keyframes: {
         "pulse-gold": {
@@ -207,11 +267,21 @@ export default {
           "50%": { backgroundPosition: "100% 50%" },
           "100%": { backgroundPosition: "0% 50%" },
         },
+        "glow-pulse": {
+          "0%, 100%": { boxShadow: "0 0 20px rgba(212,167,87,0.3)" },
+          "50%": { boxShadow: "0 0 35px rgba(212,167,87,0.6)" },
+        },
+        "shimmer": {
+          "0%": { backgroundPosition: "-200% center" },
+          "100%": { backgroundPosition: "200% center" },
+        },
       },
       animation: {
         "pulse-gold": "pulse-gold 1.8s smooth infinite",
         "soft-pop": "soft-pop 200ms ease-out",
         "gradient-move": "gradient-move 6s ease-in-out infinite",
+        "glow-pulse": "glow-pulse 2s ease-in-out infinite",
+        "shimmer": "shimmer 3s linear infinite",
       },
     },
   },
