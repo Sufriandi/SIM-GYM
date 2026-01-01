@@ -4,49 +4,42 @@
 
     $pageTitle = $pageTitle ?? 'Paket Membership';
 
-    // parameter pencarian sederhana
+    // Parameter dari Controller
     $search = request('q', '');
     $filterTipe = request('tipe', '');
+    $sort = request('sort', 'newest');
 
-    // modal create auto terbuka kalau ada error dan bukan PUT
+    // Cek apakah ada filter aktif untuk styling tombol filter
+    $hasActiveFilter = $filterTipe || $sort !== 'newest';
+
+    // Modal Create auto-open jika error validation
     $openCreateOnLoad = $errors->any() && old('_method') !== 'PUT' ? 'true' : 'false';
 
-    // data untuk pagination
+    // Data Pagination
     $currentPage = $paketMemberships->currentPage() ?? 1;
     $perPage = $paketMemberships->perPage() ?? 15;
 
-    /**
-     * Meta tipe paket:
-     * - key HARUS sama dengan enum di database: single, double, triple
-     * - variant badge dibikin kontras:
-     *   single  -> primary (indigo)
-     *   double  -> success (hijau)
-     *   triple  -> warning (amber/kuning)
-     */
+    // Opsi Tipe
     $tipeMeta = [
-        'single' => [
-            'label' => 'single',
-            'icon' => 'user',
-            'variant' => 'primary',
-        ],
-        'double' => [
-            'label' => 'double',
-            'icon' => 'users',
-            'variant' => 'success',
-        ],
-        'triple' => [
-            'label' => 'triple',
-            'icon' => 'users-2',
-            'variant' => 'warning',
-        ],
+        'single' => ['label' => 'Single', 'icon' => 'user', 'variant' => 'primary'],
+        'double' => ['label' => 'Double', 'icon' => 'users', 'variant' => 'success'],
+        'triple' => ['label' => 'Triple', 'icon' => 'users-2', 'variant' => 'warning'],
     ];
+    $tipeOptions = collect($tipeMeta)->mapWithKeys(fn($meta, $key) => [$key => $meta['label']])->all();
 
-    // opsi dropdown filter
-    $tipeOptions = collect($tipeMeta)->mapWithKeys(fn($meta, $key) => [$key => ucfirst($meta['label'])])->all();
+    // Opsi Sorting
+    $sortOptions = [
+        'newest' => 'Terbaru (Default)',
+        'price_asc' => 'Harga Termurah',
+        'price_desc' => 'Harga Termahal',
+        'duration_asc' => 'Durasi Terpendek',
+        'duration_desc' => 'Durasi Terpanjang',
+    ];
 @endphp
 
 <x-layouts.admin :title="$pageTitle . ' – BETA GYM'" :page-title="$pageTitle"
     page-subtitle="Kelola paket membership BETA GYM (harian, bulanan, couple/family, dll).">
+
     {{-- FLASH MESSAGE --}}
     @if (session('success'))
         <div class="bg-primary-soft border border-primary text-primary-dark px-4 py-3 rounded relative mb-4">
@@ -61,20 +54,37 @@
 
     <div x-data="{
         openCreate: {{ $openCreateOnLoad }},
-        searchQuery: '{{ $search }}',
-    }">
+        openEditId: null,
+        searchQuery: @js($search ?? ''),
+    
+        // State untuk Filter Popup
+        showFilter: false,
+        tipeDraft: @js($filterTipe),
+        sortDraft: @js($sort),
+    }"
+        @keydown.escape.window="
+        openCreate = false;
+        openEditId = null;
+        showFilter = false;
+    ">
+
         {{-- HEADER HALAMAN --}}
         <x-ui.section-header :title="$pageTitle"
             subtitle="Atur nama paket, tipe paket (single/double/triple), durasi dalam hari, dan harga." />
         <hr class="border-t border-brand-borderSoft mb-6">
 
-        {{-- ROW: SEARCH + TOMBOL TAMBAH --}}
+        {{-- ROW: SEARCH + FILTER + TOMBOL TAMBAH --}}
         <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
 
-            {{-- SEARCH & FILTER TIPE --}}
-            <div class="flex flex-col sm:flex-row gap-3 w-full md:max-w-xl">
+            {{-- SEARCH BAR & FILTER POPUP --}}
+            <div class="relative w-full md:max-w-xl">
                 <form action="{{ route('admin.paket_memberships.index') }}" method="GET"
                     class="flex-1 flex items-center rounded-full border border-brand-borderSoft bg-brand-card shadow-sm focus-within:ring-2 focus-within:ring-primary-dark/50 transition-all hover:border-brand-borderSoft/80">
+
+                    {{-- Hidden inputs agar value filter tetap terbawa saat search diketik --}}
+                    <input type="hidden" name="tipe" :value="tipeDraft">
+                    <input type="hidden" name="sort" :value="sortDraft">
+
                     <div class="pl-4 text-text-muted">
                         <i data-lucide="search" class="w-5 h-5"></i>
                     </div>
@@ -84,102 +94,132 @@
                         class="w-full bg-transparent border-none text-sm text-text-main placeholder:text-text-muted/60 focus:ring-0 py-3 pl-3 pr-2 rounded-l-full"
                         autocomplete="off">
 
-                    {{-- separator --}}
                     <div class="h-6 w-px bg-brand-borderSoft mx-2"></div>
 
-                    {{-- FILTER TIPE --}}
-                    <select name="tipe"
-                        class="mr-3 text-xs bg-transparent border-none text-text-main focus:ring-0 focus:outline-none">
-                        <option value="">Semua Tipe</option>
-                        @foreach ($tipeOptions as $value => $label)
-                            <option value="{{ $value }}" {{ $filterTipe === $value ? 'selected' : '' }}>
-                                {{ $label }}
-                            </option>
-                        @endforeach
-                    </select>
+                    {{-- TOMBOL PEMICU FILTER --}}
+                    <button type="button" @click="showFilter = !showFilter"
+                        class="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors mr-2 rounded-full hover:bg-brand-surface-50"
+                        :class="(showFilter || {{ $hasActiveFilter ? 'true' : 'false' }}) ?
+                        'text-gold-600 bg-brand-surface-50' : 'text-text-muted hover:text-text-main'">
+                        <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Filter</span>
+                    </button>
 
-                    {{-- submit hidden (enter) --}}
                     <button type="submit" class="hidden">Cari</button>
                 </form>
+
+                {{-- POPUP FILTER (Dropdown) --}}
+                <div x-show="showFilter" x-cloak @click.outside="showFilter = false"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 translate-y-2"
+                    class="absolute top-full left-0 right-0 mt-3 bg-brand-card border border-brand-borderSoft rounded-2xl shadow-xl p-5 z-40">
+
+                    {{-- Form Filter sebenarnya (menggunakan Alpine variables) --}}
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center pb-2 border-b border-brand-borderSoft/50">
+                            <h4 class="text-sm font-semibold text-text-main">Filter &amp; Urutan</h4>
+                            <a href="{{ route('admin.paket_memberships.index') }}"
+                                class="text-xs text-danger hover:underline">
+                                Reset
+                            </a>
+                        </div>
+
+                        {{-- Filter Tipe --}}
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">Tipe Paket</label>
+                            <select x-model="tipeDraft"
+                                class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark">
+                                <option value="">Semua Tipe</option>
+                                @foreach ($tipeOptions as $val => $label)
+                                    <option value="{{ $val }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Filter Sort --}}
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">Urutan</label>
+                            <select x-model="sortDraft"
+                                class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark">
+                                @foreach ($sortOptions as $val => $label)
+                                    <option value="{{ $val }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Tombol Terapkan --}}
+                        <button type="button" @click="$el.closest('.relative').querySelector('form').submit()"
+                            class="w-full bg-primary-dark hover:bg-primary-dark/90 text-white text-sm font-medium py-2 rounded-lg transition shadow-md">
+                            Terapkan Filter
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {{-- TOMBOL TAMBAH PAKET --}}
             <div class="flex items-center justify-end">
                 <x-ui.button-primary type="button" @click="openCreate = true">
-                    <i data-lucide="plus" class="w-5 h-5 mr-1"></i> Tambah Paket Membership
+                    <i data-lucide="plus" class="w-5 h-5 mr-1"></i> Tambah Paket
                 </x-ui.button-primary>
             </div>
         </div>
 
-        {{-- CARD TABEL PAKET MEMBERSHIP --}}
+        {{-- CARD TABEL --}}
         <x-ui.card title="Daftar Paket Membership" subtitle="Semua paket membership yang tersedia di BETA GYM."
             class="border-brand-borderSoft">
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto custom-scrollbar">
                 <table class="w-full border-collapse min-w-[720px] text-sm">
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
                             <th
                                 class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[5%]">
-                                No.
-                            </th>
+                                No.</th>
                             <th
                                 class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[25%]">
-                                Nama Paket
-                            </th>
+                                Nama Paket</th>
                             <th
                                 class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[15%]">
-                                Tipe Paket
-                            </th>
+                                Tipe Paket</th>
                             <th
                                 class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[15%]">
-                                Durasi
-                            </th>
+                                Durasi</th>
                             <th
                                 class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[15%]">
-                                Harga
-                            </th>
+                                Harga</th>
                             <th
                                 class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[20%]">
-                                Deskripsi
-                            </th>
+                                Deskripsi</th>
                             <th
                                 class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[15%]">
-                                Aksi
-                            </th>
+                                Aksi</th>
                         </tr>
                     </thead>
+
                     <tbody class="divide-y divide-brand-borderSoft/80">
                         @php $no = ($currentPage - 1) * $perPage + 1; @endphp
 
                         @forelse ($paketMemberships as $paket)
                             @php
-                                $openEditOnLoad =
-                                    $errors->any() && old('_method') === 'PUT' && old('paket_id') == $paket->id
-                                        ? 'true'
-                                        : 'false';
-
                                 $meta = $tipeMeta[$paket->tipe] ?? $tipeMeta['single'];
-                                $tipeLabel = ucfirst($meta['label']);
+                                $tipeLabel = $meta['label'];
                                 $tipeIcon = $meta['icon'];
                                 $badgeVar = $meta['variant'];
-
                                 $durasiText = $paket->durasi . ' hari';
                             @endphp
 
-                            <tr class="hover:bg-brand-surface-50 transition-colors duration-150"
-                                x-data="{ openEdit: {{ $openEditOnLoad }} }">
-                                <td class="p-3 text-center align-middle text-text-muted">
-                                    {{ $no++ }}
-                                </td>
+                            <tr class="hover:bg-brand-surface-50 transition-colors duration-150">
+                                <td class="p-3 text-center align-middle text-text-muted">{{ $no++ }}</td>
 
                                 <td class="p-3 align-middle">
-                                    <div class="text-sm font-semibold text-text-main line-clamp-1">
-                                        {{ $paket->nama }}
+                                    <div class="text-sm font-semibold text-text-main line-clamp-1">{{ $paket->nama }}
                                     </div>
                                 </td>
 
                                 <td class="p-3 align-middle">
-                                    {{-- TIPE PAKET MENGGUNAKAN BADGE --}}
                                     <x-ui.badge :variant="$badgeVar" class="gap-1.5 px-3 py-1">
                                         <i data-lucide="{{ $tipeIcon }}" class="w-3.5 h-3.5"></i>
                                         <span class="font-semibold">{{ $tipeLabel }}</span>
@@ -187,9 +227,7 @@
                                 </td>
 
                                 <td class="p-3 align-middle">
-                                    <div class="text-sm text-text-main">
-                                        {{ $durasiText }}
-                                    </div>
+                                    <div class="text-sm text-text-main">{{ $durasiText }}</div>
                                 </td>
 
                                 <td class="p-3 align-middle">
@@ -206,14 +244,14 @@
 
                                 <td class="p-3 align-middle">
                                     <div class="flex items-center justify-center gap-1.5">
-                                        {{-- EDIT BUTTON --}}
-                                        <button type="button" @click.stop="openEdit = true"
+                                        {{-- EDIT --}}
+                                        <button type="button" @click.stop="openEditId = {{ $paket->id }}"
                                             class="p-2 rounded-full text-yellow-600 hover:bg-yellow-100/60 transition-colors"
                                             title="Edit Paket">
                                             <i data-lucide="square-pen" class="w-5 h-5"></i>
                                         </button>
 
-                                        {{-- DELETE BUTTON --}}
+                                        {{-- DELETE --}}
                                         <form id="delete-paket-{{ $paket->id }}"
                                             action="{{ route('admin.paket_memberships.destroy', $paket) }}"
                                             method="POST" class="inline-block" @click.stop>
@@ -222,24 +260,18 @@
                                             <button type="button"
                                                 class="p-2 rounded-full text-danger hover:bg-danger-soft/60 transition-colors"
                                                 title="Hapus Paket"
-                                                onclick="if(confirm('Yakin ingin menghapus paket {{ $paket->nama }}?')) document.getElementById('delete-paket-{{ $paket->id }}').submit();">
+                                                onclick="confirmDeletePaket({{ $paket->id }}, @js($paket->nama))">
                                                 <i data-lucide="trash-2" class="w-5 h-5"></i>
                                             </button>
                                         </form>
                                     </div>
-
-                                    {{-- MODAL EDIT (DI-include) --}}
-                                    @include('admin.paket_memberships.modals.edit', [
-                                        'paket' => $paket,
-                                        'tipeOptions' => $tipeOptions,
-                                    ])
                                 </td>
                             </tr>
                         @empty
                             <tr>
                                 <td colspan="7" class="p-6 text-center text-text-muted italic">
                                     @if ($search || $filterTipe)
-                                        Tidak ada paket membership yang cocok dengan pencarian / filter.
+                                        Tidak ada paket membership yang cocok dengan filter pencarian.
                                     @else
                                         Belum ada paket membership yang tersimpan.
                                     @endif
@@ -252,24 +284,76 @@
 
             {{-- PAGINATION --}}
             <div class="mt-6">
-                {{ $paketMemberships->appends([
-                        'q' => $search,
-                        'tipe' => $filterTipe,
-                    ])->links() }}
+                {{ $paketMemberships->appends(['q' => $search, 'tipe' => $filterTipe, 'sort' => $sort])->links() }}
             </div>
         </x-ui.card>
 
-        {{-- MODAL CREATE (TERPISAH) --}}
+        {{-- MODALS EDIT --}}
+        @foreach ($paketMemberships as $paket)
+            @include('admin.paket_memberships.modals.edit', [
+                'paket' => $paket,
+                'tipeOptions' => $tipeOptions,
+            ])
+        @endforeach
+
+        {{-- MODAL CREATE --}}
         @include('admin.paket_memberships.modals.create', [
             'tipeOptions' => $tipeOptions,
             'openCreateOnLoad' => $openCreateOnLoad,
         ])
 
-        {{-- STYLE KECIL UNTUK x-cloak --}}
+        {{-- CSS Styles --}}
         <style>
             [x-cloak] {
                 display: none !important;
             }
+
+            .custom-scrollbar::-webkit-scrollbar {
+                height: 6px;
+                width: 6px;
+            }
+
+            .custom-scrollbar::-webkit-scrollbar-track {
+                background: #F5E6D6;
+                border-radius: 999px;
+            }
+
+            .custom-scrollbar::-webkit-scrollbar-thumb {
+                background: #D4A757;
+                border-radius: 999px;
+            }
+
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                background: #A67C39;
+            }
         </style>
     </div>
+
+    {{-- Script Delete (SweetAlert) --}}
+    <script>
+        function confirmDeletePaket(paketId, paketNama) {
+            if (typeof Swal === 'undefined') {
+                if (confirm('Yakin ingin menghapus paket ' + paketNama + '?')) {
+                    document.getElementById('delete-paket-' + paketId).submit();
+                }
+                return;
+            }
+            Swal.fire({
+                title: 'Hapus Paket?',
+                text: 'Anda yakin ingin menghapus paket ' + paketNama + '? Tindakan ini tidak dapat dibatalkan.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#C73527',
+                cancelButtonColor: '#6C5A46',
+                confirmButtonText: 'Ya, Hapus!',
+                cancelButtonText: 'Batal',
+                background: '#21160F',
+                color: '#F8F2E7',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById('delete-paket-' + paketId).submit();
+                }
+            });
+        }
+    </script>
 </x-layouts.admin>

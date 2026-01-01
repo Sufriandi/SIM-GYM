@@ -48,19 +48,17 @@
                 @endif
 
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-                    {{-- KIRI: FOTO --}}
+                    {{-- KIRI: FOTO (KEMBALI KE DESAIN AWAL w-28 h-28) --}}
                     <div class="lg:col-span-4">
                         <div class="rounded-2xl border border-brand-borderSoft/70 bg-brand-card p-4">
                             <div class="flex items-start justify-between gap-3">
                                 <div>
                                     <h3 class="text-sm font-semibold text-text-main">Foto Profil</h3>
-                                    <p class="text-[11px] text-text-muted mt-0.5">
-                                        Disimpan ke <span class="font-semibold">users.foto</span>.
-                                    </p>
                                 </div>
                             </div>
 
                             <div class="mt-3 flex flex-col items-center gap-3">
+                                {{-- KEMBALI KE UKURAN ASLI --}}
                                 <div
                                     class="w-28 h-28 rounded-2xl border-2 border-dashed border-brand-borderSoft overflow-hidden
                                            flex items-center justify-center bg-brand-surface-50">
@@ -70,33 +68,7 @@
                                         Preview Foto
                                     </span>
                                 </div>
-
-                                <div class="w-full space-y-1">
-                                    <x-ui.label for="foto_create">Upload Foto (opsional)</x-ui.label>
-                                    <input id="foto_create" type="file" name="foto" accept="image/*"
-                                        class="block w-full text-sm text-text-main
-                                               file:mr-4 file:py-2 file:px-4
-                                               file:rounded-full file:border-0
-                                               file:text-sm file:font-semibold
-                                               file:bg-gold-600 file:text-white
-                                               hover:file:bg-gold-700"
-                                        @change="
-                                            const f = $event.target.files[0];
-                                            if (f) {
-                                                const r = new FileReader();
-                                                r.onload = e => imageUrl = e.target.result;
-                                                r.readAsDataURL(f);
-                                            } else {
-                                                imageUrl = null;
-                                            }
-                                        ">
-                                    <p class="text-[11px] text-text-muted">
-                                        Maksimal 2MB. Format: JPG/PNG.
-                                    </p>
-                                    @error('foto')
-                                        <p class="text-xs text-danger">{{ $message }}</p>
-                                    @enderror
-                                </div>
+                                {{-- INPUT FILE SUDAH DIPINDAHKAN DARI SINI --}}
                             </div>
                         </div>
                     </div>
@@ -218,6 +190,35 @@
                                            border-brand-borderSoft focus:outline-none focus:ring-2
                                            focus:ring-primary-dark focus:border-transparent @error('alamat') border-danger ring-danger-soft @enderror">{{ old('alamat') }}</textarea>
                                 @error('alamat')
+                                    <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            {{-- INPUT FILE BERADA DISINI SEKARANG --}}
+                            <div class="pt-2 border-t border-brand-borderSoft/50">
+                                <x-ui.label for="foto_create">Upload Foto (opsional)</x-ui.label>
+                                <input id="foto_create" type="file" name="foto" accept="image/*"
+                                    class="block w-full text-sm text-text-main
+                                           file:mr-4 file:py-2 file:px-4
+                                           file:rounded-full file:border-0
+                                           file:text-sm file:font-semibold
+                                           file:bg-gold-600 file:text-white
+                                           hover:file:bg-gold-700
+                                           cursor-pointer"
+                                    @change="
+                                        const f = $event.target.files[0];
+                                        if (f) {
+                                            const r = new FileReader();
+                                            r.onload = e => imageUrl = e.target.result;
+                                            r.readAsDataURL(f);
+                                        } else {
+                                            imageUrl = null;
+                                        }
+                                    ">
+                                <p class="text-[11px] text-text-muted mt-1">
+                                    Maksimal 2MB. Format: JPG/PNG.
+                                </p>
+                                @error('foto')
                                     <p class="text-xs text-danger mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
