@@ -35,7 +35,8 @@ class IzinLatihan extends Model
     // Relasi: izin dimiliki oleh 1 member via member_id
     public function member()
     {
-        return $this->belongsTo(Member::class, 'member_id', 'id');
+        return $this->belongsTo(Member::class, 'member_id', 'id')
+            ->withTrashed();
     }
 
     // Accessor: Hitung jumlah hari otomatis
