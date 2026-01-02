@@ -325,11 +325,50 @@ Route::middleware(['auth', 'member'])
             })->name('index_redirect');
         });
 
-        Route::resource('produk_gym', ProdukGymController::class)
-            ->only(['index', 'store'])
-            ->names('produk_gym');
+        // =========================
+        // Marketplace (Index + Show)
+        // =========================
+        Route::get('/produk_gym', [ProdukGymController::class, 'index'])
+            ->name('produk_gym.index');
 
-        Route::get('coach', [MemberCoachController::class, 'index'])->name('coach.index');
+        Route::get('/produk_gym/{slug}', [ProdukGymController::class, 'show'])
+            ->where('slug', '^[0-9]+-.*$')
+            ->name('produk_gym.show');
+
+        // =========================
+        // Cart (Member)
+        // =========================
+        Route::get('/produk_gym/cart', [ProdukGymController::class, 'cart'])
+            ->name('produk_gym.cart');
+
+        Route::post('/produk_gym/cart/add/{id}', [ProdukGymController::class, 'addToCart'])
+            ->whereNumber('id')
+            ->name('produk_gym.cart.add');
+
+        // AJAX remove (sesuai JS Anda yang POST)
+        Route::post('/produk_gym/cart/remove/{id}', [ProdukGymController::class, 'removeFromCart'])
+            ->whereNumber('id')
+            ->name('produk_gym.cart.remove');
+
+        // AJAX qty update (sesuai JS Anda yang POST ke .../quantity)
+        Route::post('/produk_gym/cart/{id}/quantity', [ProdukGymController::class, 'updateCartQuantity'])
+            ->whereNumber('id')
+            ->name('produk_gym.cart.qty');
+    
+
+        /**
+         * COACH: index + show (slug)
+         * URL:
+         * - /member/coach
+         * - /member/coach/{id}-{nama-coach}
+         */
+        Route::prefix('coach')->name('coach.')->group(function () {
+            Route::get('/', [MemberCoachController::class, 'index'])->name('index');
+
+            Route::get('/{slug}', [MemberCoachController::class, 'show'])
+                ->where('slug', '^[0-9]+-[A-Za-z0-9\-]+$')
+                ->name('show');
+        });
     });
 
 /*

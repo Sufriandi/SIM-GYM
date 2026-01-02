@@ -4,9 +4,48 @@
     use Illuminate\Support\Facades\Storage;
     use Illuminate\Support\Str;
 
-    $pageTitle    = $pageTitle    ?? 'Daftar Coach';
-    $pageSubtitle = $pageSubtitle ?? 'Kenali coach BETA GYM dan pilih pendamping latihan yang tepat.';
-    $search       = $search       ?? request('search', '');
+    $pageTitle    = $pageTitle    ?? 'Coach';
+    $pageSubtitle = $pageSubtitle ?? 'Temukan coach yang sesuai kebutuhan latihan Anda, lalu konsultasi langsung untuk jadwal dan program.';
+    // kompatibel: ?search=... (member) atau ?q=... (fallback)
+    $search       = $search       ?? request('search', request('q', ''));
+
+    /**
+     * Resolver URL gambar (robust seperti versi guest).
+     */
+    $imgUrl = function ($path, $fallbackText) {
+        $path = trim((string) $path);
+
+        if ($path === '') {
+            return 'https://placehold.co/900x1200/111827/FACC15?text=' . urlencode($fallbackText ?: 'COACH') . '&font=raleway';
+        }
+
+        if (Str::startsWith($path, ['http://', 'https://'])) return $path;
+
+        $path = str_replace('\\', '/', $path);
+        $path = ltrim($path, '/');
+
+        if (Str::startsWith($path, 'storage/')) return url('/' . $path);
+        if (Str::startsWith($path, 'public/'))  $path = Str::after($path, 'public/');
+
+        return Storage::url($path);
+    };
+
+    /**
+     * Normalisasi WhatsApp: 08xx -> 628xx, hapus non-digit, handle yang diawali 8.
+     */
+    $waNormalize = function ($raw) {
+        $raw = (string) $raw;
+        $digits = preg_replace('/\D/', '', $raw) ?: '';
+        if ($digits === '') return null;
+
+        if (Str::startsWith($digits, '0')) $digits = '62' . substr($digits, 1);
+        if (Str::startsWith($digits, '8')) $digits = '62' . $digits;
+
+        return $digits;
+    };
+
+    // HERO background (bebas diganti)
+    $heroBg = asset('images/hero-coach.jpg');
 @endphp
 
 <x-layouts.member
@@ -14,268 +53,256 @@
     :page-title="$pageTitle"
     :page-subtitle="$pageSubtitle"
 >
-{{-- ========================================================= --}}
-{{-- 1. HERO BANNER (MEDIUM • PHOTO BG • 1 CARD) --}}
-{{-- ========================================================= --}}
-@php
-    // Pastikan file ada di: public/images/hero-coach.jpg
-    $heroBg = asset('images/hero-coach.jpg');
-@endphp
+    {{-- ========================================================= --}}
+    {{-- HERO (tidak memaksa dark; aman untuk toggle light/dark) --}}
+    {{-- ========================================================= --}}
+    <section class="relative overflow-hidden rounded-3xl border border-brand-borderSoft/60 shadow-card-strong mb-8">
+        <div class="absolute inset-0">
+            <img
+                src="{{ $heroBg }}"
+                alt="Coaching Background"
+                class="w-full h-full object-cover"
+                onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1576678927484-cc907957088c?q=80&w=2070&auto=format&fit=crop';"
+            >
+            <div class="absolute inset-0 bg-gradient-to-r from-black/70 via-black/45 to-black/20"></div>
 
-<div
-    class="relative w-full rounded-3xl overflow-hidden mb-8 border border-brand-borderSoft/40 shadow-card-strong bg-brand-nav"
-    style="
-        background-image:
-          linear-gradient(90deg, rgba(0,0,0,.82) 0%, rgba(0,0,0,.55) 48%, rgba(0,0,0,.25) 100%),
-          url('{{ $heroBg }}');
-        background-size: cover;
-        background-position: right center; /* penting: biar sisi kiri lebih aman untuk teks */
-     "
->
-    {{-- Depth overlay biar mirip dashboard --}}
-    <div class="absolute inset-0 bg-gradient-to-t from-brand-black/35 via-transparent to-white/5"></div>
+            <div class="absolute -top-24 -right-24 w-[560px] h-[560px] bg-gold-500/10 rounded-full blur-[160px]"></div>
+            <div class="absolute -bottom-24 -left-24 w-[560px] h-[560px] bg-accent-500/10 rounded-full blur-[170px]"></div>
 
-    <div class="relative z-10 px-8 py-9 md:px-10 md:py-10">
-        <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-10">
+            <div class="absolute inset-0 opacity-[0.07]"
+                 style="background-image: radial-gradient(#D4A757 1px, transparent 1px); background-size: 38px 38px;"></div>
+        </div>
 
-            {{-- LEFT: Text --}}
-            <div class="max-w-2xl space-y-4">
-                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full
-                            bg-brand-black/35 backdrop-blur-md border border-gold-500/20">
-                    <span class="w-2 h-2 rounded-full bg-gold-400"></span>
-                    <span class="text-[11px] font-bold tracking-widest uppercase text-gold-300">
-                        Official Coach Member
+        <div class="relative z-10 px-6 md:px-10 py-10 md:py-12">
+            <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
+                <div class="max-w-2xl">
+                    <span class="text-gold-300 font-bold tracking-widest uppercase text-xs font-heading block">
+                        Coach
                     </span>
+
+                    <h1 class="mt-3 font-display font-extrabold leading-[0.95] tracking-tight
+                               text-[clamp(34px,4.6vw,64px)] text-white">
+                        TEMUKAN<br>
+                        <span class="text-transparent bg-clip-text bg-brand-gold">MENTOR LATIHANMU</span>
+                    </h1>
+
+                    <p class="text-white/80 text-base md:text-lg mt-5 max-w-lg leading-relaxed">
+                        Pilih coach sesuai kebutuhan. Buka detailnya, lalu chat WhatsApp untuk konsultasi program dan jadwal.
+                    </p>
                 </div>
 
-                <h2 class="font-display font-extrabold leading-tight text-3xl md:text-4xl lg:text-[44px]">
-                    <span class="text-brand-white">Find Your Best</span>
-                    <span class="text-gold-400"> Coach.</span>
-                </h2>
+                {{-- Search --}}
+                <div class="w-full lg:w-[420px]">
+                    <form method="GET" action="{{ route('member.coach.index') }}" class="relative">
+                        <input
+                            type="text"
+                            name="search"
+                            value="{{ $search }}"
+                            class="w-full pl-5 pr-14 py-4 rounded-full
+                                   bg-white/10 backdrop-blur-md text-white placeholder:text-white/60
+                                   border border-white/15 focus:outline-none focus:ring-2 focus:ring-gold-500/30 focus:border-gold-500/30 transition"
+                            placeholder="Cari nama, spesialisasi, atau fokus latihan…"
+                        >
+                        <button
+                            type="submit"
+                            class="absolute right-2 top-2 w-10 h-10 rounded-full
+                                   bg-gold-500/90 hover:bg-gold-500 text-brand-nav
+                                   border border-gold-500/20 shadow-gold-glow transition flex items-center justify-center"
+                            aria-label="Search"
+                        >
+                            <i data-lucide="search" class="w-5 h-5"></i>
+                        </button>
+                    </form>
 
-                <p class="text-brand-silver/90 text-sm md:text-base leading-relaxed max-w-xl">
-                    Coach profesional BETA GYM siap mendampingi progres latihanmu dengan program yang terarah dan konsisten.
+                    @if($search)
+                        <div class="mt-2 text-right">
+                            <a href="{{ route('member.coach.index') }}"
+                               class="text-xs font-bold text-gold-300 hover:text-gold-200 transition">
+                                Reset Search
+                            </a>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold-500/30 to-transparent"></div>
+    </section>
+
+    {{-- ========================================================= --}}
+    {{-- GRID --}}
+    {{-- ========================================================= --}}
+    <div class="space-y-6">
+        @if($coaches->isEmpty())
+            <div class="flex flex-col items-center justify-center py-16 px-4 text-center">
+                <div class="w-24 h-24 rounded-3xl bg-brand-card border border-brand-borderSoft flex items-center justify-center mb-6 shadow-card-soft">
+                    <i data-lucide="user-x" class="w-10 h-10 text-brand-textSoft/60"></i>
+                </div>
+                <h3 class="text-2xl font-bold font-display text-brand-text mb-2">Coach Tidak Ditemukan</h3>
+                <p class="text-brand-textSoft max-w-md">
+                    @if($search)
+                        Kami tidak menemukan coach dengan kata kunci "{{ $search }}".
+                    @else
+                        Belum ada coach yang tersedia saat ini.
+                    @endif
                 </p>
             </div>
+        @else
+            <div class="flex items-center justify-between gap-4">
+                <h3 class="text-lg font-semibold text-brand-text">
+                    Coach Tersedia
+                    <span class="text-gold-500">({{ method_exists($coaches, 'total') ? $coaches->total() : $coaches->count() }})</span>
+                </h3>
+            </div>
 
-            {{-- RIGHT: Glass Panel (1 CARD) --}}
-            <div class="w-full lg:w-auto lg:min-w-[360px]">
-                <div class="rounded-3xl bg-white/8 backdrop-blur-xl border border-white/15 shadow-xl overflow-hidden min-h-[100px]">
+            {{-- Mobile 2 kolom, md 3 kolom, xl 4 kolom --}}
+            <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-7">
+                @foreach($coaches as $coach)
+                    @php
+                        $imageUrl = $imgUrl($coach->foto ?? '', $coach->nama ?? 'COACH');
 
-                    <div class="p-5 flex items-start gap-4">
-                        <div class="relative w-12 h-12 rounded-2xl overflow-hidden border border-gold-500/35 bg-brand-black/25 flex items-center justify-center">
-    <div class="absolute inset-0 bg-gradient-to-br from-gold-500/20 via-transparent to-white/5"></div>
+                        $slug = ($coach->id ?? 0) . '-' . Str::slug($coach->nama ?? 'coach');
 
-    <svg class="relative w-7 h-7" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M12 12c2.2 0 4-1.8 4-4s-1.8-4-4-4-4 1.8-4 4 1.8 4 4 4Z"
-              stroke="#F3D08A" stroke-opacity="0.9" stroke-width="1.6"/>
-        <path d="M4.5 20c1.7-3.3 4.3-5 7.5-5s5.8 1.7 7.5 5"
-              stroke="#D4A757" stroke-opacity="0.75" stroke-width="1.6" stroke-linecap="round"/>
-        <path d="M6.5 17.2c1.2-1 2.6-1.7 4.1-2.1"
-              stroke="#F3D08A" stroke-opacity="0.45" stroke-width="1.4" stroke-linecap="round"/>
-    </svg>
+                        $waNumber = $waNormalize($coach->no_hp ?? null);
+                    @endphp
 
-    <div class="absolute -inset-6 bg-gold-500/10 blur-2xl"></div>
-</div>
+                    <div class="group rounded-3xl overflow-hidden bg-brand-card border border-brand-borderSoft shadow-card-soft
+                                hover:shadow-card-strong transition-all duration-300 flex flex-col">
+                        {{-- Image (klik -> show) --}}
+                        <a href="{{ route('member.coach.show', $slug) }}" class="block">
+                            <div class="relative h-[220px] sm:h-[300px] lg:h-[340px] w-full overflow-hidden bg-brand-surface-50">
+                                <img
+                                    src="{{ $imageUrl }}"
+                                    alt="{{ $coach->nama }}"
+                                    class="w-full h-full object-cover object-top
+                                           group-hover:scale-[1.04] transition duration-700"
+                                    onerror="this.onerror=null; this.src='https://placehold.co/900x1200/111827/FACC15?text={{ urlencode($coach->nama ?? 'COACH') }}&font=raleway';"
+                                >
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent"></div>
 
-                        <div class="min-w-0">
-                            <p class="text-base font-bold text-brand-white leading-snug">
-                                Pilih coach yang cocok
+                                <div class="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
+                                    <h3 class="text-sm sm:text-lg font-bold font-heading drop-shadow text-white">
+                                        {{ $coach->nama ?? 'Coach' }}
+                                    </h3>
+                                </div>
+                            </div>
+                        </a>
+
+                        {{-- Content --}}
+                        <div class="p-4 sm:p-5 flex flex-col flex-1">
+                            <p class="text-[11px] sm:text-sm text-brand-textSoft leading-relaxed line-clamp-3 min-h-[48px]">
+                                {{ $coach->deskripsi ?: 'Hubungi coach ini untuk info program latihan dan ketersediaan jadwal.' }}
                             </p>
-                            <p class="text-sm text-brand-silver/85 mt-1">
-                                Cari berdasarkan nama, lokasi, atau keahlian.
-                            </p>
+
+                            <div class="mt-4 space-y-2">
+                                <div class="flex items-center gap-2 text-[11px] sm:text-xs text-brand-textSoft/80">
+                                    <i data-lucide="map-pin" class="w-4 h-4 text-gold-500/70"></i>
+                                    <span class="truncate">{{ $coach->alamat ?: 'Lokasi gym' }}</span>
+                                </div>
+                                <div class="flex items-center gap-2 text-[11px] sm:text-xs text-brand-textSoft/80">
+                                    <i data-lucide="phone" class="w-4 h-4 text-gold-500/70"></i>
+                                    <span class="truncate">{{ $coach->no_hp ?: '-' }}</span>
+                                </div>
+                            </div>
+
+                            {{-- Actions (Detail -> show, Chat -> WA) --}}
+                            <div class="mt-5 sm:mt-6 grid grid-cols-5 gap-3">
+                                <a
+                                    href="{{ route('member.coach.show', $slug) }}"
+                                    class="col-span-2 py-3 rounded-2xl text-xs sm:text-sm font-bold font-heading
+                                           bg-brand-shell hover:bg-brand-surface-100 text-brand-text transition
+                                           border border-brand-borderSoft flex items-center justify-center"
+                                >
+                                    Detail
+                                </a>
+
+                                @if($waNumber)
+                                    <a
+                                        href="https://wa.me/{{ $waNumber }}"
+                                        target="_blank"
+                                        rel="noopener"
+                                        class="col-span-3 py-3 rounded-2xl text-xs sm:text-sm font-bold font-heading
+                                               text-white transition flex items-center justify-center gap-2
+                                               hover:-translate-y-[1px]"
+                                        style="background: linear-gradient(90deg, rgba(37,211,102,.95), rgba(18,140,126,.95));
+                                               box-shadow: 0 18px 45px rgba(37,211,102,.16);"
+                                        aria-label="Chat WhatsApp"
+                                    >
+                                        {{-- WhatsApp icon (SVG) --}}
+                                        <svg viewBox="0 0 24 24" class="w-4 h-4 sm:w-5 sm:h-5 fill-current" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                                        </svg>
+                                        Chat
+                                    </a>
+                                @else
+                                    <button
+                                        disabled
+                                        class="col-span-3 py-3 rounded-2xl text-xs sm:text-sm font-bold font-heading
+                                               bg-brand-shell text-brand-textSoft/60 cursor-not-allowed
+                                               border border-brand-borderSoft"
+                                    >
+                                        Unavailable
+                                    </button>
+                                @endif
+                            </div>
                         </div>
                     </div>
+                @endforeach
+            </div>
 
-                    <div class="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-
-                    <div class="p-5 pt-4">
-                        <p class="text-sm text-brand-silver/80 leading-relaxed">
-                            Konsistensi lebih mudah saat Anda punya pendamping latihan yang tepat.
-                        </p>
-                    </div>
+            @if(method_exists($coaches, 'hasPages') && $coaches->hasPages())
+                <div class="mt-10">
+                    {{ $coaches->appends(['search' => $search])->links() }}
                 </div>
-            </div>
-
-        </div>
-    </div>
-
-    {{-- bottom accent --}}
-    <div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold-500/30 to-transparent"></div>
-</div>
-
-
-{{-- ========================================================= --}}
-{{-- 2. SEARCH BAR (DISERAGAMKAN DENGAN PRODUK) --}}
-{{-- ========================================================= --}}
-<div class="sticky top-20 z-30 bg-brand-bg/95 backdrop-blur-sm py-4 border-b border-brand-borderSoft/40 mb-8">
-    <form method="GET" action="{{ route('member.coach.index') }}" class="flex gap-3 items-center">
-        <div class="relative w-full max-w-xl flex-1">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <i data-lucide="search" class="w-5 h-5 text-brand-textSoft"></i>
-            </div>
-            <input
-                type="text"
-                name="search"
-                value="{{ $search }}"
-                placeholder="Cari nama coach, lokasi, atau keahlian…"
-                class="block w-full pl-10 pr-4 py-3 bg-brand-card border border-brand-borderSoft rounded-2xl
-                       text-sm text-brand-text placeholder-brand-textSoft/60
-                       focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
-            >
-        </div>
-    </form>
-</div>
-
-{{-- ========================================================= --}}
-{{-- 3. CONTENT --}}
-{{-- ========================================================= --}}
-@if($coaches->isEmpty())
-    <div class="flex flex-col items-center justify-center py-20 px-4">
-        <div class="w-24 h-24 rounded-3xl bg-brand-card border border-brand-borderSoft flex items-center justify-center mb-6 shadow-xl">
-            <i data-lucide="user-x" class="w-12 h-12 text-text-muted"></i>
-        </div>
-        <h3 class="text-xl font-bold text-text-main mb-2">Tidak Ada Coach Ditemukan</h3>
-        <p class="text-text-muted text-center max-w-md mb-6">
-            @if($search)
-                Maaf, tidak ada coach yang cocok dengan pencarian "{{ $search }}".
-            @else
-                Belum ada coach yang tersedia saat ini.
             @endif
-        </p>
-    </div>
-@else
-
-<div class="mb-6 flex items-center gap-2">
-    <h3 class="text-lg font-semibold text-text-main">
-        Coach Tersedia
-        <span class="text-gold-400">({{ $coaches->total() }})</span>
-    </h3>
-</div>
-
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-@foreach ($coaches as $coach)
-@php
-    $imageUrl = $coach->foto
-        ? Storage::url($coach->foto)
-        : 'https://placehold.co/400x500/1F2937/FACC15?text=COACH';
-
-    $waNumber = $coach->no_hp
-        ? preg_replace('/^0/', '62', preg_replace('/\D/', '', $coach->no_hp))
-        : null;
-@endphp
-
-<div class="group bg-brand-card border border-brand-borderSoft rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 flex flex-col">
-
-    {{-- IMAGE --}}
-    <div class="relative h-72 w-full overflow-hidden bg-brand-surface-50">
-        <img
-            src="{{ $imageUrl }}"
-            alt="{{ $coach->nama }}"
-            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-        >
-        {{-- Overlay dikurangi --}}
-        <div class="absolute inset-0 bg-gradient-to-t from-brand-black/40 via-transparent to-transparent"></div>
-    </div>
-
-    {{-- CONTENT --}}
-    <div class="p-5 flex flex-col flex-grow">
-        {{-- NAMA COACH (SEKARANG SELALU JELAS) --}}
-        <h3 class="text-xl font-bold text-gold-400 mb-2 transition-colors duration-200 group-hover:text-gold-300">
-    {{ $coach->nama ?? 'Nama Coach' }}
-</h3>
-
-
-        @if (!empty($coach->alamat))
-            <div class="flex items-start gap-2 mb-3">
-                <i data-lucide="map-pin" class="w-4 h-4 text-gold-400 mt-0.5"></i>
-                <p class="text-xs text-text-muted line-clamp-1">
-                    {{ $coach->alamat }}
-                </p>
-            </div>
         @endif
+    </div>
 
-        <p class="text-sm text-text-muted mb-4 line-clamp-3">
-            {{ $coach->deskripsi
-                ? Str::limit($coach->deskripsi, 120)
-                : 'Personal trainer profesional dengan pendekatan latihan terstruktur.' }}
-        </p>
+    {{-- ========================================================= --}}
+    {{-- CTA --}}
+    {{-- ========================================================= --}}
+    @php
+        $ctaBg = asset('images/cta-coach1.jpg');
+    @endphp
 
-        <div class="mt-auto">
-            @if ($waNumber)
+    <div
+        class="mt-12 relative overflow-hidden rounded-3xl border border-brand-borderSoft shadow-card-strong"
+        style="
+            background-image:
+                linear-gradient(90deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,.35) 55%, rgba(0,0,0,.20) 100%),
+                url('{{ $ctaBg }}');
+            background-size: cover;
+            background-position: center;
+        "
+    >
+        <div class="absolute inset-0 bg-gradient-to-br from-black/35 via-transparent to-black/25"></div>
+
+        <div class="relative z-10 p-8 md:p-10">
+            <div class="text-center max-w-2xl mx-auto">
+                <h3 class="text-2xl font-bold text-white mb-3">
+                    Butuh Bantuan Memilih Coach?
+                </h3>
+                <p class="text-white/80 mb-6">
+                    Tim kami bisa membantu Anda menentukan coach yang paling cocok dengan tujuan latihan.
+                </p>
+
                 <a
-                    href="https://wa.me/{{ $waNumber }}"
+                    href="https://wa.me/6281234567890"
                     target="_blank"
-                    class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-all"
+                    rel="noopener"
+                    class="inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-bold
+                           bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700
+                           text-brand-nav transition"
+                    aria-label="Hubungi Customer Service via WhatsApp"
                 >
-                    <i data-lucide="message-circle" class="w-4 h-4"></i>
-                    Hubungi via WhatsApp
+                    {{-- WhatsApp icon (SVG) --}}
+                    <svg viewBox="0 0 24 24" class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                    </svg>
+                    Hubungi CS
                 </a>
-            @else
-                <div class="text-center text-xs text-text-muted py-3">
-                    Kontak tidak tersedia
-                </div>
-            @endif
+            </div>
         </div>
     </div>
-</div>
-@endforeach
-</div>
-
-@if($coaches->hasPages())
-    <div class="mt-8">
-        {{ $coaches->links() }}
-    </div>
-@endif
-
-@endif
-
-{{-- CTA SECTION (WITH PHOTO BACKGROUND) --}}
-@php
-    // Pastikan file ada di: public/images/cta-coach1.jpg
-    $ctaBg = asset('images/cta-coach1.jpg');
-@endphp
-
-<div
-    class="mt-12 relative overflow-hidden rounded-2xl border border-brand-borderSoft shadow-xl"
-    style="
-        background-image:
-          linear-gradient(90deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,.35) 55%, rgba(0,0,0,.20) 100%),
-          url('{{ $ctaBg }}');
-        background-size: cover;
-        background-position: center;
-    "
->
-    {{-- overlay halus biar lebih “premium” & teks aman --}}
-    <div class="absolute inset-0 bg-gradient-to-br from-brand-black/40 via-transparent to-brand-black/25"></div>
-
-    <div class="relative z-10 p-8 md:p-10">
-        <div class="text-center max-w-2xl mx-auto">
-            {{-- SPACER: menjaga tinggi seperti saat ada icon box (w-16 h-16 + mb-4) --}}
-            <div class="w-16 h-16 mx-auto mb-4"></div>
-
-            <h3 class="text-2xl font-bold text-brand-white mb-3">
-                Butuh Bantuan Memilih Coach?
-            </h3>
-
-            <p class="text-brand-silver/90 mb-6">
-                Tim kami siap membantu Anda menemukan personal trainer yang tepat.
-            </p>
-
-            <a
-                href="https://wa.me/6281234567890"
-                target="_blank"
-                class="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700 text-brand-black font-bold rounded-xl transition-all"
-            >
-                <i data-lucide="headphones" class="w-5 h-5"></i>
-                Hubungi Customer Service
-            </a>
-        </div>
-    </div>
-</div>
-
-
-
 
 </x-layouts.member>

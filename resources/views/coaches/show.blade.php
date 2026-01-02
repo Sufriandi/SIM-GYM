@@ -199,8 +199,8 @@
                 <div class="border-t border-brand-borderSoft/10 pt-20 mt-24 animate-slide-up" style="animation-delay: 0.2s">
                     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10 min-w-0">
                         <div class="min-w-0">
-                            <h3 class="text-2xl font-display font-bold text-white mb-2 uppercase tracking-tight">Mentor Lainnya</h3>
-                            <p class="text-brand-silver text-sm">Temukan pelatih dengan spesialisasi berbeda.</p>
+                            <h3 class="text-2xl font-display font-bold text-white mb-2 uppercase tracking-tight">Coach Lainnya</h3>
+                            <p class="text-brand-silver text-sm">Temukan coach dengan fokus latihan berbeda.z</p>
                         </div>
 
                         <a href="{{ route('guest.coaches.index') }}"
