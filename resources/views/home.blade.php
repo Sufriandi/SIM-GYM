@@ -376,7 +376,7 @@
                             <div class="min-w-0">
                                 <p class="font-bold">Alamat</p>
                                 <p class="text-sm text-brand-textSoft">
-                                    (Isi alamat gym Anda di sini) • Bengkalis, Riau
+                                    Jl. Diponegoro No.100 • Bengkalis, Riau 28713
                                 </p>
                             </div>
                         </div>
@@ -390,7 +390,7 @@
                             <div class="min-w-0">
                                 <p class="font-bold">Jam Operasional</p>
                                 <p class="text-sm text-brand-textSoft">
-                                    Senin–Minggu • (contoh) 06:00–22:00
+                                    Senin–Minggu • 07:00–22:00
                                 </p>
                             </div>
                         </div>

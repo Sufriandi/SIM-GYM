@@ -1,322 +1,258 @@
-<?php
+{{-- resources/views/member/produk_gym/index.blade.php --}}
+@php
+    use Illuminate\Support\Facades\Storage;
+    use Illuminate\Support\Str;
 
-namespace App\Http\Controllers\Member;
+    $pageTitle   = $pageTitle ?? 'Produk Gym';
+    $products    = $products ?? ($produks ?? collect()); // kompatibel kalau controller pakai $produks
+    $categories  = $categories ?? collect();
 
-use App\Http\Controllers\Controller;
-use App\Models\Produk;
-use App\Models\InfoRekening;
-use App\Models\InfoQris;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Str;
+    $currentQ    = $currentQ ?? request('q', '');
+    $currentKat  = $currentKat ?? request('kategori', 'all');
 
-class ProdukGymController extends Controller
-{
-    /**
-     * Nomor WA admin dari .env (dipakai di halaman cart).
-     */
-    public function getAdminNumber(): string
-    {
-        $waRaw = env('WHATSAPP_NUMBER', '');
-        $waDigits = preg_replace('/\D+/', '', (string) $waRaw);
-
-        if ($waDigits !== '') {
-            if (Str::startsWith($waDigits, '0')) $waDigits = '62' . substr($waDigits, 1);
-            if (Str::startsWith($waDigits, '8')) $waDigits = '62' . $waDigits;
-        }
-
-        return $waDigits ?: '6281234567890';
+    // hitung total item (bukan cuma jumlah baris)
+    $cartRaw = session('cart', []);
+    $cartCount = 0;
+    foreach ($cartRaw as $it) {
+        $cartCount += (int)($it['quantity'] ?? 1);
     }
 
-    /**
-     * INDEX: Katalog Produk (member) - sama behavior seperti guest.
-     */
-    public function index(Request $request)
-    {
-        $search   = $request->query('q');
-        $kategori = $request->query('kategori');
-
-        $query = Produk::query();
-
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                  ->orWhere('deskripsi', 'like', "%{$search}%");
-            });
+    $imgUrl = function ($path, $fallbackText = 'PRODUK') {
+        $path = trim((string) $path);
+        if ($path === '') {
+            return 'https://placehold.co/1000x1000/f6f7fb/111827?text=' . urlencode($fallbackText) . '&font=raleway';
         }
+        if (Str::startsWith($path, ['http://','https://'])) return $path;
 
-        if ($kategori && $kategori !== 'all') {
-            $query->where('kategori', $kategori);
-        }
+        $path = str_replace('\\', '/', $path);
+        $path = ltrim($path, '/');
 
-        // Sorting: stok ready dulu, lalu terbaru
-        $products = $query->orderByRaw('CASE WHEN stok > 0 THEN 1 ELSE 0 END DESC')
-            ->latest()
-            ->paginate(12)
-            ->withQueryString();
+        if (Str::startsWith($path, 'storage/')) return url('/' . $path);
+        if (Str::startsWith($path, 'public/')) $path = Str::after($path, 'public/');
 
-        // Supaya pagination angka tidak melebar
-        $products->onEachSide(1);
+        return Storage::url($path);
+    };
 
-        $categories = Produk::select('kategori')
-            ->distinct()
-            ->whereNotNull('kategori')
-            ->orderBy('kategori')
-            ->pluck('kategori');
+    // Hero image (pakai yang Anda sudah pakai di guest, kalau ada)
+    $heroImg = $heroImg ?? asset('images/marketplace-hero.jpg'); // silakan sesuaikan file image Anda
+@endphp
 
-        return view('member.produk_gym.index', [
-            'pageTitle'  => 'Official Store',
-            'products'   => $products,
-            'categories' => $categories,
-            'currentQ'   => $search,
-            'currentKat' => $kategori,
-        ]);
-    }
+<x-layouts.member :title="$pageTitle . ' – BETA GYM'">
 
-    /**
-     * SHOW: Detail Produk (member)
-     */
-    public function show(string $slug)
-    {
-        $id = (int) explode('-', $slug)[0];
-        $product = Produk::findOrFail($id);
+    {{-- HERO (light) --}}
+    <section class="relative overflow-hidden rounded-3xl border border-brand-borderSoft/40 bg-white shadow-sm">
+        <div class="absolute inset-0">
+            {{-- background image --}}
+            <div class="absolute inset-0 bg-center bg-cover"
+                 style="background-image:url('{{ $heroImg }}');"></div>
 
-        $relatedProducts = Produk::where('kategori', $product->kategori)
-            ->where('id', '!=', $product->id)
-            ->inRandomOrder()
-            ->limit(4)
-            ->get();
+            {{-- overlay: bukan gelap full, hanya untuk kontras teks --}}
+            <div class="absolute inset-0 bg-white/60"></div>
+            <div class="absolute inset-0 bg-gradient-to-b from-white/70 via-white/40 to-white"></div>
+        </div>
 
-        return view('member.produk_gym.show', [
-            'pageTitle'       => $product->nama,
-            'product'         => $product,
-            'relatedProducts' => $relatedProducts,
-        ]);
-    }
+        <div class="relative px-6 py-10 lg:px-10 lg:py-14">
+            <div class="flex flex-col lg:flex-row gap-8 lg:items-end lg:justify-between">
+                <div class="max-w-2xl">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-gold-500/30 bg-white/80">
+                        <span class="w-2 h-2 rounded-full bg-gold-500"></span>
+                        <span class="text-[11px] font-bold tracking-[0.18em] uppercase text-brand-nav">
+                            Official Store Member
+                        </span>
+                    </div>
 
-    /**
-     * CART: Halaman Keranjang (member) - TANPA biaya admin
-     */
-    public function cart()
-    {
-        $cart = Session::get('cart', []);
+                    <h1 class="mt-5 text-4xl md:text-5xl font-display font-black tracking-tight text-brand-nav leading-[1.0]">
+                        Elite Gear <span class="text-gold-500">for Elite</span> Performance
+                    </h1>
 
-        [$subtotal, $adminFee, $total, $itemsCount] = $this->computeCartTotals($cart);
+                    <p class="mt-4 text-sm md:text-base text-brand-nav/70 max-w-xl">
+                        Suplemen original, gear berkualitas, dan kebutuhan latihan lainnya. Stok terupdate dan checkout cepat.
+                    </p>
 
-        $orderId = 'ORD-' . strtoupper(Str::random(9));
+                    <div class="mt-7 flex flex-wrap gap-3">
+                        <a href="#katalog"
+                           class="px-6 py-3 rounded-full bg-brand-nav text-white font-bold shadow-sm hover:opacity-95 transition">
+                            Lihat Katalog
+                        </a>
+                        <a href="{{ route('member.produk_gym.cart') }}"
+                           class="px-6 py-3 rounded-full bg-white border border-brand-borderSoft/40 text-brand-nav font-bold hover:bg-brand-shell/50 transition">
+                            Keranjang
+                            @if($cartCount > 0)
+                                <span class="ml-2 inline-flex items-center justify-center text-[10px] font-black bg-gold-500 text-brand-nav w-6 h-6 rounded-full">
+                                    {{ $cartCount }}
+                                </span>
+                            @endif
+                        </a>
+                    </div>
+                </div>
 
-        $rekenings = InfoRekening::all();
-        $qris = InfoQris::first();
+                {{-- benefit card (light) --}}
+                <div class="w-full lg:max-w-md">
+                    <div class="bg-white/85 backdrop-blur rounded-3xl border border-brand-borderSoft/40 shadow-sm overflow-hidden">
+                        <div class="p-6">
+                            <p class="text-[12px] font-bold tracking-[0.2em] uppercase text-brand-nav/60">
+                                Member Benefit
+                            </p>
+                            <h3 class="mt-2 text-2xl font-display font-black text-brand-nav">
+                                Harga & stok prioritas
+                            </h3>
+                            <p class="mt-3 text-sm text-brand-nav/70">
+                                Produk favorit lebih cepat tersedia untuk member.
+                            </p>
+                        </div>
+                        <div class="h-2 bg-gold-500"></div>
+                    </div>
+                </div>
+            </div>
 
-        return view('member.produk_gym.cart', [
-            'pageTitle'  => 'Checkout',
-            'cart'       => $cart,
-            'subtotal'   => $subtotal,
-            'adminFee'   => $adminFee, // akan selalu 0
-            'total'      => $total,
-            'itemsCount' => $itemsCount,
-            'orderId'    => $orderId,
-            'rekenings'  => $rekenings,
-            'qris'       => $qris,
-            'waAdmin'    => $this->getAdminNumber(),
-        ]);
-    }
+            {{-- FILTER BAR (light) --}}
+            <div id="katalog" class="mt-10 pt-8 border-t border-brand-borderSoft/30">
+                <form method="GET" action="{{ route('member.produk_gym.index') }}"
+                      class="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 bg-white border border-brand-borderSoft/40 rounded-full px-4 py-3 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                 viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                 class="text-brand-nav/50">
+                                <circle cx="11" cy="11" r="8"/>
+                                <path d="m21 21-4.3-4.3"/>
+                            </svg>
+                            <input type="text" name="q" value="{{ $currentQ }}"
+                                   placeholder="Cari whey, creatine, strap, dll..."
+                                   class="w-full bg-transparent outline-none text-brand-nav placeholder:text-brand-nav/40">
+                        </div>
+                    </div>
 
-    /**
-     * ADD TO CART
-     */
-    public function addToCart(Request $request, int $id)
-    {
-        $product = Produk::findOrFail($id);
+                    <div class="flex flex-wrap gap-3 items-center justify-end">
+                        <div class="bg-white border border-brand-borderSoft/40 rounded-full px-4 py-3 shadow-sm flex items-center gap-2">
+                            <span class="text-sm font-bold text-brand-nav">Kategori</span>
+                            <span class="text-brand-nav/30">•</span>
+                            <select name="kategori"
+                                    class="bg-transparent outline-none text-sm font-bold text-gold-600">
+                                <option value="all" @selected(($currentKat ?? 'all') === 'all')>Semua</option>
+                                @foreach(($categories ?? collect()) as $kat)
+                                    <option value="{{ $kat }}" @selected(($currentKat ?? '') === $kat)>
+                                        {{ Str::upper($kat) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
 
-        if ((int)$product->stok < 1) {
-            return redirect()->back()->with('error', 'Maaf, stok produk ini habis.');
-        }
+                        <button type="submit"
+                                class="bg-white border border-brand-borderSoft/40 rounded-full px-5 py-3 shadow-sm font-bold text-brand-nav hover:bg-brand-shell/50 transition">
+                            Terapkan
+                        </button>
 
-        $cart = Session::get('cart', []);
+                        <a href="{{ route('member.produk_gym.cart') }}"
+                           class="w-12 h-12 rounded-full bg-brand-nav text-white flex items-center justify-center shadow-sm hover:opacity-95 transition relative">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                 viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/>
+                                <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+                            </svg>
 
-        if (isset($cart[$id])) {
-            $nextQty = (int)($cart[$id]['quantity'] ?? 1) + 1;
-            if ($nextQty > (int)$product->stok) {
-                return redirect()->back()->with('error', 'Stok tidak mencukupi untuk menambah jumlah.');
-            }
-            $cart[$id]['quantity'] = $nextQty;
-        } else {
-            $cart[$id] = [
-                'id'       => $product->id,
-                'name'     => $product->nama,
-                'quantity' => 1,
-                'price'    => (float)$product->harga,
-                'photo'    => $product->foto,
-                'category' => $product->kategori,
-            ];
-        }
+                            @if($cartCount > 0)
+                                <span class="absolute -top-1 -right-1 bg-gold-500 text-brand-nav text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-black border-2 border-white">
+                                    {{ $cartCount }}
+                                </span>
+                            @endif
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
 
-        Session::put('cart', $cart);
+    {{-- KATALOG --}}
+    <section class="mt-10">
+        <div class="flex items-end justify-between gap-4 mb-6">
+            <div>
+                <h2 class="text-2xl font-display font-black text-brand-nav">Katalog Produk</h2>
+                <p class="text-sm text-brand-nav/60">Stok terupdate dan siap checkout.</p>
+            </div>
 
-        return redirect()->route('member.produk_gym.cart')
-            ->with('success', 'Produk berhasil ditambahkan!');
-    }
+            <div class="text-right">
+                <p class="text-[11px] font-bold tracking-[0.25em] uppercase text-brand-nav/40">Total</p>
+                <p class="text-3xl font-display font-black text-brand-nav">
+                    {{ method_exists($products, 'total') ? $products->total() : (is_countable($products) ? count($products) : 0) }}
+                </p>
+            </div>
+        </div>
 
-    /**
-     * REMOVE FROM CART (AJAX-friendly)
-     */
-    public function removeFromCart(Request $request, int $id)
-    {
-        $cart = Session::get('cart', []);
-        $removed = isset($cart[$id]);
+        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
+            @forelse(($products ?? []) as $p)
+                @php
+                    $slug = $p->id . '-' . Str::slug($p->nama ?? 'produk');
+                    $img  = $imgUrl($p->foto ?? '', $p->nama ?? 'PRODUK');
+                    $stok = (int)($p->stok ?? 0);
+                    $ready = $stok > 0;
+                @endphp
 
-        if ($removed) {
-            unset($cart[$id]);
-            Session::put('cart', $cart);
-        }
+                <a href="{{ route('member.produk_gym.show', $slug) }}"
+                   class="group bg-white rounded-3xl border border-brand-borderSoft/40 overflow-hidden shadow-sm hover:shadow-md transition">
+                    <div class="relative aspect-[4/5] bg-brand-shell">
+                        <img src="{{ $img }}" alt="{{ $p->nama }}"
+                             class="w-full h-full object-cover object-center group-hover:scale-[1.03] transition duration-500"
+                             loading="lazy">
+                        <div class="absolute inset-0 bg-gradient-to-t from-white via-white/0 to-white/0 opacity-80 pointer-events-none"></div>
 
-        if ($request->expectsJson()) {
-            [$subtotal, $adminFee, $total, $itemsCount] = $this->computeCartTotals($cart);
+                        @if(!empty($p->kategori))
+                            <div class="absolute top-3 left-3">
+                                <span class="px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider
+                                             bg-white/90 border border-brand-borderSoft/40 text-brand-nav">
+                                    {{ $p->kategori }}
+                                </span>
+                            </div>
+                        @endif
 
-            return response()->json([
-                'ok'          => true,
-                'removed'     => $removed,
-                'id'          => (string)$id,
-                'subtotal'    => $subtotal,
-                'admin_fee'   => $adminFee,
-                'total'       => $total,
-                'items_count' => $itemsCount,
-                'message'     => $removed ? 'Item dihapus.' : 'Item tidak ditemukan.',
-                'message_type'=> $removed ? 'success' : 'warning',
-            ]);
-        }
+                        <div class="absolute top-3 right-3">
+                            @if($ready)
+                                <span class="px-2 py-1 rounded-full text-[10px] font-black
+                                             bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    Ready • {{ $stok }}
+                                </span>
+                            @else
+                                <span class="px-2 py-1 rounded-full text-[10px] font-black
+                                             bg-rose-50 text-rose-700 border border-rose-200">
+                                    Habis
+                                </span>
+                            @endif
+                        </div>
+                    </div>
 
-        return redirect()->route('member.produk_gym.cart')
-            ->with($removed ? 'success' : 'error', $removed ? 'Item dihapus.' : 'Item tidak ditemukan.');
-    }
+                    <div class="p-4">
+                        <h3 class="font-bold text-brand-nav line-clamp-2 min-h-[2.5rem] group-hover:text-gold-600 transition">
+                            {{ $p->nama }}
+                        </h3>
 
-    /**
-     * UPDATE QTY (inc/dec/manual) - AJAX-friendly
-     */
-    public function updateCartQuantity(Request $request, int $id)
-    {
-        $cart = Session::get('cart', []);
+                        <div class="mt-3 flex items-center justify-between">
+                            <p class="text-base font-display font-black text-brand-nav">
+                                Rp {{ number_format((int)($p->harga ?? 0), 0, ',', '.') }}
+                            </p>
 
-        if (!isset($cart[$id])) {
-            if ($request->expectsJson()) {
-                return response()->json(['ok' => false, 'message' => 'Item tidak ditemukan di keranjang.'], 404);
-            }
-            return redirect()->route('member.produk_gym.cart')->with('error', 'Item tidak ditemukan di keranjang.');
-        }
+                            <span class="text-[11px] font-bold text-brand-nav/45">
+                                SKU {{ str_pad((int)$p->id, 5, '0', STR_PAD_LEFT) }}
+                            </span>
+                        </div>
+                    </div>
+                </a>
+            @empty
+                <div class="col-span-full">
+                    <div class="bg-white border border-brand-borderSoft/40 rounded-3xl p-10 text-center text-brand-nav/60">
+                        Produk tidak ditemukan.
+                    </div>
+                </div>
+            @endforelse
+        </div>
 
-        $product = Produk::find($id);
-        if (!$product) {
-            unset($cart[$id]);
-            Session::put('cart', $cart);
+        {{-- PAGINATION --}}
+        @if(method_exists($products, 'links'))
+            <div class="mt-10">
+                {{ $products->onEachSide(1)->links() }}
+            </div>
+        @endif
+    </section>
 
-            if ($request->expectsJson()) {
-                [$subtotal, $adminFee, $total, $itemsCount] = $this->computeCartTotals($cart);
-                return response()->json([
-                    'ok'          => true,
-                    'removed'     => true,
-                    'id'          => (string)$id,
-                    'subtotal'    => $subtotal,
-                    'admin_fee'   => $adminFee,
-                    'total'       => $total,
-                    'items_count' => $itemsCount,
-                    'message'     => 'Produk sudah tidak tersedia. Item dihapus dari keranjang.',
-                    'message_type'=> 'warning',
-                ]);
-            }
-
-            return redirect()->route('member.produk_gym.cart')
-                ->with('error', 'Produk sudah tidak tersedia. Item dihapus dari keranjang.');
-        }
-
-        $current = (int)($cart[$id]['quantity'] ?? 1);
-        $op      = $request->input('op');  // inc | dec
-        $qtyIn   = $request->input('qty'); // manual
-
-        if ($qtyIn !== null && $op === null) {
-            $newQty = (int)$qtyIn;
-        } else {
-            if ($op === 'inc') $newQty = $current + 1;
-            elseif ($op === 'dec') $newQty = $current - 1;
-            else $newQty = $current;
-        }
-
-        if ($newQty <= 0) {
-            unset($cart[$id]);
-            Session::put('cart', $cart);
-
-            if ($request->expectsJson()) {
-                [$subtotal, $adminFee, $total, $itemsCount] = $this->computeCartTotals($cart);
-                return response()->json([
-                    'ok'          => true,
-                    'removed'     => true,
-                    'id'          => (string)$id,
-                    'subtotal'    => $subtotal,
-                    'admin_fee'   => $adminFee,
-                    'total'       => $total,
-                    'items_count' => $itemsCount,
-                    'message'     => 'Item dihapus dari keranjang.',
-                    'message_type'=> 'success',
-                ]);
-            }
-
-            return redirect()->route('member.produk_gym.cart')->with('success', 'Item dihapus dari keranjang.');
-        }
-
-        $stok = (int)($product->stok ?? 0);
-        $message = 'Jumlah item diperbarui.';
-        $messageType = 'success';
-
-        if ($stok > 0 && $newQty > $stok) {
-            $newQty = $stok;
-            $message = 'Stok tidak mencukupi. Qty disesuaikan ke stok maksimum.';
-            $messageType = 'warning';
-        }
-
-        $cart[$id]['quantity'] = max(1, $newQty);
-        Session::put('cart', $cart);
-
-        [$subtotal, $adminFee, $total, $itemsCount] = $this->computeCartTotals($cart);
-        $lineTotal = (float)($cart[$id]['price'] ?? 0) * (int)$cart[$id]['quantity'];
-
-        if ($request->expectsJson()) {
-            return response()->json([
-                'ok'          => true,
-                'removed'     => false,
-                'id'          => (string)$id,
-                'quantity'    => (int)$cart[$id]['quantity'],
-                'line_total'  => $lineTotal,
-                'subtotal'    => $subtotal,
-                'admin_fee'   => $adminFee,
-                'total'       => $total,
-                'items_count' => $itemsCount,
-                'message'     => $message,
-                'message_type'=> $messageType,
-            ]);
-        }
-
-        return redirect()->route('member.produk_gym.cart')->with($messageType, $message);
-    }
-
-    /**
-     * TOTALS: TANPA biaya admin
-     */
-    private function computeCartTotals(array $cart): array
-    {
-        $subtotal = 0;
-        $itemsCount = 0;
-
-        foreach ($cart as $item) {
-            $qty = (int)($item['quantity'] ?? 1);
-            $price = (float)($item['price'] ?? 0);
-
-            $itemsCount += $qty;
-            $subtotal   += $qty * $price;
-        }
-
-        $adminFee = 0;          // <<<< TANPA BIAYA ADMIN
-        $total    = $subtotal;
-
-        return [$subtotal, $adminFee, $total, $itemsCount];
-    }
-}
+</x-layouts.member>
