@@ -36,19 +36,6 @@
 @endphp
 
 <x-layouts.admin :title="$pageTitle . ' – BETA GYM'" :page-title="$pageTitle" page-subtitle="Kelola data member yang terdaftar di BETA GYM.">
-
-    {{-- FLASH MESSAGE --}}
-    @if (session('success'))
-        <div class="mb-4 bg-primary-soft border border-primary text-primary-dark px-4 py-3 rounded">
-            <span>{{ session('success') }}</span>
-        </div>
-    @endif
-    @if (session('error'))
-        <div class="mb-4 bg-danger-soft border border-danger text-danger px-4 py-3 rounded">
-            <span>{{ session('error') }}</span>
-        </div>
-    @endif
-
     <div x-data="{
         openCreate: {{ $openCreateOnLoad }},
         openEditId: null,

@@ -442,9 +442,9 @@
                 isDisabledParticipant(memberId, slot) {
                     if (this.form.buyerId && String(memberId) === String(this.form.buyerId)) return true;
                     if (slot === 1 && this.participant.p2Id && String(memberId) === String(this.participant.p2Id))
-                    return true;
+                        return true;
                     if (slot === 2 && this.participant.p1Id && String(memberId) === String(this.participant.p1Id))
-                    return true;
+                        return true;
                     return false;
                 },
 

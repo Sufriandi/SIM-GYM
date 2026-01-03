@@ -12,14 +12,33 @@ class PaketMembershipController extends Controller
     {
         $q = $request->get('q');
         $tipe = $request->get('tipe');
+        $sort = $request->get('sort', 'newest'); // Default sorting
 
-        $paketMemberships = PaketMembership::query()
+        $query = PaketMembership::query()
             ->when($q, fn($s) => $s->where('nama', 'like', "%{$q}%"))
-            ->when($tipe, fn($s) => $s->where('tipe', $tipe))
-            ->orderBy('tipe')
-            ->orderBy('durasi')
-            ->paginate(20)
-            ->withQueryString();
+            ->when($tipe, fn($s) => $s->where('tipe', $tipe));
+
+        // Logika Sorting
+        switch ($sort) {
+            case 'price_asc':
+                $query->orderBy('harga', 'asc');
+                break;
+            case 'price_desc':
+                $query->orderBy('harga', 'desc');
+                break;
+            case 'duration_asc':
+                $query->orderBy('durasi', 'asc');
+                break;
+            case 'duration_desc':
+                $query->orderBy('durasi', 'desc');
+                break;
+            case 'newest':
+            default:
+                $query->orderBy('created_at', 'desc');
+                break;
+        }
+
+        $paketMemberships = $query->paginate(20)->withQueryString();
 
         return view('admin.paket_memberships.index', compact('paketMemberships'));
     }
