@@ -54,7 +54,7 @@
         </div>
     </div>
 
-    {{-- TOAST GLOBAL (kalau ada komponen UI kamu) --}}
+    {{-- TOAST GLOBAL --}}
     <x-ui.toast />
 
     {{-- Init Lucide --}}

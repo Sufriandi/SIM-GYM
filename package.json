@@ -13,6 +13,7 @@
         "@tailwindcss/line-clamp": "^0.4.4",
         "@tailwindcss/typography": "^0.5.19",
         "@tailwindcss/vite": "^4.0.0",
+        "@vitejs/plugin-react": "^5.1.2",
         "alpinejs": "^3.4.2",
         "autoprefixer": "^10.4.2",
         "axios": "^1.11.0",
@@ -26,6 +27,8 @@
     "dependencies": {
         "chart.js": "^4.5.1",
         "flowbite": "^4.0.0",
+        "react": "^19.2.3",
+        "react-dom": "^19.2.3",
         "sweetalert2": "^11.26.3"
     }
 }

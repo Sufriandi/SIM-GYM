@@ -4,13 +4,22 @@
 
     $isDashboard  = str($current)->startsWith('member.dashboard');
     $isIzin       = str($current)->startsWith('member.izin_latihan');
+    $isKehadiran  = str($current)->startsWith('member.kehadiran');
     $isProduk     = str($current)->startsWith('member.produk_gym');
     $isCoach      = str($current)->startsWith('member.coach');
-    $isKehadiran  = str($current)->startsWith('member.kehadiran');
+
+    // optional badge (kirim dari layout / view composer)
+    $izinPending  = (int)($izinPending ?? 0);
+
+    // buka dropdown jika salah satu submenu aktif
+    $openKehadiranOnLoad = ($isIzin || $isKehadiran) ? 'true' : 'false';
 @endphp
 
 <div
-    x-data="{ mobileOpen: false }"
+    x-data="{
+        mobileOpen: false,
+        openKehadiran: {{ $openKehadiranOnLoad }},
+    }"
     @toggle-member-sidebar.window="mobileOpen = !mobileOpen"
     class="relative z-40"
     aria-label="Member Navigation"
@@ -50,6 +59,17 @@
                     Area Member
                 </div>
             </div>
+
+            {{-- CLOSE (MOBILE) --}}
+            <button
+                type="button"
+                class="ml-auto md:hidden inline-flex items-center justify-center w-9 h-9 rounded-xl
+                       text-brand-silver hover:text-white hover:bg-brand-gunmetal/40"
+                @click="mobileOpen = false"
+                aria-label="Tutup menu"
+            >
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
         </div>
 
         {{-- MENU --}}
@@ -63,6 +83,7 @@
                 {{-- Dashboard --}}
                 <a
                     href="{{ route('member.dashboard') }}"
+                    @click="mobileOpen = false"
                     class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium
                            transition-all duration-300
                            {{ $isDashboard
@@ -76,50 +97,106 @@
                                {{ $isDashboard ? 'text-gold-300' : 'group-hover:scale-110' }}"
                     ></i>
                     <span>Dashboard</span>
+
                     @if($isDashboard)
                         <div class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full animate-pulse"></div>
                     @endif
                 </a>
+            </div>
 
-                {{-- Izin Latihan --}}
-                <a
-                    href="{{ route('member.izin_latihan.index') }}"
-                    class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium
-                           transition-all duration-300
-                           {{ $isIzin
-                                ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20'
-                                : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
-                    aria-current="{{ $isIzin ? 'page' : 'false' }}"
-                >
-                    <i
-                        data-lucide="calendar-clock"
-                        class="w-5 h-5 transition-transform duration-300
-                               {{ $isIzin ? 'text-gold-300' : 'group-hover:scale-110' }}"
-                    ></i>
-                    <span>Izin Latihan</span>
-                </a>
+            {{-- ================== KEHADIRAN (MENU UTAMA + SUBMENU) ================== --}}
+            <div class="space-y-2">
+                <div class="px-4 text-[11px] font-bold tracking-wider uppercase text-brand-silver/70 mb-2">
+                    Kehadiran
+                </div>
 
-                {{-- Kehadiran (riwayat & status) --}}
-                <a
-                    href="{{ route('member.kehadiran.index') }}"
-                    class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium
+                @php
+                    $kehadiranGroupActive = ($isIzin || $isKehadiran);
+                @endphp
+
+                <button
+                    type="button"
+                    @click="openKehadiran = !openKehadiran"
+                    class="w-full group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium
                            transition-all duration-300
-                           {{ $isKehadiran
-                                ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20'
-                                : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
-                    aria-current="{{ $isKehadiran ? 'page' : 'false' }}"
+                           {{ $kehadiranGroupActive
+                                ? 'bg-gradient-to-r from-gold-500/15 to-transparent text-gold-300 shadow-lg shadow-gold-500/10'
+                                : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white' }}"
+                    :aria-expanded="openKehadiran.toString()"
+                    aria-controls="kehadiran-submenu"
                 >
                     <i
                         data-lucide="check-square"
                         class="w-5 h-5 transition-transform duration-300
-                               {{ $isKehadiran ? 'text-gold-300' : 'group-hover:scale-110' }}"
+                               {{ $kehadiranGroupActive ? 'text-gold-300' : 'group-hover:scale-110' }}"
                     ></i>
-                    <span>Kehadiran</span>
-                </a>
+
+                    <span class="truncate">Kehadiran</span>
+
+                    @if ($izinPending > 0)
+                        <span class="ml-auto px-2 py-0.5 text-[10px] bg-accent-500 text-white rounded-full font-semibold">
+                            {{ $izinPending }}
+                        </span>
+                    @endif
+
+                    <i
+                        data-lucide="chevron-down"
+                        class="w-4 h-4 transition-transform duration-300 {{ $izinPending > 0 ? '' : 'ml-auto' }}"
+                        :class="{ 'rotate-180': openKehadiran }"
+                    ></i>
+                </button>
+
+                {{-- SUBMENU --}}
+                <div
+                    id="kehadiran-submenu"
+                    x-show="openKehadiran"
+                    x-cloak
+                    x-transition
+                    class="space-y-1 mt-1"
+                    role="menu"
+                >
+                    {{-- Izin Latihan --}}
+                    <a
+                        href="{{ route('member.izin_latihan.index') }}"
+                        @click="mobileOpen = false"
+                        class="group flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all duration-200 rounded-xl
+                               {{ $isIzin
+                                    ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
+                                    : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
+                        role="menuitem"
+                        aria-current="{{ $isIzin ? 'page' : 'false' }}"
+                    >
+                        <i data-lucide="file-text" class="w-4 h-4 {{ $isIzin ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
+                        <span>Izin Latihan</span>
+                    </a>
+
+                    {{-- Riwayat Kehadiran --}}
+                    <a
+                        href="{{ route('member.kehadiran.index') }}"
+                        @click="mobileOpen = false"
+                        class="group flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all duration-200 rounded-xl
+                               {{ $isKehadiran
+                                    ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
+                                    : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
+                        role="menuitem"
+                        aria-current="{{ $isKehadiran ? 'page' : 'false' }}"
+                    >
+                        <i data-lucide="qr-code" class="w-4 h-4 {{ $isKehadiran ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
+                        <span>Riwayat Kehadiran</span>
+                    </a>
+                </div>
+            </div>
+
+            {{-- SECTION: LAYANAN --}}
+            <div class="space-y-2">
+                <div class="px-4 text-[11px] font-bold tracking-wider uppercase text-brand-silver/70 mb-2">
+                    Layanan
+                </div>
 
                 {{-- Produk Gym --}}
                 <a
                     href="{{ route('member.produk_gym.index') }}"
+                    @click="mobileOpen = false"
                     class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium
                            transition-all duration-300
                            {{ $isProduk
@@ -138,6 +215,7 @@
                 {{-- Coach --}}
                 <a
                     href="{{ route('member.coach.index') }}"
+                    @click="mobileOpen = false"
                     class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium
                            transition-all duration-300
                            {{ $isCoach
