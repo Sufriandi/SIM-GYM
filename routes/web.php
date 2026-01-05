@@ -44,6 +44,9 @@ use App\Http\Controllers\Member\CoachController as MemberCoachController;
 use App\Http\Controllers\Member\ProdukGymController;
 use App\Http\Controllers\Member\KehadiranMemberController as MemberKehadiranMemberController;
 
+// Notifikasi
+use App\Http\Controllers\Admin\AdminNotifikasiController;
+
 /*
 |--------------------------------------------------------------------------
 | 1. RUTE PUBLIK / GUEST
@@ -146,7 +149,18 @@ Route::middleware(['auth', 'admin'])
         // ================== DASHBOARD ==================
         Route::get('dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
+        // ================== NOTIFIKASI (ADMIN) ==================
+        Route::prefix('notifikasi')->name('notifikasi.')->group(function () {
+        Route::get('/', [AdminNotifikasiController::class, 'index'])->name('index');
+        Route::post('/read-all', [AdminNotifikasiController::class, 'readAll'])->name('read_all');
+        Route::post('/{id}/read', [AdminNotifikasiController::class, 'readOne'])->name('read_one');
+        Route::post('/{id}/hide', [AdminNotifikasiController::class, 'hideOne'])->name('hide_one');
+        Route::post('/hide-all', [AdminNotifikasiController::class, 'hideAll'])->name('hide_all');
+        Route::get('/{id}/go', [AdminNotifikasiController::class, 'go'])->name('go');
 
+        // ===== realtime polling endpoint =====
+        Route::get('/poll', [AdminNotifikasiController::class, 'poll'])->name('poll');
+    });
 
         // ================== INVENTARIS ALAT ==================
         Route::resource('inventaris', InventarisAlatController::class)

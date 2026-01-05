@@ -43,17 +43,21 @@ class IzinLatihanController extends Controller
             ->get()
             ->map(function ($item) {
                 return [
-                    'id'              => $item->id,
-                    'member_id'       => $item->member_id,
-                    'tanggal_mulai'   => $item->tanggal_mulai,
-                    'tanggal_selesai' => $item->tanggal_selesai,
-                    'jumlah_hari'     => $item->jumlah_hari,
-                    'alasan'          => $item->alasan,
-                    'status'          => $item->status,
-                    'created_at'      => optional($item->created_at)->format('Y-m-d H:i:s'),
-                    'bukti_url'       => $item->bukti_alasan
+                    'id'                    => $item->id,
+                    'member_id'             => $item->member_id,
+                    'tanggal_mulai'         => $item->tanggal_mulai,
+                    'tanggal_selesai'       => $item->tanggal_selesai,
+                    'jumlah_hari'           => $item->jumlah_hari,
+                    'alasan'                => $item->alasan,
+                    'status'                => $item->status,
+                    'created_at'            => optional($item->created_at)->format('Y-m-d H:i:s'),
+                    'bukti_url'             => $item->bukti_alasan
                         ? Storage::disk('public')->url($item->bukti_alasan)
                         : null,
+
+                    // ===== BARU =====
+                    'keterangan_admin'      => $item->keterangan_admin,
+                    'durasi_izin_disetujui' => $item->durasi_izin_disetujui,
                 ];
             });
 

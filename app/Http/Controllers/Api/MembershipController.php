@@ -3,10 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Membership;
 use App\Models\PaketMembership;
+use App\Models\TransaksiMembership;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
 
 class MembershipController extends Controller
 {
@@ -14,40 +13,55 @@ class MembershipController extends Controller
      * GET /api/membership/dashboard/{member}
      *
      * Return:
-     *  - membership aktif (jika ada)
+     *  - membership aktif (berdasarkan transaksi_memberships + participants)
      *  - list paket membership
      */
     public function dashboard($memberId)
     {
-        // Ambil membership aktif berdasarkan scope di model
-        $aktif = Membership::with('paket')
-            ->aktif()
-            ->where('member_id', $memberId)
-            ->latest('tanggal_mulai')
+        $today = Carbon::today();
+
+        // Query transaksi untuk member:
+        // - dia buyer_member_id
+        // - atau jadi participant di transaksi_membership_members
+        $baseQuery = TransaksiMembership::with('paket')
+            ->where(function ($q) use ($memberId) {
+                $q->where('buyer_member_id', $memberId)
+                  ->orWhereHas('participants', function ($p) use ($memberId) {
+                      $p->where('member_id', $memberId);
+                  });
+            });
+
+        // Transaksi yang sedang aktif hari ini (not canceled, periode mencakup hari ini)
+        $aktif = (clone $baseQuery)
+            ->notCanceled()
+            ->whereDate('tanggal_mulai', '<=', $today)
+            ->whereDate('tanggal_akhir', '>=', $today)
+            ->orderByDesc('tanggal_mulai')
             ->first();
 
         $aktifData = null;
 
         if ($aktif) {
-            $today = Carbon::today();
             $sisaHari = $today->diffInDays($aktif->tanggal_akhir, false);
 
+            $paket = $aktif->paket;
+
             $aktifData = [
-                'id'                => $aktif->id,
-                'paket'             => [
-                    'id'        => $aktif->paket->id,
-                    'nama'      => $aktif->paket->nama,
-                    'tipe'      => $aktif->paket->tipe,
-                    'durasi'    => $aktif->paket->durasi,
-                    'harga'     => $aktif->paket->harga,
-                    'deskripsi' => $aktif->paket->deskripsi,
-                    'harga_formatted' => 'Rp ' . number_format($aktif->paket->harga, 0, ',', '.'),
-                ],
+                'id' => $aktif->id,
+                'paket' => $paket ? [
+                    'id'              => $paket->id,
+                    'nama'            => $paket->nama,
+                    'tipe'            => $paket->tipe,
+                    'durasi'          => $paket->durasi,
+                    'harga'           => $paket->harga,
+                    'deskripsi'       => $paket->deskripsi,
+                    'harga_formatted' => 'Rp ' . number_format($paket->harga, 0, ',', '.'),
+                ] : null,
                 'tanggal_transaksi' => $aktif->tanggal_transaksi?->toDateTimeString(),
-                'tanggal_mulai'     => $aktif->tanggal_mulai?->toDateString(),   // yyyy-MM-dd
-                'tanggal_akhir'     => $aktif->tanggal_akhir?->toDateString(),   // yyyy-MM-dd
+                'tanggal_mulai'     => $aktif->tanggal_mulai?->toDateString(),
+                'tanggal_akhir'     => $aktif->tanggal_akhir?->toDateString(),
                 'metode_pembayaran' => $aktif->metode_pembayaran,
-                'status'            => $aktif->status,        // accessor di model
+                'status'            => $aktif->status, // accessor di TransaksiMembership
                 'sisa_hari'         => max($sisaHari, 0),
             ];
         }
@@ -57,12 +71,12 @@ class MembershipController extends Controller
             ->get()
             ->map(function ($p) {
                 return [
-                    'id'        => $p->id,
-                    'nama'      => $p->nama,
-                    'tipe'      => $p->tipe,
-                    'durasi'    => $p->durasi,
-                    'harga'     => $p->harga,
-                    'deskripsi' => $p->deskripsi,
+                    'id'              => $p->id,
+                    'nama'            => $p->nama,
+                    'tipe'            => $p->tipe,
+                    'durasi'          => $p->durasi,
+                    'harga'           => $p->harga,
+                    'deskripsi'       => $p->deskripsi,
                     'harga_formatted' => 'Rp ' . number_format($p->harga, 0, ',', '.'),
                 ];
             });
@@ -70,7 +84,7 @@ class MembershipController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Data membership dashboard',
-            'data'    => [
+            'data' => [
                 'aktif' => $aktifData,
                 'paket' => $paket,
             ],
@@ -80,46 +94,33 @@ class MembershipController extends Controller
     /**
      * GET /api/membership/history/{member}
      *
-     * Mengembalikan riwayat semua membership yang pernah dibeli member.
-     *
-     * Response:
-     *  [
-     *    {
-     *      "id": 1,
-     *      "nama_paket": "Paket 1 Bulan",
-     *      "status": "aktif|berakhir|canceled|belum_aktif",
-     *      "tanggal_beli": "2025-11-01",
-     *      "tanggal_mulai": "2025-11-01",
-     *      "tanggal_akhir": "2025-11-30",
-     *      "metode_pembayaran": "Pembayaran Offline",
-     *      "total_pembayaran": 250000,
-     *      "total_pembayaran_formatted": "Rp 250.000"
-     *    },
-     *    ...
-     *  ]
+     * Riwayat transaksi membership berdasarkan transaksi_memberships.
      */
     public function historyByMember($memberId)
     {
-        $history = Membership::with('paket')
-            ->where('member_id', $memberId)
+        $history = TransaksiMembership::with('paket')
+            ->where(function ($q) use ($memberId) {
+                $q->where('buyer_member_id', $memberId)
+                  ->orWhereHas('participants', function ($p) use ($memberId) {
+                      $p->where('member_id', $memberId);
+                  });
+            })
             ->orderByDesc('tanggal_transaksi')
             ->orderByDesc('created_at')
             ->get()
-            ->map(function (Membership $m) {
-                // kalau tanggal_transaksi null, fallback ke created_at
-                $tanggalTransaksi = $m->tanggal_transaksi ?? $m->created_at;
-
-                $harga = optional($m->paket)->harga ?? 0;
+            ->map(function (TransaksiMembership $t) {
+                $tanggalTransaksi = $t->tanggal_transaksi ?? $t->created_at;
+                $harga = optional($t->paket)->harga ?? 0;
 
                 return [
-                    'id'                       => $m->id,
-                    'nama_paket'               => optional($m->paket)->nama,
-                    'status'                   => $m->status, // gunakan accessor status di model
-                    'tanggal_beli'             => $tanggalTransaksi?->toDateString(),   // yyyy-MM-dd
-                    'tanggal_mulai'            => $m->tanggal_mulai?->toDateString(),
-                    'tanggal_akhir'            => $m->tanggal_akhir?->toDateString(),
-                    'metode_pembayaran'        => $m->metode_pembayaran,
-                    'total_pembayaran'         => $harga,
+                    'id'                         => $t->id,
+                    'nama_paket'                 => optional($t->paket)->nama,
+                    'status'                     => $t->status, // aktif|belum_aktif|expired|canceled
+                    'tanggal_beli'               => $tanggalTransaksi?->toDateString(),
+                    'tanggal_mulai'              => $t->tanggal_mulai?->toDateString(),
+                    'tanggal_akhir'              => $t->tanggal_akhir?->toDateString(),
+                    'metode_pembayaran'          => $t->metode_pembayaran,
+                    'total_pembayaran'           => $harga,
                     'total_pembayaran_formatted' => 'Rp ' . number_format($harga, 0, ',', '.'),
                 ];
             });
