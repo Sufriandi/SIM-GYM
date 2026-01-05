@@ -10,15 +10,24 @@ class PaketMembershipController extends Controller
 {
     public function index(Request $request)
     {
-        $q = $request->get('q');
-        $tipe = $request->get('tipe');
-        $sort = $request->get('sort', 'newest'); // Default sorting
+        $q          = $request->get('q');
+        $tipe       = $request->get('tipe');
+        $sort       = $request->get('sort', 'newest');
+        $visibility = $request->get('visibility'); // public|internal|null
 
         $query = PaketMembership::query()
             ->when($q, fn($s) => $s->where('nama', 'like', "%{$q}%"))
-            ->when($tipe, fn($s) => $s->where('tipe', $tipe));
+            ->when($tipe, fn($s) => $s->where('tipe', $tipe))
+            ->when($visibility, function ($s) use ($visibility) {
+                if ($visibility === 'public') {
+                    return $s->where('is_public', true);
+                }
+                if ($visibility === 'internal') {
+                    return $s->where('is_public', false);
+                }
+                return $s;
+            });
 
-        // Logika Sorting
         switch ($sort) {
             case 'price_asc':
                 $query->orderBy('harga', 'asc');
@@ -51,6 +60,9 @@ class PaketMembershipController extends Controller
             'durasi'    => ['required', 'integer', 'min:1', 'max:3650'],
             'harga'     => ['required', 'integer', 'min:0', 'max:2000000000'],
             'deskripsi' => ['nullable', 'string', 'max:255'],
+
+            // dari checkbox + hidden 0 => akan selalu terkirim
+            'is_public' => ['required', 'boolean'],
         ]);
 
         PaketMembership::create($validated);
@@ -66,6 +78,9 @@ class PaketMembershipController extends Controller
             'durasi'    => ['required', 'integer', 'min:1', 'max:3650'],
             'harga'     => ['required', 'integer', 'min:0', 'max:2000000000'],
             'deskripsi' => ['nullable', 'string', 'max:255'],
+
+            // dari checkbox + hidden 0 => akan selalu terkirim
+            'is_public' => ['required', 'boolean'],
         ]);
 
         $paketMembership->update($validated);
@@ -75,7 +90,7 @@ class PaketMembershipController extends Controller
 
     public function destroy(PaketMembership $paketMembership)
     {
-        // Soft delete (paket dinonaktifkan, histori transaksi aman)
+        // Soft delete
         $paketMembership->delete();
 
         return back()->with('success', 'Paket membership berhasil dinonaktifkan.');

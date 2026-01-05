@@ -247,6 +247,19 @@ class TransaksiProdukController extends Controller
         }
     }
 
+    public function cetak(TransaksiProduk $transaksiProduk)
+    {
+        $transaksiProduk->load([
+            'items.produk',
+            'buyer.user',   // asumsi Member punya relasi user()
+            'creator',      // user kasir/admin
+        ]);
+
+        return view('admin.transaksi_produk.struk', [
+            'trx' => $transaksiProduk,
+        ]);
+    }
+
     /**
      * Generate no_nota 16 char, alnum, uppercase, unique.
      */

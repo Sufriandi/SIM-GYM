@@ -15,6 +15,13 @@ class TransaksiMembershipMember extends Model
         'transaksi_membership_id',
         'member_id',
         'role',
+        'tanggal_mulai',
+        'tanggal_akhir',
+    ];
+
+    protected $casts = [
+        'tanggal_mulai' => 'date',
+        'tanggal_akhir' => 'date',
     ];
 
     public function transaksi()

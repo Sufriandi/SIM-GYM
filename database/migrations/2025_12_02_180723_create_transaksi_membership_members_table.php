@@ -23,6 +23,10 @@ return new class extends Migration
 
             $table->enum('role', ['primary', 'member'])->default('member');
 
+            // Canonical per-member period (sumber kebenaran masa aktif individu)
+            $table->date('tanggal_mulai');
+            $table->date('tanggal_akhir');
+
             $table->timestamps();
 
             // Nama constraint dipendekkan agar tidak lewat batas MySQL
@@ -31,7 +35,19 @@ return new class extends Migration
                 'tm_members_txid_member_unique'
             );
 
+            // Untuk kebutuhan filtering role (admin) & menjaga query yang sudah ada tetap cepat
             $table->index(['member_id', 'role'], 'tm_members_member_role_idx');
+
+            // Index penting untuk performa:
+            // - cari end-date terakhir untuk member
+            $table->index(['member_id', 'tanggal_akhir'], 'tm_members_member_end_idx');
+
+            // - cek aktif pada tanggal tertentu (range). MySQL tetap akan terbantu dari member_id + salah satu tanggal.
+            $table->index(['member_id', 'tanggal_mulai'], 'tm_members_member_start_idx');
+
+            // - untuk agregasi cepat per transaksi (MIN/MAX tanggal per transaksi) atau render detail
+            $table->index(['transaksi_membership_id', 'tanggal_mulai'], 'tm_members_txid_start_idx');
+            $table->index(['transaksi_membership_id', 'tanggal_akhir'], 'tm_members_txid_end_idx');
         });
     }
 

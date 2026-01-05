@@ -59,7 +59,7 @@ Route::name('guest.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // === MARKETPLACE ROUTES ===
-    
+
     // 1. Index (Katalog)
     Route::get('/marketplace', [MarketplaceController::class, 'index'])->name('marketplace.index');
 
@@ -103,7 +103,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/marketplace/cart', [MarketplaceController::class, 'index'])->name('guest.marketplace.cart');
 });
 
-    
+
 /*
 |--------------------------------------------------------------------------
 | 2. PENGALIH DASHBOARD (REDIRECTOR)
@@ -151,16 +151,16 @@ Route::middleware(['auth', 'admin'])
 
         // ================== NOTIFIKASI (ADMIN) ==================
         Route::prefix('notifikasi')->name('notifikasi.')->group(function () {
-        Route::get('/', [AdminNotifikasiController::class, 'index'])->name('index');
-        Route::post('/read-all', [AdminNotifikasiController::class, 'readAll'])->name('read_all');
-        Route::post('/{id}/read', [AdminNotifikasiController::class, 'readOne'])->name('read_one');
-        Route::post('/{id}/hide', [AdminNotifikasiController::class, 'hideOne'])->name('hide_one');
-        Route::post('/hide-all', [AdminNotifikasiController::class, 'hideAll'])->name('hide_all');
-        Route::get('/{id}/go', [AdminNotifikasiController::class, 'go'])->name('go');
+            Route::get('/', [AdminNotifikasiController::class, 'index'])->name('index');
+            Route::post('/read-all', [AdminNotifikasiController::class, 'readAll'])->name('read_all');
+            Route::post('/{id}/read', [AdminNotifikasiController::class, 'readOne'])->name('read_one');
+            Route::post('/{id}/hide', [AdminNotifikasiController::class, 'hideOne'])->name('hide_one');
+            Route::post('/hide-all', [AdminNotifikasiController::class, 'hideAll'])->name('hide_all');
+            Route::get('/{id}/go', [AdminNotifikasiController::class, 'go'])->name('go');
 
-        // ===== realtime polling endpoint =====
-        Route::get('/poll', [AdminNotifikasiController::class, 'poll'])->name('poll');
-    });
+            // ===== realtime polling endpoint =====
+            Route::get('/poll', [AdminNotifikasiController::class, 'poll'])->name('poll');
+        });
 
         // ================== INVENTARIS ALAT ==================
         Route::resource('inventaris', InventarisAlatController::class)
@@ -191,6 +191,10 @@ Route::middleware(['auth', 'admin'])
             Route::post('/', [TransaksiProdukController::class, 'store'])->name('store');
 
             Route::get('/riwayat', [TransaksiProdukController::class, 'history'])->name('history');
+
+            // ✅ CETAK STRUK (HTML print)
+            Route::get('/{transaksiProduk}/cetak', [TransaksiProdukController::class, 'cetak'])
+                ->name('cetak');
 
             Route::delete('/{transaksiProduk}', [TransaksiProdukController::class, 'destroy'])->name('destroy');
         });
@@ -368,7 +372,7 @@ Route::middleware(['auth', 'member'])
         Route::post('/produk_gym/cart/{id}/quantity', [ProdukGymController::class, 'updateCartQuantity'])
             ->whereNumber('id')
             ->name('produk_gym.cart.qty');
-    
+
 
         /**
          * COACH: index + show (slug)
