@@ -10,9 +10,10 @@
     $user = $member->user;
 
     $displayName = $user?->name ?? '-';
+    // Gunakan placeholder ukuran lebih kecil agar sesuai beban loading
     $foto = !empty($user?->foto)
         ? Storage::url($user->foto)
-        : 'https://placehold.co/200x200/3A2D2A/F5E6D6?text=No+Foto';
+        : 'https://placehold.co/300x300/3A2D2A/F5E6D6?text=No+Foto';
 
     $tglDaftar = $member->tanggal_daftar ? Carbon::parse($member->tanggal_daftar)->translatedFormat('d F Y') : '-';
 
@@ -39,28 +40,17 @@
     $alamatHtml = $alamatTrimmed !== '' ? nl2br(e($alamatTrimmed)) : '-';
 @endphp
 
-<style>
-    /* CSS untuk menyembunyikan scrollbar tapi tetap bisa di-scroll */
-    .hide-scrollbar::-webkit-scrollbar {
-        display: none;
-    }
-
-    .hide-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-    }
-</style>
-
 <div x-show="openDetailId === {{ $member->id }}" x-cloak x-transition
     class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
     @click.self="openDetailId = null" @keydown.escape.window="openDetailId = null">
 
     <div
-        class="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto hide-scrollbar rounded-3xl shadow-2xl border border-brand-borderSoft bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell">
+        class="relative w-full max-w-5xl rounded-3xl shadow-2xl border border-brand-borderSoft 
+                bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell
+                max-h-[90vh] overflow-y-auto custom-scrollbar">
 
         {{-- HEADER --}}
-        <div
-            class="sticky top-0 z-20 bg-brand-shell/95 backdrop-blur-md flex items-center justify-between px-6 py-4 border-b border-brand-borderSoft/80">
+        <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
             <div>
                 <h2 class="text-xl font-semibold text-text-main">Detail Member</h2>
                 <p class="text-sm text-text-muted mt-0.5">
@@ -70,37 +60,35 @@
 
             <button type="button" class="rounded-full p-1.5 hover:bg-brand-surface-50 transition"
                 @click="openDetailId = null">
-                <i data-lucide="x" class="w-5 h-5 text-text-muted"></i>
+                <i data-lucide="x" class="w-4 h-4 text-text-muted"></i>
             </button>
         </div>
 
         {{-- BODY --}}
         <div class="px-6 pb-6 pt-4">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
 
-                {{-- KIRI: INFO --}}
-                <div class="lg:col-span-8 space-y-4">
+                {{-- KIRI: INFO DATA (2/3 lebar) --}}
+                <div class="lg:col-span-2 space-y-4">
 
                     {{-- SECTION MEMBERSHIP --}}
                     <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-5 py-4">
-                        <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center justify-between gap-3 mb-4">
                             <div>
                                 <h3 class="text-sm font-semibold text-text-main">Ringkasan Membership</h3>
-                                <p class="text-xs text-text-muted mt-0.5">
-                                    Status membership saat ini.
-                                </p>
+                                <p class="text-xs text-text-muted mt-0.5">Status membership saat ini.</p>
                             </div>
                             <x-ui.badge :variant="$statusVariant">{{ $statusLabel }}</x-ui.badge>
                         </div>
 
-                        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4 text-sm">
-                            <div class="min-w-0">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                            <div>
                                 <p class="text-[11px] text-text-muted mb-0.5 uppercase tracking-wider">Tanggal Daftar
                                 </p>
                                 <p class="text-base text-text-main font-medium">{{ $tglDaftar }}</p>
                             </div>
 
-                            <div class="min-w-0">
+                            <div>
                                 <p class="text-[11px] text-text-muted mb-0.5 uppercase tracking-wider">Paket Aktif</p>
                                 <p class="text-base text-text-main">
                                     @if ($paketAktifNama)
@@ -111,8 +99,7 @@
                                 </p>
                             </div>
 
-                            <div
-                                class="min-w-0 sm:col-span-2 border-t border-brand-borderSoft/50 pt-3 mt-1 grid grid-cols-2 gap-4">
+                            <div class="sm:col-span-2 border-t border-brand-borderSoft/50 pt-3 grid grid-cols-2 gap-4">
                                 <div>
                                     <p class="text-[11px] text-text-muted mb-0.5 uppercase tracking-wider">Mulai</p>
                                     <p
@@ -133,26 +120,26 @@
 
                     {{-- SECTION PROFIL --}}
                     <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-5 py-4">
-                        <h3 class="text-sm font-semibold text-text-main">Profil User</h3>
+                        <h3 class="text-sm font-semibold text-text-main mb-3">Profil User</h3>
 
-                        <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4 text-sm">
-                            <div class="min-w-0">
-                                <p class="text-[11px] text-text-muted mb-0.5">Nama</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <p class="text-[11px] text-text-muted mb-0.5 uppercase">Nama</p>
                                 <p class="text-base font-semibold text-text-main truncate">{{ $displayName }}</p>
                             </div>
 
-                            <div class="min-w-0">
-                                <p class="text-[11px] text-text-muted mb-0.5">Jenis Kelamin</p>
+                            <div>
+                                <p class="text-[11px] text-text-muted mb-0.5 uppercase">Jenis Kelamin</p>
                                 <p class="text-base text-text-main">{{ $jenisKelamin }}</p>
                             </div>
 
-                            <div class="min-w-0">
-                                <p class="text-[11px] text-text-muted mb-0.5">Username</p>
+                            <div>
+                                <p class="text-[11px] text-text-muted mb-0.5 uppercase">Username</p>
                                 <p class="text-base text-text-main">{{ $user?->username ?? '-' }}</p>
                             </div>
 
-                            <div class="min-w-0">
-                                <p class="text-[11px] text-text-muted mb-0.5">No. HP / Email</p>
+                            <div>
+                                <p class="text-[11px] text-text-muted mb-0.5 uppercase">No. HP / Email</p>
                                 <div class="flex flex-col">
                                     <span class="text-text-main">{{ $user?->no_hp ?? '-' }}</span>
                                     <span class="text-xs text-text-muted truncate">{{ $user?->email ?? '-' }}</span>
@@ -161,7 +148,7 @@
                         </div>
 
                         <div class="mt-3 pt-3 border-t border-brand-borderSoft/70">
-                            <p class="text-[11px] text-text-muted mb-1">Alamat</p>
+                            <p class="text-[11px] text-text-muted mb-1 uppercase">Alamat</p>
                             <p class="text-sm text-text-main leading-relaxed">
                                 {!! $alamatHtml !!}
                             </p>
@@ -169,36 +156,37 @@
                     </div>
                 </div>
 
-                {{-- KANAN: FOTO --}}
-                {{-- PERBAIKAN: sticky top-24 agar foto diam di atas saat discroll, z-0 agar dibawah header --}}
-                <div class="lg:col-span-4 sticky top-24 z-0">
-                    {{-- PERBAIKAN: h-fit agar tinggi kartu mengikuti konten saja (tidak melar ke bawah) --}}
+                {{-- KANAN: FOTO (1/3 lebar) --}}
+                <div class="space-y-4">
+                    {{-- Tambahkan items-center agar foto di tengah --}}
                     <div
-                        class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-4 py-6 h-fit flex flex-col items-center text-center">
-                        <h3 class="text-sm font-semibold text-text-main self-start w-full text-left mb-4">Foto Profil
-                        </h3>
+                        class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-4 py-5 flex flex-col items-center gap-4">
+                        <div class="w-full text-left">
+                            <h3 class="text-base font-semibold text-text-main">Foto Profil</h3>
+                            <p class="text-xs text-text-muted mt-0.5">Tampilan foto profil member.</p>
+                        </div>
 
+                        {{-- CONTAINER FOTO: Ukuran fixed (w-56 h-56) agar tidak terlalu besar --}}
                         <div
-                            class="w-32 h-32 rounded-2xl overflow-hidden bg-brand-surface-50 border border-brand-borderSoft shadow-lg mb-4">
+                            class="w-56 h-56 aspect-square rounded-2xl overflow-hidden bg-brand-surface-50 
+                                    flex items-center justify-center shadow-[0_8px_24px_rgba(0,0,0,0.12)] border border-brand-borderSoft">
                             <img src="{{ $foto }}" alt="Foto {{ $displayName }}"
-                                class="w-full h-full object-cover">
+                                class="w-full h-full object-cover"
+                                onerror="this.onerror=null; this.src='https://placehold.co/300x300/3A2D2A/F5E6D6?text=No+Foto';">
                         </div>
 
-                        <div class="space-y-1 mb-6">
-                            <p class="text-base font-semibold text-text-main">{{ $displayName }}</p>
-                            <p class="text-xs text-text-muted">{{ $user?->username ?? '-' }}</p>
-                        </div>
-
-                        <div class="mt-auto w-full">
-                            <x-ui.button-secondary type="button" class="w-full justify-center"
-                                @click="openDetailId = null">
-                                Tutup
-                            </x-ui.button-secondary>
-                        </div>
+                        {{-- Teks nama & username dibawah foto sudah dihapus --}}
                     </div>
                 </div>
+
+            </div>
+
+            {{-- FOOTER TOMBOL TUTUP (Mobile Only) --}}
+            <div class="mt-6 flex justify-end lg:hidden">
+                <x-ui.button-secondary type="button" @click="openDetailId = null">
+                    Tutup
+                </x-ui.button-secondary>
             </div>
         </div>
-
     </div>
 </div>

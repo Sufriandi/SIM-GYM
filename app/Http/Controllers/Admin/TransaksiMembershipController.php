@@ -41,7 +41,7 @@ class TransaksiMembershipController extends Controller
             $query->whereHas('paket', fn($p) => $p->where('tipe', $tipe));
         }
 
-        // Filter jenis transaksi (normalisasi input -> konstanta)
+        // Filter jenis transaksi
         $jenisNormalized = match ($jenis) {
             'pembayaran', TransaksiMembership::JENIS_PEMBAYARAN => TransaksiMembership::JENIS_PEMBAYARAN,
             'kompensasi', TransaksiMembership::JENIS_KOMPENSASI => TransaksiMembership::JENIS_KOMPENSASI,
@@ -68,6 +68,7 @@ class TransaksiMembershipController extends Controller
             ->orderBy('users.name')
             ->get();
 
+        // Admin butuh melihat semua paket (termasuk internal) untuk trial/bonus.
         $paketList = PaketMembership::orderBy('tipe')->orderBy('durasi')->get();
 
         return view('admin.transaksi_membership.index', compact(
@@ -122,38 +123,63 @@ class TransaksiMembershipController extends Controller
 
             $allMemberIds = array_values(array_unique(array_merge([$buyerId], $participantIds)));
 
-            // penting: lock agar tidak tabrakan kalau input bersamaan
-            $lastEnd = $this->getLastEndDateForMembers($allMemberIds, null, true);
+            // Hitung periode per member (canonical)
+            $periods = []; // [memberId => ['mulai'=>Carbon, 'akhir'=>Carbon]]
 
-            $tanggalMulai = $lastEnd
-                ? ($lastEnd->gte($transDay) ? $lastEnd->copy()->addDay() : $transDay)
-                : $transDay;
+            foreach ($allMemberIds as $mid) {
+                $mid = (int) $mid;
 
-            $tanggalAkhir = $tanggalMulai->copy()->addDays(((int) $paket->durasi) - 1);
+                // endDateTerakhirUntukMember sudah pivot-based & valid-only
+                $lastEnd = TransaksiMembership::endDateTerakhirUntukMember($mid);
+
+                $mulai = $lastEnd
+                    ? ($lastEnd->gte($transDay) ? $lastEnd->copy()->addDay() : $transDay)
+                    : $transDay;
+
+                // durasi paket disimpan dalam hari
+                $akhir = $mulai->copy()->addDays(((int) $paket->durasi) - 1);
+
+                $periods[$mid] = ['mulai' => $mulai, 'akhir' => $akhir];
+            }
+
+            // Header summary: MIN start & MAX end
+            $trxMulai = collect($periods)->min(fn($p) => $p['mulai']->toDateString());
+            $trxAkhir = collect($periods)->max(fn($p) => $p['akhir']->toDateString());
 
             $trx = TransaksiMembership::create([
                 'buyer_member_id'   => $buyerId,
                 'created_by'        => auth()->id(),
                 'paket_id'          => $paket->id,
                 'tanggal_transaksi' => $tanggalTransaksi,
-                'tanggal_mulai'     => $tanggalMulai,
-                'tanggal_akhir'     => $tanggalAkhir,
+
+                // summary (bukan sumber kebenaran per member)
+                'tanggal_mulai'     => $trxMulai ? Carbon::parse($trxMulai) : null,
+                'tanggal_akhir'     => $trxAkhir ? Carbon::parse($trxAkhir) : null,
+
                 'jenis_transaksi'   => TransaksiMembership::JENIS_PEMBAYARAN,
                 'metode_pembayaran' => $validated['metode_pembayaran'],
                 'keterangan'        => $validated['keterangan'] ?? null,
             ]);
 
+            // Buyer (primary)
             TransaksiMembershipMember::create([
                 'transaksi_membership_id' => $trx->id,
                 'member_id'               => $buyerId,
                 'role'                    => 'primary',
+                'tanggal_mulai'           => $periods[$buyerId]['mulai']->toDateString(),
+                'tanggal_akhir'           => $periods[$buyerId]['akhir']->toDateString(),
             ]);
 
+            // Participants
             foreach ($participantIds as $pid) {
+                $pid = (int) $pid;
+
                 TransaksiMembershipMember::create([
                     'transaksi_membership_id' => $trx->id,
-                    'member_id'               => (int) $pid,
+                    'member_id'               => $pid,
                     'role'                    => 'member',
+                    'tanggal_mulai'           => $periods[$pid]['mulai']->toDateString(),
+                    'tanggal_akhir'           => $periods[$pid]['akhir']->toDateString(),
                 ]);
             }
         });
@@ -188,7 +214,7 @@ class TransaksiMembershipController extends Controller
 
             $transDay = $tanggalTransaksi->copy()->startOfDay();
 
-            $lastEnd = $this->getLastEndDateForMembers([$memberId], null, true);
+            $lastEnd = TransaksiMembership::endDateTerakhirUntukMember($memberId);
 
             $tanggalMulai = $lastEnd
                 ? ($lastEnd->gte($transDay) ? $lastEnd->copy()->addDay() : $transDay)
@@ -201,8 +227,11 @@ class TransaksiMembershipController extends Controller
                 'created_by'        => auth()->id(),
                 'paket_id'          => $paketId,
                 'tanggal_transaksi' => $tanggalTransaksi,
+
+                // summary (untuk single kompensasi sama dengan canonical)
                 'tanggal_mulai'     => $tanggalMulai,
                 'tanggal_akhir'     => $tanggalAkhir,
+
                 'jenis_transaksi'   => TransaksiMembership::JENIS_KOMPENSASI,
                 'metode_pembayaran' => null,
                 'keterangan'        => $validated['keterangan'] ?: "Bonus/Trial admin {$jumlahHari} hari",
@@ -212,6 +241,8 @@ class TransaksiMembershipController extends Controller
                 'transaksi_membership_id' => $trx->id,
                 'member_id'               => $memberId,
                 'role'                    => 'primary',
+                'tanggal_mulai'           => $tanggalMulai->toDateString(),
+                'tanggal_akhir'           => $tanggalAkhir->toDateString(),
             ]);
         });
 
@@ -241,11 +272,23 @@ class TransaksiMembershipController extends Controller
                 abort(403, 'Transaksi kompensasi tidak bisa dibatalkan dari modul transaksi membership.');
             }
 
+            // Cancel hanya boleh jika belum berlaku untuk siapapun.
             $today = Carbon::today();
-            $mulai = Carbon::parse($transaksiMembership->tanggal_mulai)->startOfDay();
+
+            $earliestStart = TransaksiMembershipMember::where('transaksi_membership_id', $transaksiMembership->id)
+                ->min('tanggal_mulai');
+
+            $mulai = $earliestStart
+                ? Carbon::parse($earliestStart)->startOfDay()
+                : ($transaksiMembership->tanggal_mulai ? Carbon::parse($transaksiMembership->tanggal_mulai)->startOfDay() : null);
+
+            if ($mulai === null) {
+                // Jika terjadi data korup/invalid, amankan: blok cancel via rule lama
+                abort(403, 'Tanggal mulai transaksi tidak valid.');
+            }
 
             if (!$today->lt($mulai)) {
-                abort(403, 'Hanya transaksi yang belum aktif yang bisa dibatalkan.');
+                abort(403, 'Hanya transaksi yang belum aktif (untuk semua anggota) yang bisa dibatalkan.');
             }
 
             $memberIds = TransaksiMembershipMember::where('transaksi_membership_id', $transaksiMembership->id)
@@ -258,22 +301,15 @@ class TransaksiMembershipController extends Controller
                 $memberIds = [(int) $transaksiMembership->buyer_member_id];
             }
 
+            /**
+             * Proteksi: tidak boleh cancel jika ada transaksi yang lebih baru untuk salah satu member.
+             * Versi sederhana: cek transaksi valid lain yang melibatkan salah satu member dan punya tanggal_transaksi lebih baru.
+             * (Cukup aman untuk fase developing; versi paling ketat bisa dibuat pivot-based per-member start.)
+             */
             $adaLebihBaru = TransaksiMembership::query()
                 ->valid()
                 ->where('id', '!=', $transaksiMembership->id)
-                ->where(function ($w) use ($transaksiMembership) {
-                    $w->whereDate('tanggal_mulai', '>', $transaksiMembership->tanggal_mulai)
-                        ->orWhere(function ($w2) use ($transaksiMembership) {
-                            $w2->whereDate('tanggal_mulai', '=', $transaksiMembership->tanggal_mulai)
-                                ->where(function ($w3) use ($transaksiMembership) {
-                                    $w3->where('tanggal_transaksi', '>', $transaksiMembership->tanggal_transaksi)
-                                        ->orWhere(function ($w4) use ($transaksiMembership) {
-                                            $w4->where('tanggal_transaksi', '=', $transaksiMembership->tanggal_transaksi)
-                                                ->where('id', '>', $transaksiMembership->id);
-                                        });
-                                });
-                        });
-                })
+                ->where('tanggal_transaksi', '>=', $transaksiMembership->tanggal_transaksi) // guard kasar
                 ->where(function ($q) use ($memberIds) {
                     $q->whereIn('buyer_member_id', $memberIds)
                         ->orWhereHas('participants', fn($p) => $p->whereIn('member_id', $memberIds));
@@ -290,30 +326,6 @@ class TransaksiMembershipController extends Controller
         return redirect()
             ->route('admin.transaksi_membership.index')
             ->with('success', 'Transaksi membership berhasil dibatalkan.');
-    }
-
-    /**
-     * $lock=true dipakai saat create agar aman dari race condition.
-     */
-    private function getLastEndDateForMembers(array $memberIds, ?int $excludeTrxId = null, bool $lock = false): ?Carbon
-    {
-        $q = TransaksiMembership::query()
-            ->valid()
-            ->where(function ($w) use ($memberIds) {
-                $w->whereIn('buyer_member_id', $memberIds)
-                    ->orWhereHas('participants', fn($p) => $p->whereIn('member_id', $memberIds));
-            });
-
-        if ($excludeTrxId) {
-            $q->where('id', '!=', $excludeTrxId);
-        }
-
-        if ($lock) {
-            $q->lockForUpdate();
-        }
-
-        $lastEnd = $q->max('tanggal_akhir');
-        return $lastEnd ? Carbon::parse($lastEnd)->startOfDay() : null;
     }
 
     private function normalizeInputs(Request $request): array

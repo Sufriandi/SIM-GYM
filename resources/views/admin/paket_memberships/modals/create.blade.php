@@ -1,14 +1,11 @@
 {{-- resources/views/admin/paket_memberships/modals/create.blade.php --}}
 @php
-    // Default fallback agar tidak error jika lupa mengirim dari controller
     $tipeOptions = $tipeOptions ?? [
         'single' => 'Single',
         'double' => 'Double',
         'triple' => 'Triple',
     ];
 
-    // Modal create dibuka otomatis hanya jika error validasi section ini
-    // Pastikan form mengirim <input type="hidden" name="_section" value="paket_create">
     $openCreateFormErrors = $errors->any() && old('_section') === 'paket_create';
 @endphp
 
@@ -24,7 +21,7 @@
                bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell
                max-h-[calc(100vh-48px)] flex flex-col">
 
-        {{-- HEADER (fixed) --}}
+        {{-- HEADER --}}
         <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80 shrink-0">
             <div>
                 <h2 id="modal-paket-create-title" class="text-xl font-semibold text-text-main">Tambah Paket Membership
@@ -38,11 +35,10 @@
             </button>
         </div>
 
-        {{-- BODY (scrollable di mobile) --}}
+        {{-- BODY --}}
         <div class="px-6 pb-6 pt-4 overflow-y-auto custom-scrollbar flex-1 overscroll-contain"
             style="-webkit-overflow-scrolling: touch;">
 
-            {{-- ERROR VALIDASI CREATE --}}
             @if ($openCreateFormErrors)
                 <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
                     <p class="text-sm font-semibold">Ada kesalahan input:</p>
@@ -59,7 +55,6 @@
                 <input type="hidden" name="_section" value="paket_create">
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
                     {{-- NAMA --}}
                     <div class="md:col-span-2">
                         <x-ui.label for="nama_create">Nama Paket<span class="text-danger">*</span></x-ui.label>
@@ -122,6 +117,30 @@
                                    border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
                                    @error('harga') border-danger ring-danger-soft @enderror">
                         @error('harga')
+                            <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- VISIBILITAS --}}
+                    <div class="md:col-span-2">
+                        <x-ui.label for="is_public_create">Visibilitas<span class="text-danger">*</span></x-ui.label>
+
+                        {{-- default 0 agar selalu terkirim --}}
+                        <input type="hidden" name="is_public" value="0">
+                        <label class="flex items-start gap-3 mt-1 select-none">
+                            <input id="is_public_create" type="checkbox" name="is_public" value="1"
+                                {{ old('is_public', '1') == '1' ? 'checked' : '' }}
+                                class="mt-1 rounded border-brand-borderSoft bg-brand-shell text-primary-dark focus:ring-primary-dark">
+                            <div>
+                                <p class="text-sm text-text-main font-medium">Public (tampil di aplikasi member)</p>
+                                <p class="text-[11px] text-text-muted">
+                                    Matikan jika paket khusus admin, misalnya trial/bonus, agar tidak muncul dan tidak
+                                    bisa dibeli member.
+                                </p>
+                            </div>
+                        </label>
+
+                        @error('is_public')
                             <p class="text-xs text-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>

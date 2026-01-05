@@ -2,68 +2,72 @@
 
 @php
     use Illuminate\Support\Facades\Storage;
+    use Illuminate\Support\Str;
 
     $pageTitle = $pageTitle ?? 'Daftar Coach';
 
     // Buka modal create otomatis jika ada error dan bukan request PUT
-    $openCreateOnLoad = ($errors->any() && old('_method') !== 'PUT') ? 'true' : 'false';
+    $openCreateOnLoad = $errors->any() && old('_method') !== 'PUT' ? 'true' : 'false';
 
-    $search = request('search'); // nilai pencarian saat ini
+    $search = request('search');
 @endphp
 
-<x-layouts.admin
-    :title="$pageTitle . ' – BETA GYM'"
-    :page-title="$pageTitle"
-    page-subtitle="Kelola data coach yang terdaftar di BETA GYM."
->
-    {{-- STATE UTAMA UNTUK MODAL & SEARCH --}}
-    <div
-        x-data="{
-            openCreate: {{ $openCreateOnLoad }},
-            openDetailId: null,
-            openEditId: null,
-            search: '{{ request('search') }}',
-        }"
-    >
-        {{-- HEADER HALAMAN --}}
-        <x-ui.section-header
-            :title="$pageTitle"
-            subtitle="Daftar coach aktif dan pengelolaan datanya."
-        />
+<x-layouts.admin :title="$pageTitle . ' – BETA GYM'" :page-title="$pageTitle" page-subtitle="Kelola data coach yang terdaftar di BETA GYM.">
+    {{-- STATE UTAMA --}}
+    <div x-data="{
+        openCreate: {{ $openCreateOnLoad }},
+        openDetailId: null,
+        openEditId: null,
+        search: @js($search ?? ''),
+    }"
+        x-effect="
+            const main = document.querySelector('main');
+            const html = document.documentElement;
+            const body = document.body;
+            const locked = openCreate || !!openEditId || !!openDetailId;
+            const targets = [html, body, main].filter(Boolean);
 
-        {{-- GARIS DIBAWAH JUDUL --}}
+            if (locked) {
+                targets.forEach((el) => {
+                    if (el.dataset.prevOverflowY === undefined) {
+                        el.dataset.prevOverflowY = el.style.overflowY || '';
+                    }
+                    el.style.overflowY = 'hidden';
+                });
+            } else {
+                targets.forEach((el) => {
+                    if (el.dataset.prevOverflowY !== undefined) {
+                        el.style.overflowY = el.dataset.prevOverflowY;
+                        delete el.dataset.prevOverflowY;
+                    } else {
+                        el.style.removeProperty('overflow-y');
+                    }
+                });
+            }
+        ">
+
+        {{-- HEADER HALAMAN --}}
+        <x-ui.section-header :title="$pageTitle" subtitle="Daftar coach aktif dan pengelolaan datanya." />
+
         <div class="mt-2 h-px w-full bg-brand-borderSoft/70"></div>
 
-        {{-- BARIS PENCARIAN + TOMBOL TAMBAH (layout mengikuti inventaris, tanpa filter) --}}
+        {{-- BARIS PENCARIAN + TOMBOL TAMBAH --}}
         <div class="mt-6 mb-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            {{-- SEARCH ala Inventaris, hanya teks pencarian --}}
+
+            {{-- SEARCH BAR --}}
             <div class="relative w-full max-w-md">
-                <form action="{{ route('admin.coaches.index') }}" method="GET" id="searchForm">
+                <form action="{{ route('admin.coaches.index') }}" method="GET">
                     <div
-                        class="flex items-center w-full rounded-full border border-brand-borderSoft bg-brand-card
-                               shadow-sm transition-all hover:border-brand-borderSoft/80
-                               focus-within:ring-0 focus-within:border-brand-borderSoft h-[42px]"
-                    >
-                        {{-- Icon Search --}}
+                        class="flex items-center w-full rounded-full border border-brand-borderSoft bg-brand-card shadow-sm focus-within:ring-2 focus-within:ring-primary-dark/40 transition-all hover:border-brand-borderSoft/80 h-[42px]">
                         <div class="pl-4 text-text-muted">
                             <i data-lucide="search" class="w-5 h-5"></i>
                         </div>
 
-                        {{-- Input Text --}}
-                        <input
-                            type="text"
-                            id="searchInput"
-                            name="search"
-                            x-model="search"
-                            value="{{ request('search') }}"
+                        <input type="text" name="search" x-model="search" value="{{ $search }}"
                             placeholder="Cari nama coach..."
-                            class="w-full bg-transparent border-none text-sm text-text-main
-                                   placeholder:text-text-muted/50 py-2 pl-3 pr-4 rounded-r-full
-                                   focus:ring-0 focus:outline-none focus-visible:outline-none"
-                            autocomplete="off"
-                        >
+                            class="w-full bg-transparent border-none text-sm text-text-main placeholder:text-text-muted/50 focus:ring-0 py-2 pl-3 pr-4 rounded-r-full focus:outline-none focus-visible:outline-none"
+                            autocomplete="off">
 
-                        {{-- Hidden submit biar Enter tetap jalan (optional) --}}
                         <button type="submit" class="hidden">Cari</button>
                     </div>
                 </form>
@@ -75,7 +79,7 @@
             </x-ui.button-primary>
         </div>
 
-        {{-- CARD TABEL COACH (layout mirip inventaris) --}}
+        {{-- CARD TABEL COACH --}}
         <x-ui.card class="border-brand-borderSoft overflow-visible max-h-none">
             {{-- HEADER CARD --}}
             <div class="px-6 py-4 border-b border-brand-borderSoft flex items-center justify-between">
@@ -83,6 +87,11 @@
                     <h3 class="text-lg font-bold text-text-main">Daftar Coach</h3>
                     <p class="text-xs text-text-muted mt-0.5">
                         Semua coach yang terdaftar dalam sistem.
+                        @if ($search)
+                            <span class="font-semibold text-gold-700">
+                                &nbsp;Hasil untuk "{{ $search }}" ({{ $coaches->total() }})
+                            </span>
+                        @endif
                     </p>
                 </div>
                 <div class="bg-brand-surface-50 border border-brand-borderSoft px-3 py-1 rounded-full">
@@ -92,40 +101,50 @@
                 </div>
             </div>
 
-            {{-- WRAPPER TABEL: tanpa overflow internal supaya tidak ada scrollbar di dalam card --}}
-            <div class="w-full">
-                <table class="table-fixed w-full border-collapse text-xs md:text-sm md:min-w-[900px]">
+            {{-- WRAPPER TABEL SCROLLABLE --}}
+            <div class="w-full overflow-x-auto overflow-y-hidden custom-scrollbar">
+                <table class="w-full border-collapse text-xs md:text-sm md:min-w-[900px]">
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
-                            {{-- NO (dilonggarkan) --}}
+                            {{-- NO --}}
                             <th
-                                class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted
-                                       w-[5%] min-w-[40px]"
-                            >
+                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[5%]">
                                 No
                             </th>
 
-                            {{-- FOTO (dilonggarkan) --}}
+                            {{-- FOTO --}}
                             <th
-                                class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted
-                                       w-[10%] min-w-[90px]"
-                            >
+                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[10%]">
                                 Foto
                             </th>
 
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[18%] min-w-[150px]">
+                            {{-- NAMA --}}
+                            <th
+                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[20%]">
                                 Nama
                             </th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[15%] min-w-[120px]">
+
+                            {{-- NO HP --}}
+                            <th
+                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[15%]">
                                 No. HP
                             </th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[20%] min-w-[150px]">
+
+                            {{-- ALAMAT --}}
+                            <th
+                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[20%]">
                                 Alamat
                             </th>
-                            <th class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[27%] min-w-[150px]">
+
+                            {{-- DESKRIPSI --}}
+                            <th
+                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[20%]">
                                 Deskripsi
                             </th>
-                            <th class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[12%] min-w-[120px]">
+
+                            {{-- AKSI --}}
+                            <th
+                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[10%]">
                                 Aksi
                             </th>
                         </tr>
@@ -140,122 +159,79 @@
                                     : 'https://placehold.co/100x100/3A2D2A/F5E6D6?text=No+Foto';
                             @endphp
 
-                            <tr
-                                x-show="
-                                    !search
-                                    || @js(strtolower($coach->nama)).startsWith(search.toLowerCase())
-                                "
-                                class="hover:bg-brand-surface-50 transition-colors	duration-150"
-                            >
+                            <tr class="hover:bg-brand-surface-50 transition-colors duration-150 h-16">
                                 {{-- NO --}}
-                                <td
-                                    class="p-3 align-middle text-center text-sm font-medium text-text-main
-                                           w-[5%] min-w-[40px]"
-                                >
+                                <td class="p-3 align-middle text-center text-text-muted text-sm font-semibold">
                                     {{ $loop->iteration + ($coaches->currentPage() - 1) * $coaches->perPage() }}
                                 </td>
 
-                                {{-- FOTO --}}
-                                <td class="p-3 align-middle w-[10%] min-w-[90px]">
-                                    <img
-                                        src="{{ $currentFotoUrl }}"
-                                        alt="Foto {{ $coach->nama }}"
-                                        class="w-12 h-12 rounded-lg object-cover border border-brand-borderSoft shadow-sm"
-                                        onerror="this.onerror=null; this.src='https://placehold.co/100x100/3A2D2A/F5E6D6?text=No+Foto';"
-                                    >
+                                {{-- FOTO (KOTAK/ROUNDED-LG) --}}
+                                <td class="p-3 align-middle">
+                                    <div
+                                        class="w-12 h-12 rounded-lg border border-brand-borderSoft/80 bg-brand-surface-50 overflow-hidden shrink-0">
+                                        <img src="{{ $currentFotoUrl }}" alt="Foto {{ $coach->nama }}"
+                                            class="w-full h-full object-cover"
+                                            onerror="this.onerror=null; this.src='https://placehold.co/100x100/3A2D2A/F5E6D6?text=No+Foto';">
+                                    </div>
                                 </td>
 
                                 {{-- NAMA --}}
-                                <td class="p-3 align-middle w-[18%] min-w-[150px]">
-                                    <div class="text-sm font-semibold text-text-main max-w-[120px] truncate">
+                                <td class="p-3 align-middle">
+                                    <div class="text-sm font-semibold text-text-main line-clamp-1"
+                                        title="{{ $coach->nama }}">
                                         {{ $coach->nama }}
                                     </div>
                                 </td>
 
                                 {{-- NO HP --}}
-                                <td class="p-3 align-middle w-[15%] min-w-[120px]">
-                                    <div class="text-sm text-text-main max-w-[160px] truncate">
+                                <td class="p-3 align-middle">
+                                    <div class="text-sm text-text-main truncate">
                                         {{ $coach->no_hp }}
                                     </div>
                                 </td>
 
                                 {{-- ALAMAT --}}
-                                <td class="p-3 align-middle w-[20%] min-w-[150px]">
-                                    <div class="text-xs text-text-muted max-w-[160px] truncate">
-                                        {{ \Illuminate\Support\Str::limit($coach->alamat, 80) }}
+                                <td class="p-3 align-middle">
+                                    <div class="text-xs text-text-muted line-clamp-2" title="{{ $coach->alamat }}">
+                                        {{ \Illuminate\Support\Str::limit($coach->alamat, 60) }}
                                     </div>
                                 </td>
 
                                 {{-- DESKRIPSI --}}
-                                <td class="p-3 align-middle w-[27%] min-w-[150px]">
-                                    <div class="text-xs text-text-muted max-w-[180px] truncate">
-                                        {{ $coach->deskripsi ? \Illuminate\Support\Str::limit($coach->deskripsi, 80) : '-' }}
+                                <td class="p-3 align-middle">
+                                    <div class="text-xs text-text-muted line-clamp-2" title="{{ $coach->deskripsi }}">
+                                        {{ $coach->deskripsi ? \Illuminate\Support\Str::limit($coach->deskripsi, 60) : '-' }}
                                     </div>
                                 </td>
 
                                 {{-- AKSI --}}
-                                <td class="p-3 align-middle w-[12%] min-w-[120px]">
-                                    <div class="flex items-center justify-center gap-3 mr-7">
+                                <td class="p-3 align-middle text-center">
+                                    <div class="flex items-center justify-center gap-2">
                                         {{-- DETAIL --}}
-                                        <button
-                                            type="button"
-                                            @click="openDetailId = {{ $coach->id }}"
-                                            title="Detail Coach"
-                                            class="relative group p-2 rounded-full text-info hover:bg-info-soft/60 transition-colors duration-150"
-                                        >
+                                        <button type="button" @click="openDetailId = {{ $coach->id }}"
+                                            class="p-2 rounded-full text-info hover:bg-info-soft/60 transition-colors"
+                                            title="Detail Coach">
                                             <i data-lucide="eye" class="w-5 h-5"></i>
-                                            <span
-                                                class="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2
-                                                       text-[10px] font-medium text-info
-                                                       opacity-0 group-hover:opacity-100
-                                                       transition-opacity duration-150"
-                                            >
-                                                Detail
-                                            </span>
                                         </button>
 
                                         {{-- EDIT --}}
-                                        <button
-                                            type="button"
-                                            @click="openEditId = {{ $coach->id }}"
-                                            title="Edit Coach"
-                                            class="relative group p-2 rounded-full text-yellow-600 hover:bg-yellow-100/60 transition-colors duration-150"
-                                        >
+                                        <button type="button" @click="openEditId = {{ $coach->id }}"
+                                            class="p-2 rounded-full text-yellow-600 hover:bg-yellow-100/60 transition-colors"
+                                            title="Edit Coach">
                                             <i data-lucide="square-pen" class="w-5 h-5"></i>
-                                            <span
-                                                class="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2
-                                                       text-[10px] font-medium text-yellow-600
-                                                       opacity-0 group-hover:opacity-100
-                                                       transition-opacity duration-150"
-                                            >
-                                                Edit
-                                            </span>
                                         </button>
 
                                         {{-- HAPUS --}}
-                                        <form
-                                            id="delete-coach-{{ $coach->id }}"
-                                            action="{{ route('admin.coaches.destroy', $coach) }}"
-                                            method="POST"
-                                            class="inline-block"
-                                        >
+                                        <form id="delete-coach-{{ $coach->id }}"
+                                            action="{{ route('admin.coaches.destroy', $coach) }}" method="POST"
+                                            class="inline-block">
                                             @csrf
                                             @method('DELETE')
-                                            <button
-                                                type="button"
+                                            <button type="button"
+                                                class="p-2 rounded-full text-danger hover:bg-danger-soft/60 transition-colors"
                                                 title="Hapus Coach"
-                                                class="relative group p-2 rounded-full text-danger hover:bg-danger-soft/60 transition-colors duration-150"
-                                                onclick="confirmDeleteCoach({{ $coach->id }}, '{{ $coach->nama }}')"
-                                            >
+                                                onclick="confirmDeleteCoach({{ $coach->id }}, '{{ $coach->nama }}')">
                                                 <i data-lucide="trash-2" class="w-5 h-5"></i>
-                                                <span
-                                                    class="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2
-                                                           text-[10px] font-medium text-danger
-                                                           opacity-0 group-hover:opacity-100
-                                                           transition-opacity duration-150"
-                                                >
-                                                    Hapus
-                                                </span>
                                             </button>
                                         </form>
                                     </div>
@@ -281,7 +257,7 @@
         {{-- MODAL CREATE --}}
         @include('admin.coach.modals.create')
 
-        {{-- MODAL DETAIL + EDIT PER COACH --}}
+        {{-- MODAL DETAIL + EDIT PER COACH (Looping di luar tabel agar aman/popup) --}}
         @foreach ($coaches as $coach)
             @include('admin.coach.modals.detail', ['coach' => $coach])
             @include('admin.coach.modals.edit', ['coach' => $coach])
@@ -289,22 +265,27 @@
 
         {{-- CUSTOM SCROLLBAR + X-CLOAK --}}
         <style>
-            [x-cloak] { display: none !important; }
+            [x-cloak] {
+                display: none !important;
+            }
 
             .custom-scrollbar::-webkit-scrollbar {
                 height: 6px;
                 width: 6px;
             }
+
             .custom-scrollbar::-webkit-scrollbar-track {
-                background: #F5E6D6; /* brand.shell */
+                background: #F5E6D6;
                 border-radius: 999px;
             }
+
             .custom-scrollbar::-webkit-scrollbar-thumb {
-                background: #D4A757; /* gold-500 */
+                background: #D4A757;
                 border-radius: 999px;
             }
+
             .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                background: #A67C39; /* gold-700 */
+                background: #A67C39;
             }
         </style>
     </div>
@@ -321,7 +302,7 @@
 
             Swal.fire({
                 title: 'Hapus Coach?',
-                text: `Anda yakin ingin menghapus data coach ${coachName}? Tindakan ini tidak dapat dibatalkan.`,
+                html: `Anda yakin ingin menghapus data coach <strong>${coachName}</strong>?<br>Tindakan ini tidak dapat dibatalkan.`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#C73527',
@@ -336,8 +317,5 @@
                 }
             });
         }
-
-        // Live search pakai x-model + x-show (filter di frontend),
-        // tidak ada debounce / reload halaman.
     </script>
 </x-layouts.admin>

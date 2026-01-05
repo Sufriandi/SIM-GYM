@@ -18,14 +18,17 @@ class TransaksiMembershipSeeder extends Seeder
         $admin = User::where('role', 'admin')->first();
         if (!$admin) return;
 
-        $pakets = PaketMembership::all();
+        // Untuk demo transaksi "pembayaran", ambil paket yang public saja
+        $pakets = PaketMembership::query()->where('is_public', true)->get();
         if ($pakets->isEmpty()) return;
 
         $members = Member::with('user')->get();
         if ($members->count() < 1) return;
 
+        $metodeList = ['cash', 'transfer', 'qris'];
+
         for ($i = 0; $i < 50; $i++) {
-            DB::transaction(function () use ($admin, $pakets, $members) {
+            DB::transaction(function () use ($admin, $pakets, $members, $metodeList) {
 
                 $paket = $pakets->random();
                 $buyer = $members->random();
@@ -39,12 +42,11 @@ class TransaksiMembershipSeeder extends Seeder
                     default  => 0,
                 };
 
-                // Pilih peserta tambahan dulu (agar perhitungan tanggal_mulai mempertimbangkan semua member yang terlibat)
+                // Pilih peserta tambahan (tidak boleh sama dengan buyer)
                 $participantIds = [];
                 if ($maxAdditional > 0 && $members->count() > 1) {
                     $others = $members->where('id', '!=', $buyerId);
 
-                    // random() bisa mengembalikan Model atau Collection, jadi kita normalisasi jadi array id
                     $picked = $others->random(min($maxAdditional, $others->count()));
 
                     $participantIds = collect($picked)
@@ -55,7 +57,6 @@ class TransaksiMembershipSeeder extends Seeder
                         ->all();
                 }
 
-                // Semua member yang terlibat transaksi ini (untuk hitung lastEnd)
                 $allMemberIds = array_values(array_unique(array_merge([$buyerId], $participantIds)));
 
                 $tanggalTransaksi = Carbon::today()
@@ -64,57 +65,64 @@ class TransaksiMembershipSeeder extends Seeder
 
                 $transDay = $tanggalTransaksi->copy()->startOfDay();
 
-                // lastEnd terjauh dari transaksi valid yang melibatkan salah satu member (buyer/participant)
-                $lastEnd = TransaksiMembership::query()
-                    ->valid()
-                    ->where(function ($q) use ($allMemberIds) {
-                        $q->whereIn('buyer_member_id', $allMemberIds)
-                            ->orWhereHas('participants', fn($p) => $p->whereIn('member_id', $allMemberIds));
-                    })
-                    ->max('tanggal_akhir'); // string YYYY-MM-DD atau null
+                // Hitung periode canonical per member (mengikuti logika controller baru)
+                $periods = []; // [memberId => ['mulai'=>Carbon, 'akhir'=>Carbon]]
 
-                if ($lastEnd) {
-                    $lastEnd = Carbon::parse($lastEnd)->startOfDay();
-                    $tanggalMulai = $lastEnd->gte($transDay) ? $lastEnd->copy()->addDay() : $transDay;
-                } else {
-                    $tanggalMulai = $transDay;
+                foreach ($allMemberIds as $mid) {
+                    $mid = (int) $mid;
+
+                    // Ambil end-date terakhir per member (pivot-based, transaksi valid)
+                    $lastEnd = TransaksiMembership::endDateTerakhirUntukMember($mid);
+
+                    $mulai = $lastEnd
+                        ? ($lastEnd->gte($transDay) ? $lastEnd->copy()->addDay() : $transDay)
+                        : $transDay;
+
+                    $akhir = $mulai->copy()->addDays(((int) $paket->durasi) - 1);
+
+                    $periods[$mid] = ['mulai' => $mulai, 'akhir' => $akhir];
                 }
 
-                $tanggalAkhir = $tanggalMulai->copy()->addDays(((int) $paket->durasi) - 1);
-
-                $metodeList = ['cash', 'transfer', 'qris'];
+                // Header summary MIN/MAX
+                $trxMulai = collect($periods)->min(fn($p) => $p['mulai']->toDateString());
+                $trxAkhir = collect($periods)->max(fn($p) => $p['akhir']->toDateString());
 
                 $trx = TransaksiMembership::create([
                     'buyer_member_id'   => $buyerId,
                     'created_by'        => $admin->id,
                     'paket_id'          => $paket->id,
                     'tanggal_transaksi' => $tanggalTransaksi,
-                    'tanggal_mulai'     => $tanggalMulai->toDateString(),
-                    'tanggal_akhir'     => $tanggalAkhir->toDateString(),
 
-                    // ENUM BARU
-                    'jenis_transaksi'   => TransaksiMembership::JENIS_PEMBAYARAN, // 'pembayaran'
+                    // summary (bukan sumber kebenaran per member)
+                    'tanggal_mulai'     => $trxMulai ? Carbon::parse($trxMulai)->toDateString() : null,
+                    'tanggal_akhir'     => $trxAkhir ? Carbon::parse($trxAkhir)->toDateString() : null,
+
+                    'jenis_transaksi'   => TransaksiMembership::JENIS_PEMBAYARAN,
                     'metode_pembayaran' => $metodeList[array_rand($metodeList)],
                     'keterangan'        => 'Seeder demo',
                 ]);
 
-                // Buyer primary
+                // Buyer primary (pivot canonical)
                 TransaksiMembershipMember::create([
                     'transaksi_membership_id' => $trx->id,
                     'member_id'               => $buyerId,
                     'role'                    => 'primary',
+                    'tanggal_mulai'           => $periods[$buyerId]['mulai']->toDateString(),
+                    'tanggal_akhir'           => $periods[$buyerId]['akhir']->toDateString(),
                 ]);
 
-                // Peserta tambahan
+                // Peserta tambahan (pivot canonical)
                 foreach ($participantIds as $pid) {
+                    $pid = (int) $pid;
+
                     TransaksiMembershipMember::create([
                         'transaksi_membership_id' => $trx->id,
-                        'member_id'               => (int) $pid,
+                        'member_id'               => $pid,
                         'role'                    => 'member',
+                        'tanggal_mulai'           => $periods[$pid]['mulai']->toDateString(),
+                        'tanggal_akhir'           => $periods[$pid]['akhir']->toDateString(),
                     ]);
                 }
-
-                // Tidak update tabel members (karena truth di transaksi)
             });
         }
     }

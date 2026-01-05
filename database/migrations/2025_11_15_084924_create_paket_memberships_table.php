@@ -20,10 +20,14 @@ return new class extends Migration
 
             $table->string('deskripsi', 255)->nullable();
 
+            // Paket yang tampil & bisa dibeli oleh member (marketplace)
+            $table->boolean('is_public')->default(true)->index();
+
             $table->softDeletes(); // agar paket bisa dinonaktifkan
             $table->timestamps();
 
             $table->index(['tipe', 'durasi'], 'pm_tipe_durasi_idx');
+            $table->index(['is_public', 'tipe'], 'pm_public_tipe_idx');
         });
     }
 

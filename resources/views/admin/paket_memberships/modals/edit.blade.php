@@ -13,6 +13,7 @@
         x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
         class="relative w-full max-w-xl rounded-3xl shadow-2xl border border-brand-borderSoft
                bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell">
+
         {{-- HEADER MODAL --}}
         <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
             <div>
@@ -33,7 +34,6 @@
                 @method('PUT')
                 <input type="hidden" name="paket_id" value="{{ $paket->id }}">
 
-                {{-- ERROR VALIDASI KHUSUS EDIT PAKET INI --}}
                 @if ($openEditOnLoad)
                     <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-2">
                         <p class="text-sm font-semibold">Ada kesalahan input:</p>
@@ -108,6 +108,32 @@
                                    focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent
                                    @error('harga') border-danger ring-danger-soft @enderror">
                         @error('harga')
+                            <p class="text-xs text-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- VISIBILITAS --}}
+                    <div class="md:col-span-2">
+                        <x-ui.label for="is_public_edit_{{ $paket->id }}">
+                            Visibilitas<span class="text-danger">*</span>
+                        </x-ui.label>
+
+                        <input type="hidden" name="is_public" value="0">
+                        <label class="flex items-start gap-3 mt-1 select-none">
+                            <input id="is_public_edit_{{ $paket->id }}" type="checkbox" name="is_public"
+                                value="1"
+                                {{ old('is_public', $paket->is_public ? '1' : '0') == '1' ? 'checked' : '' }}
+                                class="mt-1 rounded border-brand-borderSoft bg-brand-shell text-primary-dark focus:ring-primary-dark">
+                            <div>
+                                <p class="text-sm text-text-main font-medium">Public (tampil di aplikasi member)</p>
+                                <p class="text-[11px] text-text-muted">
+                                    Matikan jika paket khusus admin, misalnya trial/bonus, agar tidak muncul dan tidak
+                                    bisa dibeli member.
+                                </p>
+                            </div>
+                        </label>
+
+                        @error('is_public')
                             <p class="text-xs text-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
