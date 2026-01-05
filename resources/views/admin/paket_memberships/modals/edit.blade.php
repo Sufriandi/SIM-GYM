@@ -14,7 +14,7 @@
         class="relative w-full max-w-xl rounded-3xl shadow-2xl border border-brand-borderSoft
                bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell">
 
-        {{-- HEADER MODAL --}}
+        {{-- HEADER MODAL - --}}
         <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">
             <div>
                 <h2 class="text-xl font-semibold text-text-main">Edit Paket Membership</h2>

@@ -21,7 +21,7 @@
                bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell
                max-h-[calc(100vh-48px)] flex flex-col">
 
-        {{-- HEADER --}}
+        {{-- HEADER - --}}
         <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80 shrink-0">
             <div>
                 <h2 id="modal-paket-create-title" class="text-xl font-semibold text-text-main">Tambah Paket Membership
