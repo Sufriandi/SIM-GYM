@@ -3,14 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes; // Tambahkan ini
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    // Tambahkan SoftDeletes di sini
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
@@ -34,8 +34,29 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            // tetap aman dipakai
+            'password'          => 'hashed',
         ];
+    }
+
+    /**
+     * Pastikan semua penyimpanan password (termasuk seeder yang plaintext)
+     * akan di-hash.
+     */
+    public function setPasswordAttribute($value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        // Jika belum hash/harus rehash => hash-kan
+        if (Hash::needsRehash($value)) {
+            $this->attributes['password'] = Hash::make($value);
+            return;
+        }
+
+        // Jika sudah hash, simpan apa adanya
+        $this->attributes['password'] = $value;
     }
 
     protected static function booted(): void
@@ -50,10 +71,6 @@ class User extends Authenticatable
         });
     }
 
-    /**
-     * Relasi: user punya satu member.
-     * Ditambahkan withTrashed agar jika User dihapus, data Member tetap bisa diakses lewat User.
-     */
     public function member()
     {
         return $this->hasOne(\App\Models\Member::class)->withTrashed();

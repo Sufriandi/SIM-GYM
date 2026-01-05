@@ -11,24 +11,12 @@ use Carbon\Carbon;
 
 class IzinLatihanController extends Controller
 {
-    /**
-     * Ambil record Member milik user yang login.
-     * Jika tidak ada, akan melempar 404.
-     */
     protected function getCurrentMember(): Member
     {
         $userId = Auth::id();
-
         return Member::where('user_id', $userId)->firstOrFail();
     }
 
-    /**
-     * Cek apakah membership member sedang aktif hari ini.
-     *
-     * Syarat aktif:
-     * - tanggal_mulai & tanggal_akhir tidak null
-     * - today berada di antara tanggal_mulai dan tanggal_akhir (inklusif)
-     */
     protected function isMembershipActive(Member $member): bool
     {
         return $member->hasActiveMembershipOn(\Carbon\Carbon::today());
@@ -40,14 +28,9 @@ class IzinLatihanController extends Controller
         return $today->gte($mulai) && $today->lte($akhir);
     }
 
-    /**
-     * Menampilkan daftar izin yang HANYA berstatus 'pending'
-     * untuk member yang sedang login.
-     */
     public function index()
     {
         $pageTitle = 'Izin Membership';
-
         $member = $this->getCurrentMember();
 
         $daftar_izin = IzinLatihan::where('member_id', $member->id)
@@ -58,14 +41,9 @@ class IzinLatihanController extends Controller
         return view('member.izin_latihan.index', compact('daftar_izin', 'pageTitle'));
     }
 
-    /**
-     * Menampilkan riwayat LENGKAP semua izin (Pending, Disetujui, Ditolak)
-     * untuk member yang sedang login.
-     */
     public function history()
     {
         $pageTitle = 'Riwayat Pengajuan Izin Lengkap';
-
         $member = $this->getCurrentMember();
 
         $daftar_izin = IzinLatihan::where('member_id', $member->id)
@@ -75,10 +53,6 @@ class IzinLatihanController extends Controller
         return view('member.izin_latihan.history', compact('daftar_izin', 'pageTitle'));
     }
 
-    /**
-     * Menampilkan formulir untuk membuat izin baru.
-     * Hanya boleh diakses jika membership sedang aktif.
-     */
     public function create()
 {
     $pageTitle = 'Formulir Izin Baru';
@@ -133,11 +107,6 @@ class IzinLatihanController extends Controller
     return view('member.izin_latihan.form', compact('pageTitle', 'blockedRanges'));
 }
 
-    /**
-     * Menyimpan data pengajuan izin baru ke database.
-     *
-     * Hanya member dengan membership aktif yang boleh submit.
-     */
     public function store(Request $request)
 {
     $member = $this->getCurrentMember();
@@ -258,7 +227,6 @@ class IzinLatihanController extends Controller
     public function detail($id)
     {
         $pageTitle = 'Detail Izin Latihan';
-
         $member = $this->getCurrentMember();
 
         $izin = IzinLatihan::where('id', $id)
