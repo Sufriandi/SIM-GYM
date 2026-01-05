@@ -471,7 +471,7 @@
                                     </div>
 
                                     <p class="text-[11px] text-text-muted text-center">
-                                        Format didukung: Gambar (JPG/PNG), PDF, dokumen (DOC/DOCX). Maks 2MB.
+                                        Format didukung: Gambar (JPG/PNG), PDF, dokumen (DOC/DOCX). Maks 10MB.
                                     </p>
                                 </div>
                             </div>
@@ -580,7 +580,7 @@
                                                 <p class="text-xs text-danger mt-1">{{ $message }}</p>
                                             @enderror
                                             <p class="text-[11px] text-text-muted mt-1">
-                                                Maksimal 2MB. Gambar (JPG/PNG), PDF, atau dokumen (DOC/DOCX).
+                                                Maksimal 10MB. Gambar (JPG/PNG), PDF, atau dokumen (DOC/DOCX).
                                             </p>
                                         </div>
                                     </div>

@@ -2,17 +2,19 @@
 
 @php
     use Illuminate\Support\Facades\Storage;
+    use Illuminate\Support\Str;
+    use Carbon\Carbon;
 
     // Parsing tanggal
-    $m = \Carbon\Carbon::parse($izin->tanggal_mulai);
-    $s = \Carbon\Carbon::parse($izin->tanggal_selesai);
-    $d = $izin->created_at ? \Carbon\Carbon::parse($izin->created_at) : null;
+    $mulai      = Carbon::parse($izin->tanggal_mulai);
+    $selesai    = Carbon::parse($izin->tanggal_selesai);
+    $diajukanAt = $izin->created_at ? Carbon::parse($izin->created_at) : null;
 
-    // Title & subtitle
-    $pageTitle    = $pageTitle    ?? 'Detail Izin Member';
-    $pageSubtitle = $pageSubtitle ?? 'Lihat informasi lengkap pengajuan izin latihan.';
+    // Title & subtitle (penamaan disamakan: Kompensasi)
+    $pageTitle    = $pageTitle ?? 'Detail Pengajuan Kompensasi';
+    $pageSubtitle = $pageSubtitle ?? 'Lihat informasi lengkap pengajuan kompensasi membership Anda.';
 
-    // Cek bukti (file di kolom 'bukti_alasan')
+    // Bukti
     $buktiUrl = $izin->bukti_alasan ? Storage::url($izin->bukti_alasan) : null;
     $isImage  = false;
     $isPdf    = false;
@@ -23,8 +25,47 @@
         $isPdf   = $ext === 'pdf';
     }
 
+    // Status meta (badge)
+    $badgeVariant = match ($izin->status) {
+        'disetujui' => 'success',
+        'ditolak'   => 'danger',
+        default     => 'warning',
+    };
+
+    $statusLabel = match ($izin->status) {
+        'disetujui' => 'DISETUJUI',
+        'ditolak'   => 'DITOLAK',
+        default     => 'PENDING',
+    };
+
+    // Processed
+    $processedAt = $izin->tanggal_persetujuan ? Carbon::parse($izin->tanggal_persetujuan) : null;
+
+    $approvedDays = ($izin->status === 'disetujui')
+        ? (int) ($izin->durasi_izin_disetujui ?? 0)
+        : 0;
+
+    $adminNote = trim((string) ($izin->keterangan_admin ?? ''));
+
+    $showAdminBox =
+        $izin->status !== 'pending'
+        || $adminNote !== ''
+        || $izin->tanggal_persetujuan
+        || $izin->durasi_izin_disetujui !== null;
+
     // Normalisasi alasan
-    $alasanTrimmed = trim($izin->alasan ?? '');
+    $alasanRaw = $izin->alasan ?? '';
+    $alasanTrimmed = trim($alasanRaw);
+    $alasanHtml = $alasanTrimmed !== '' ? nl2br(e($alasanTrimmed)) : '-';
+
+    $from = request('from', 'index'); // index | history
+    $backHref = $from === 'history'
+        ? route('member.izin_latihan.history')
+        : route('member.izin_latihan.index');
+
+    $backText = $from === 'history'
+        ? 'Kembali ke Riwayat'
+        : 'Kembali ke Daftar';
 @endphp
 
 <x-layouts.member
@@ -44,8 +85,8 @@
         {{-- TOMBOL KEMBALI --}}
         <div class="flex items-center justify-between mb-2">
             <x-ui.back-button
-                href="{{ route('member.izin_latihan.index') }}"
-                text="Kembali ke Daftar"
+                href="{{ $backHref }}"
+    text="{{ $backText }}"
             />
         </div>
 
@@ -56,12 +97,12 @@
             </x-ui.toast>
         @endif
 
-        {{-- MAIN CARD TANPA BAYANG --}}
+        {{-- MAIN CARD (mengikuti style admin) --}}
         <div
             class="relative w-full rounded-3xl border border-brand-borderSoft
                    bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell overflow-hidden"
         >
-            {{-- HEADER CARD --}}
+            {{-- HEADER CARD (tanpa Member:, tetap ada Diajukan pada) --}}
             <div
                 class="flex flex-col sm:flex-row sm:items-center sm:justify-between
                        px-6 pt-6 pb-4 border-b-2 border-brand-borderSoft/80
@@ -69,10 +110,10 @@
             >
                 <div>
                     <h2 class="text-xl font-semibold text-text-main">
-                        Detail Izin Member
+                        Detail Pengajuan Kompensasi
                     </h2>
                     <p class="text-sm text-text-muted mt-0.5">
-                        Lihat informasi lengkap pengajuan izin latihan.
+                        Ringkasan detail pengajuan kompensasi membership Anda.
                     </p>
                 </div>
 
@@ -82,7 +123,7 @@
                         Diajukan pada
                     </p>
                     <p class="text-sm font-medium text-text-main">
-                        {{ $d ? $d->translatedFormat('d F Y, H:i') : '-' }}
+                        {{ $diajukanAt ? $diajukanAt->translatedFormat('d F Y, H:i') : '-' }}
                     </p>
                 </div>
             </div>
@@ -91,187 +132,135 @@
             <div class="px-6 pb-8 pt-6">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                    {{-- KOLOM KIRI: DATA & ALASAN --}}
-                    <div class="lg:col-span-2 space-y-6">
+                    {{-- KIRI: DATA & ALASAN --}}
+                    <div class="lg:col-span-2 space-y-4">
 
-                        {{-- DATA PENGAJUAN --}}
-                        <div
-                            class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft
-                                   px-5 py-5"
-                        >
-                            <h3 class="text-base font-semibold text-text-main mb-1 flex items-center gap-2">
-                                <i data-lucide="calendar-range" class="w-4 h-4 text-gold-500"></i>
-                                Data Pengajuan Izin
-                            </h3>
-                            <p
-                                class="text-xs text-text-muted mb-4 border-b border-brand-borderSoft/50 pb-2
-                                       leading-relaxed"
-                            >
-                                Detail permintaan izin yang diajukan member.
-                            </p>
-
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                {{-- Durasi --}}
+                        {{-- DATA PENGAJUAN (tanpa Akhir Membership) --}}
+                        <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-5 py-4">
+                            <div class="flex items-start justify-between gap-3">
                                 <div>
-                                    <p class="text-xs text-text-muted uppercase tracking-wider mb-1">
-                                        Durasi Diajukan
-                                    </p>
-                                    <p class="text-xl font-heading font-bold text-text-main">
-                                        {{ $izin->jumlah_hari }}
-                                        <span class="text-sm font-normal text-text-muted">Hari</span>
+                                    <h3 class="text-base font-semibold text-text-main mb-1">
+                                        Data Pengajuan Kompensasi
+                                    </h3>
+                                    <p class="text-xs text-text-muted mb-4">
+                                        Detail periode kompensasi yang Anda ajukan.
                                     </p>
                                 </div>
 
-                                {{-- Tanggal Mulai --}}
+                                <x-ui.badge :variant="$badgeVariant">
+                                    {{ $statusLabel }}
+                                </x-ui.badge>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div>
-                                    <p class="text-xs text-text-muted uppercase tracking-wider mb-1">
-                                        Tanggal Mulai
+                                    <p class="text-xs text-text-muted">Durasi Diajukan</p>
+                                    <p class="text-lg font-semibold text-text-main">
+                                        {{ (int) ($izin->jumlah_hari ?? 0) }} Hari
                                     </p>
-                                    <div class="flex items-center gap-2">
-                                        <i data-lucide="calendar" class="w-4 h-4 text-text-muted"></i>
-                                        <p class="text-base font-medium text-text-main">
-                                            {{ $m->translatedFormat('d M Y') }}
-                                        </p>
-                                    </div>
                                 </div>
 
-                                {{-- Tanggal Selesai --}}
                                 <div>
-                                    <p class="text-xs text-text-muted uppercase tracking-wider mb-1">
-                                        Tanggal Selesai
+                                    <p class="text-xs text-text-muted">Tanggal Mulai</p>
+                                    <p class="text-lg text-text-main">
+                                        {{ $mulai->translatedFormat('d F Y') }}
                                     </p>
-                                    <div class="flex items-center gap-2">
-                                        <i data-lucide="calendar-check" class="w-4 h-4 text-text-muted"></i>
-                                        <p class="text-base font-medium text-text-main">
-                                            {{ $s->translatedFormat('d M Y') }}
-                                        </p>
-                                    </div>
+                                </div>
+
+                                <div>
+                                    <p class="text-xs text-text-muted">Tanggal Selesai</p>
+                                    <p class="text-lg text-text-main">
+                                        {{ $selesai->translatedFormat('d F Y') }}
+                                    </p>
                                 </div>
                             </div>
                         </div>
 
                         {{-- ALASAN MEMBER --}}
-<div
-    class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft
-           px-5 py-5"
->
-    <h3 class="text-base font-semibold text-text-main mb-1 flex items-center gap-2">
-        <i data-lucide="align-left" class="w-4 h-4 text-gold-500"></i>
-        Alasan Pengajuan Member
-    </h3>
+                        <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-5 py-4">
+                            <h3 class="text-base font-semibold text-text-main mb-2">
+                                Alasan Pengajuan Kompensasi
+                            </h3>
 
-    @php
-        $alasanText = trim($izin->alasan ?? '');
-        if ($alasanText === '') {
-            $alasanText = '-';
-        }
-    @endphp
+                            <div class="mt-1 p-3 rounded-xl bg-brand-surface-50 border border-brand-borderSoft text-sm text-text-main min-h-[80px]">
+                                {!! $alasanHtml !!}
+                            </div>
+                        </div>
 
-    <div
-        class="rounded-xl bg-brand-surface-50 border border-brand-borderSoft
-               px-4 py-2 text-sm text-text-main leading-snug
-               break-words whitespace-normal overflow-x-hidden"
-    >
-        {{ $alasanText }}
-    </div>
-</div>
+                        {{-- HASIL PEMROSESAN ADMIN (tampil jika sudah diproses / ada catatan) --}}
+                        @if($showAdminBox)
+                            <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-5 py-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-base font-semibold text-text-main">
+                                        Hasil Pemrosesan Admin
+                                    </h3>
+                                    <x-ui.badge :variant="$badgeVariant">{{ $statusLabel }}</x-ui.badge>
+                                </div>
 
-                        {{-- CATATAN ADMIN (opsional) --}}
-                        @if($izin->keterangan_admin)
-                            <div
-                                class="rounded-2xl border px-5 py-5
-                                       {{ $izin->status === 'ditolak'
-                                            ? 'bg-danger/5 border-danger/20'
-                                            : 'bg-success/5 border-success/20' }}"
-                            >
-                                <h3
-                                    class="text-base font-semibold mb-2 flex items-center gap-2
-                                           {{ $izin->status === 'ditolak' ? 'text-danger' : 'text-success' }}"
-                                >
-                                    <i data-lucide="message-square" class="w-4 h-4"></i>
-                                    Catatan Admin
-                                </h3>
+                                <div class="space-y-2 text-xs">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-text-muted">Diproses</span>
+                                        <span class="text-text-main font-semibold">
+                                            {{ $processedAt ? $processedAt->translatedFormat('d F Y, H:i') : '-' }}
+                                        </span>
+                                    </div>
 
-                                <p
-                                    class="text-sm text-text-main italic px-4 py-2.5 rounded-xl
-                                           bg-brand-bg/50 break-words whitespace-pre-line"
-                                >
-                                    "{{ $izin->keterangan_admin }}"
-                                </p>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-text-muted">Durasi Disetujui</span>
+                                        <span class="text-text-main font-semibold">
+                                            {{ $approvedDays }} Hari
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3 p-3 rounded-xl bg-brand-surface-50 border border-brand-borderSoft text-sm text-text-main">
+                                    {!! nl2br(e($adminNote !== '' ? $adminNote : 'Tidak ada keterangan dari Admin.')) !!}
+                                </div>
                             </div>
                         @endif
                     </div>
 
-                    {{-- KOLOM KANAN: BUKTI --}}
-                    <div class="space-y-6">
-
-                        <div
-                            class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft
-                                   px-5 py-5"
-                        >
-                            <h3 class="text-base font-semibold text-text-main mb-3 flex items-center gap-2">
-                                <i data-lucide="paperclip" class="w-4 h-4 text-gold-500"></i>
-                                Bukti Alasan
+                    {{-- KANAN: BUKTI --}}
+                    <div class="space-y-4">
+                        <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft px-5 py-4">
+                            <h3 class="text-base font-semibold text-text-main mb-3">
+                                Bukti Pendukung
                             </h3>
 
                             @if ($buktiUrl)
                                 @if ($isPdf)
-                                    <div
-                                        class="w-full h-40 rounded-xl overflow-hidden border border-brand-borderSoft
-                                               bg-brand-surface-50 mb-4 flex items-center justify-center"
-                                    >
-                                        <div class="flex flex-col items-center justify-center">
-                                            <i data-lucide="file-text" class="w-10 h-10 text-gold-500 mb-2"></i>
-                                            <span class="text-xs text-text-muted font-bold">
-                                                Dokumen PDF
-                                            </span>
-                                        </div>
+                                    <div class="w-full h-40 rounded-xl overflow-hidden border border-brand-borderSoft bg-brand-surface-50 mb-3">
+                                        <iframe src="{{ $buktiUrl }}" class="w-full h-full" loading="lazy"></iframe>
                                     </div>
                                 @elseif ($isImage)
-                                    <div
-                                        class="w-full h-48 rounded-xl overflow-hidden border border-brand-borderSoft
-                                               bg-brand-surface-50 mb-4 group relative"
-                                    >
-                                        <img
-                                            src="{{ $buktiUrl }}"
-                                            alt="Bukti Izin"
-                                            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                        >
-                                        <div
-                                            class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100
-                                                   transition-opacity flex items-center justify-center"
-                                        >
-                                            <span
-                                                class="text-white text-xs font-bold bg-black/50 px-3 py-1 rounded-full
-                                                       backdrop-blur-sm"
-                                            >
-                                                Lihat Gambar
-                                            </span>
-                                        </div>
+                                    <div class="w-full rounded-xl overflow-hidden border border-brand-borderSoft bg-brand-surface-50 mb-3">
+                                        <img src="{{ $buktiUrl }}" alt="Bukti" class="w-full h-40 object-cover">
+                                    </div>
+                                @else
+                                    <div class="p-6 rounded-xl border border-dashed border-brand-borderSoft bg-brand-surface-50 text-center">
+                                        <p class="text-xs text-text-muted italic">
+                                            File bukti tersedia, tetapi format preview tidak didukung.
+                                        </p>
                                     </div>
                                 @endif
 
                                 <a href="{{ $buktiUrl }}" target="_blank" class="block">
-                                    <x-ui.button-primary class="w-full justify-center text-sm">
+                                    <x-ui.button-primary class="w-full justify-center">
                                         <i data-lucide="external-link" class="w-4 h-4 mr-2"></i>
                                         Buka Bukti di Tab Baru
                                     </x-ui.button-primary>
                                 </a>
                             @else
-                                <div
-                                    class="p-6 rounded-xl border border-dashed border-brand-borderSoft
-                                           bg-brand-surface-50 flex flex-col items-center justify-center text-center"
-                                >
-                                    <i data-lucide="image-off" class="w-8 h-8 text-text-muted/40 mb-2"></i>
+                                <div class="p-6 rounded-xl border border-dashed border-brand-borderSoft bg-brand-surface-50 text-center">
+                                    <i data-lucide="image-off" class="w-8 h-8 text-text-muted/40 mx-auto mb-2"></i>
                                     <p class="text-xs text-text-muted italic">
                                         Tidak ada bukti dilampirkan.
                                     </p>
                                 </div>
                             @endif
                         </div>
-
-                        {{-- Tidak ada blok aksi / pembatalan di sisi member --}}
                     </div>
+
                 </div>
             </div>
         </div>

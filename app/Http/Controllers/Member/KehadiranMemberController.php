@@ -29,7 +29,7 @@ class KehadiranMemberController extends Controller
             ->where('member_id', $member->id)
             ->orderByDesc('tanggal')
             ->orderByDesc('jam_masuk')
-            ->paginate(10);
+            ->paginate(20);
 
         return view('member.kehadiran.index', compact('kehadiran'));
     }

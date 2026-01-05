@@ -1,207 +1,198 @@
 {{-- resources/views/member/izin_latihan/index.blade.php --}}
 
 @php
-    use Illuminate\Support\Str;
+    use Carbon\Carbon;
 
-    $pageTitle = $pageTitle ?? 'Izin Membership';
+    $pageTitle    = $pageTitle ?? 'Izin Membership';
+    $pageSubtitle = $pageSubtitle ?? 'Ajukan kompensasi jika Anda tidak dapat hadir pada periode tertentu.';
 
-    // Hitung total pending (bisa paginator atau collection biasa)
-    $totalPending = $daftar_izin instanceof \Illuminate\Pagination\AbstractPaginator
-        ? $daftar_izin->total()
-        : $daftar_izin->count();
+    /** @var \Illuminate\Pagination\LengthAwarePaginator|\Illuminate\Support\Collection $daftar_izin */
+    $daftar_izin = $daftar_izin ?? collect();
+
+    $isPaginator = $daftar_izin instanceof \Illuminate\Pagination\LengthAwarePaginator;
+    $rows = $isPaginator ? $daftar_izin->getCollection() : collect($daftar_izin);
+
+    $startNo = $isPaginator ? (($daftar_izin->currentPage() - 1) * $daftar_izin->perPage()) : 0;
+
+    $statusMeta = [
+        'pending'   => ['label' => 'Pending',   'variant' => 'warning'],
+        'disetujui' => ['label' => 'Disetujui', 'variant' => 'success'],
+        'ditolak'   => ['label' => 'Ditolak',   'variant' => 'danger'],
+    ];
 @endphp
 
-<x-layouts.member
-    :pageTitle="$pageTitle"
-    pageSubtitle="Daftar pengajuan izin latihan yang sedang menunggu persetujuan."
->
-    <div class="max-w-6xl mx-auto space-y-4">
+<x-layouts.member :pageTitle="$pageTitle" :pageSubtitle="$pageSubtitle">
+    <div class="max-w-6xl mx-auto space-y-4 pt-2">
 
-        {{-- FLASH MESSAGE (error saja, success pakai toast global) --}}
+        {{-- FLASH MESSAGE (error saja, success lewat toast global) --}}
         @if(session('error'))
             <x-ui.toast type="danger" class="mb-2">
                 {{ session('error') }}
             </x-ui.toast>
         @endif
 
-        {{-- HEADER HALAMAN --}}
-        <x-ui.section-header
-            :title="$pageTitle"
-            subtitle="Daftar pengajuan izin latihan yang sedang menunggu persetujuan."
-        />
+        {{-- HEADER --}}
+        <x-ui.section-header :title="$pageTitle" :subtitle="$pageSubtitle" />
 
-        {{-- GARIS PEMBATAS SEPERTI ADMIN --}}
-        <hr class="border-t border-brand-borderSoft mb-4">
+        {{-- GARIS PEMBATAS (gaya “emas/border” mengikuti tema Anda) --}}
+        <hr class="border-t border-brand-borderSoft">
 
-        {{-- BARIS TOMBOL AKSI (KANAN) --}}
-        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-end mb-2">
-            <div class="flex flex-wrap items-center gap-3 md:justify-end">
-                {{-- Tombol ke Riwayat --}}
-                <a href="{{ route('member.izin_latihan.history') }}">
-                    <x-ui.button-secondary class="inline-flex items-center">
-                        <i data-lucide="history" class="w-4 h-4 mr-2"></i>
-                        Riwayat Lengkap
-                    </x-ui.button-secondary>
-                </a>
+        {{-- TOOLBAR: tombol sejajar di mobile, di desktop rata kanan --}}
+        <div class="grid grid-cols-2 gap-3 sm:flex sm:justify-end sm:gap-3">
+            {{-- Riwayat --}}
+            <a href="{{ route('member.izin_latihan.history') }}" class="w-full sm:w-auto">
+                <x-ui.button-secondary class="w-full justify-center gap-2">
+                    <i data-lucide="history" class="w-4 h-4"></i>
 
-                {{-- Tombol Ajukan Baru --}}
-                <a href="{{ route('member.izin_latihan.create') }}">
-                    <x-ui.button-primary class="inline-flex items-center">
-                        Ajukan Izin Baru
-                        <i data-lucide="calendar-plus" class="w-4 h-4 ml-2"></i>
-                    </x-ui.button-primary>
-                </a>
-            </div>
+                    {{-- Mobile: singkat --}}
+                    <span class="sm:hidden">Riwayat</span>
+                    {{-- Desktop: lengkap --}}
+                    <span class="hidden sm:inline">Riwayat Kompensasi</span>
+                </x-ui.button-secondary>
+            </a>
+
+            {{-- Ajukan --}}
+            <a href="{{ route('member.izin_latihan.create') }}" class="w-full sm:w-auto">
+                <x-ui.button-primary class="w-full justify-center gap-2">
+                    {{-- Mobile: singkat --}}
+                    <span class="sm:hidden">Ajukan</span>
+                    {{-- Desktop: lengkap --}}
+                    <span class="hidden sm:inline">Ajukan Kompensasi</span>
+
+                    <i data-lucide="calendar-plus" class="w-4 h-4 ml-1"></i>
+                </x-ui.button-primary>
+            </a>
         </div>
 
-        {{-- CARD PENGAJUAN SAAT INI --}}
+        {{-- CARD TABEL --}}
         <x-ui.card class="overflow-hidden border border-brand-borderSoft">
-            {{-- HEADER CARD (mirip history) --}}
-            <div
-                class="px-4 sm:px-6 py-4 border-b border-brand-borderSoft
-                       flex items-center justify-between gap-4"
-            >
+            {{-- Header Card --}}
+            <div class="px-4 sm:px-6 py-4 border-b border-brand-borderSoft flex items-center justify-between gap-4">
                 <div>
                     <h2 class="text-base sm:text-lg font-semibold text-text-main">
-                        Pengajuan Saat Ini
+                        Pengajuan Kompensasi (Pending)
                     </h2>
                     <p class="text-xs sm:text-sm text-text-muted mt-0.5">
-                        Pengajuan izin yang sedang menunggu persetujuan Admin.
+                        Pengajuan kompensasi yang masih menunggu persetujuan Admin.
                     </p>
                 </div>
+            </div>
 
-                @if($totalPending > 0)
-                    <div
-                        class="inline-flex items-center justify-center px-4 py-1.5 rounded-full
-                               bg-brand-shell/80 border border-brand-borderSoft text-[13px]
-                               text-gold-700 font-semibold whitespace-nowrap"
-                    >
-                        {{ $totalPending }} izin pending
+            {{-- TABEL: scroll hanya mobile --}}
+            <div class="px-2 sm:px-3 pb-2 pt-1">
+                <div class="overflow-x-auto sm:overflow-x-hidden custom-scrollbar">
+                    <table class="min-w-[860px] sm:min-w-0 w-full table-auto sm:table-fixed text-sm">
+                        <thead>
+                            <tr class="border-b border-brand-borderSoft bg-brand-shell/60">
+                                <th class="pl-3 pr-2 py-3 text-left text-xs font-semibold tracking-wide text-text-muted/90 uppercase w-[70px]">
+                                    No
+                                </th>
+
+                                <th class="px-3 py-3 text-left text-xs font-semibold tracking-wide text-text-muted/90 uppercase sm:w-[290px]">
+                                    Periode Kompensasi (Diajukan)
+                                </th>
+
+                                <th class="px-3 py-3 text-center text-xs font-semibold tracking-wide text-text-muted/90 uppercase sm:w-[160px]">
+                                    Durasi Diajukan
+                                </th>
+
+                                <th class="px-3 py-3 text-center text-xs font-semibold tracking-wide text-text-muted/90 uppercase sm:w-[140px]">
+                                    Status
+                                </th>
+
+                                <th class="px-3 py-3 text-left text-xs font-semibold tracking-wide text-text-muted/90 uppercase sm:w-[280px]">
+                                    Alasan
+                                </th>
+
+                                <th class="px-3 py-3 text-center text-xs font-semibold tracking-wide text-text-muted/90 uppercase sm:w-[120px]">
+                                    Detail
+                                </th>
+                            </tr>
+                        </thead>
+
+                        <tbody class="divide-y divide-brand-borderSoft/80">
+                            @forelse($rows as $izin)
+                                @php
+                                    $mulai   = $izin->tanggal_mulai ? Carbon::parse($izin->tanggal_mulai) : null;
+                                    $selesai = $izin->tanggal_selesai ? Carbon::parse($izin->tanggal_selesai) : null;
+
+                                    $meta = $statusMeta[$izin->status] ?? $statusMeta['pending'];
+
+                                    $alasan = trim((string) ($izin->alasan ?? ''));
+                                    if ($alasan === '') $alasan = '-';
+
+                                    $no = $startNo + $loop->iteration;
+                                @endphp
+
+                                <tr class="hover:bg-brand-surface-50 transition-colors duration-150">
+                                    {{-- No --}}
+                                    <td class="pl-3 pr-2 py-3 align-top text-text-main font-semibold">
+                                        {{ $no }}
+                                    </td>
+
+                                    {{-- Periode + Diajukan --}}
+                                    <td class="px-3 py-3 align-top">
+                                        <div class="text-text-main font-medium whitespace-nowrap">
+                                            {{ $mulai ? $mulai->translatedFormat('d M Y') : '-' }}
+                                            —
+                                            {{ $selesai ? $selesai->translatedFormat('d M Y') : '-' }}
+                                        </div>
+                                        <div class="text-[11px] text-text-muted mt-0.5">
+                                            Diajukan:
+                                            {{ $izin->created_at?->translatedFormat('d M Y, H:i') ?? '-' }}
+                                        </div>
+                                    </td>
+
+                                    {{-- Durasi --}}
+                                    <td class="px-3 py-3 text-center align-middle">
+                                        <span class="font-semibold text-text-main whitespace-nowrap">
+                                            {{ (int) ($izin->jumlah_hari ?? 0) }}
+                                            <span class="text-xs text-text-muted ml-0.5">hari</span>
+                                        </span>
+                                    </td>
+
+                                    {{-- Status --}}
+                                    <td class="px-3 py-3 text-center align-middle">
+                                        <x-ui.badge :variant="$meta['variant']">{{ $meta['label'] }}</x-ui.badge>
+                                    </td>
+
+                                    {{-- Alasan (desktop tidak overflow; dipotong) --}}
+                                    <td class="px-3 py-3 align-middle">
+                                        <div class="text-text-main sm:truncate" title="{{ $alasan }}">
+                                            {{ $alasan }}
+                                        </div>
+                                    </td>
+
+                                    {{-- Detail --}}
+                                    <td class="px-3 py-3 text-center align-middle">
+                                        <a
+                                            href="{{ route('member.izin_latihan.detail', $izin->id) }}?from=index"
+                                            class="inline-flex items-center justify-center gap-1 text-[13px] font-semibold
+                                                   text-gold-600 hover:text-gold-500 transition-colors whitespace-nowrap"
+                                        >
+                                            Lihat
+                                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="px-4 py-10 text-center text-text-muted text-sm italic">
+                                        Belum ada pengajuan kompensasi yang sedang diproses.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+
+                {{-- Pagination --}}
+                @if($isPaginator && method_exists($daftar_izin, 'links'))
+                    <div class="mt-4 px-1 sm:px-0">
+                        {{ $daftar_izin->links() }}
                     </div>
                 @endif
             </div>
-
-            {{-- TABEL PENGAJUAN (layout disamakan dengan history) --}}
-            <div class="px-2 sm:px-3 pb-2 pt-1">
-                <table class="w-full table-auto text-sm">
-                    <thead>
-                        <tr class="border-b border-brand-borderSoft bg-brand-shell/60">
-                            {{-- PERIODE IZIN + DIAJUKAN --}}
-                            <th
-                                class="pl-3 pr-2 py-3 text-left text-xs font-semibold tracking-wide
-                                       text-text-muted/90 uppercase w-[34%]"
-                            >
-                                Periode Izin
-                            </th>
-
-                            {{-- DURASI --}}
-                            <th
-                                class="px-3 py-3 text-center text-xs font-semibold tracking-wide
-                                       text-text-muted/90 uppercase w-[18%]"
-                            >
-                                Durasi
-                            </th>
-
-                            {{-- STATUS --}}
-                            <th
-                                class="px-3 py-3 text-center text-xs font-semibold tracking-wide
-                                       text-text-muted/90 uppercase w-[18%]"
-                            >
-                                Status
-                            </th>
-
-                            {{-- ALASAN (disamakan lebar dengan kolom Diproses di history) --}}
-                            <th
-                                class="px-3 py-3 text-left text-xs font-semibold tracking-wide
-                                       text-text-muted/90 uppercase w-[20%]"
-                            >
-                                Alasan
-                            </th>
-
-                            {{-- DETAIL --}}
-                            <th
-                                class="px-3 py-3 text-center text-xs font-semibold tracking-wide
-                                       text-text-muted/90 uppercase w-[10%]"
-                            >
-                                Detail
-                            </th>
-                        </tr>
-                    </thead>
-
-                    <tbody class="divide-y divide-brand-borderSoft/80">
-                        @forelse($daftar_izin as $izin)
-                            @php
-                                $mulai   = \Carbon\Carbon::parse($izin->tanggal_mulai);
-                                $selesai = \Carbon\Carbon::parse($izin->tanggal_selesai);
-                                $buat    = $izin->created_at
-                                    ? \Carbon\Carbon::parse($izin->created_at)
-                                    : null;
-                            @endphp
-
-                            <tr class="hover:bg-brand-surface-50 transition-colors duration-150">
-                                {{-- Periode + Diajukan (2 baris) --}}
-                                <td class="pl-3 pr-2 py-3 align-top">
-                                    <div class="text-text-main font-medium whitespace-nowrap">
-                                        {{ $mulai->translatedFormat('d M Y') }} —
-                                        {{ $selesai->translatedFormat('d M Y') }}
-                                    </div>
-                                    <div class="text-[11px] text-text-muted mt-0.5">
-                                        Diajukan:
-                                        {{ $buat?->translatedFormat('d M Y, H:i') ?? '-' }}
-                                    </div>
-                                </td>
-
-                                {{-- Durasi (vertikal tengah) --}}
-                                <td class="px-3 py-3 text-center align-middle">
-                                    <span class="font-semibold text-text-main whitespace-nowrap">
-                                        {{ $izin->jumlah_hari }}
-                                        <span class="text-xs text-text-muted ml-0.5">hari</span>
-                                    </span>
-                                </td>
-
-                                {{-- Status (vertikal tengah) --}}
-                                <td class="px-3 py-3 text-center align-middle whitespace-nowrap">
-                                    <x-ui.badge variant="warning">
-                                        Pending
-                                    </x-ui.badge>
-                                </td>
-
-                                {{-- Alasan (vertikal tengah, dipersempit) --}}
-                                <td class="px-3 py-3 text-left align-middle">
-                                    <span class="block text-text-main truncate max-w-[14rem]">
-                                        {{ $izin->alasan ? Str::limit($izin->alasan, 70) : '-' }}
-                                    </span>
-                                </td>
-
-                                {{-- Detail (vertikal tengah) --}}
-                                <td class="px-3 py-3 text-right align-middle">
-                                    <a
-                                        href="{{ route('member.izin_latihan.detail', $izin->id) }}"
-                                        class="inline-flex items-center gap-1 text-[13px] font-semibold
-                                               text-gold-600 hover:text-gold-500 transition-colors whitespace-nowrap"
-                                    >
-                                        Lihat detail
-                                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="5" class="px-4 py-8 text-center text-text-muted text-sm">
-                                    Belum ada izin latihan yang sedang diajukan.
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            {{-- PAGINATION --}}
-            @if(method_exists($daftar_izin, 'links'))
-                <div class="mt-4">
-                    {{ $daftar_izin->links() }}
-                </div>
-            @endif
         </x-ui.card>
     </div>
 </x-layouts.member>

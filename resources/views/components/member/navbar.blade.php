@@ -19,7 +19,7 @@
         ->join('');
 @endphp
 <header
-    class="fixed top-0 left-0 md:left-64 right-0 h-16 flex items-center z-30
+    class="fixed top-0 left-0 md:left-64 right-0 h-16 flex items-center z-[80]
            bg-brand-shell/95 backdrop-blur-sm border-b border-brand-borderSoft shadow-header"
     x-data="{
         showNotifications: false,
