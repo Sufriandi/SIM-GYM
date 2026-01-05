@@ -81,43 +81,55 @@ class KehadiranMemberController extends Controller
     $requestedMode = $request->get('mode');
     $periodeAktif  = $this->getOrCreateActivePeriodeForToday($requestedMode);
 
-    $start = Carbon::parse($periodeAktif->tanggal_mulai)->toDateString();
-    $end   = Carbon::parse($periodeAktif->tanggal_selesai)->toDateString();
+    // =========================
+    // FILTER BULAN + TANGGAL (AND)
+    // bulan = YYYY-MM (wajib untuk memilih bulan tertentu, default bulan ini)
+    // tanggal (opsional) = mulai dari tanggal tsb sampai akhir bulan
+    // =========================
+    $bulanInput   = $request->input('bulan');   // contoh: "2025-12"
+    $tanggalInput = $request->input('tanggal'); // contoh: "2025-12-17"
 
-    $query = KehadiranMember::with(['member.user'])
-        ->where(function ($q) use ($periodeAktif, $start, $end) {
-            $q->where('absensi_periode_id', $periodeAktif->id)
-              ->orWhere(function ($qq) use ($start, $end) {
-                  $qq->whereNull('absensi_periode_id')
-                     ->whereBetween('tanggal', [$start, $end]);
-              });
-        });
+    // Tentukan bulan yang ditampilkan:
+    // - jika bulan dipilih => pakai bulan itu
+    // - jika tidak => default bulan ini (now)
+    $baseMonth = $bulanInput
+        ? Carbon::createFromFormat('Y-m-d', $bulanInput . '-01')
+        : now();
 
-    // Filter tanggal spesifik (opsional)
-    if ($request->filled('tanggal')) {
-        $tanggal = Carbon::parse($request->input('tanggal'))->toDateString();
+    $monthStart = $baseMonth->copy()->startOfMonth();
+    $monthEnd   = $baseMonth->copy()->endOfMonth();
 
-        // optional safety: pastikan tanggal masih dalam range periode aktif
-        if ($tanggal < $start || $tanggal > $end) {
-            $query->whereRaw('1=0'); // force kosong
+    // Range awal default = awal bulan
+    $rangeStart = $monthStart->copy();
+
+    // Jika tanggal dipilih => range mulai dari tanggal tersebut (HARUS masih dalam bulan yg dipilih)
+    if ($tanggalInput) {
+        $tanggal = Carbon::parse($tanggalInput)->startOfDay();
+
+        // Jika tanggal di luar bulan terpilih => kosongkan hasil (kombinasi invalid)
+        if ($tanggal->lt($monthStart) || $tanggal->gt($monthEnd)) {
+            $query = KehadiranMember::with(['member.user'])->whereRaw('1=0');
         } else {
-            $query->whereDate('tanggal', $tanggal);
+            $rangeStart = $tanggal;
+            $query = KehadiranMember::with(['member.user'])
+                ->whereBetween('tanggal', [$rangeStart->toDateString(), $monthEnd->toDateString()]);
         }
+    } else {
+        $query = KehadiranMember::with(['member.user'])
+            ->whereBetween('tanggal', [$monthStart->toDateString(), $monthEnd->toDateString()]);
     }
 
     // Sorting
     $sort = $request->input('sort', 'newest');
     if ($sort === 'oldest') {
-        $query->orderBy('tanggal', 'asc')
-              ->orderBy('jam_masuk', 'asc');
+        $query->orderBy('tanggal', 'asc')->orderBy('jam_masuk', 'asc');
     } else {
-        $query->orderBy('tanggal', 'desc')
-              ->orderBy('jam_masuk', 'desc');
+        $query->orderBy('tanggal', 'desc')->orderBy('jam_masuk', 'desc');
     }
 
-    $kehadiran = $query
-        ->paginate(20)
-        ->appends($request->only(['mode', 'tanggal', 'sort']));
+    $kehadiran = $query->paginate(20)->appends(
+        $request->only(['mode', 'bulan', 'tanggal', 'sort'])
+    );
 
     $qrUrl = route('member.absensi.scan', ['token' => $periodeAktif->kode_qr]);
 
@@ -134,9 +146,13 @@ class KehadiranMemberController extends Controller
         'qrUrl',
         'pageTitle',
         'modeOptions',
-        'sort'
+        'sort',
+        'monthStart',
+        'monthEnd',
+        'rangeStart'
     ));
 }
+
 
 
     /**

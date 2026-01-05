@@ -34,7 +34,8 @@ class IzinLatihan extends Model
 
     public function member()
     {
-        return $this->belongsTo(Member::class, 'member_id', 'id');
+        return $this->belongsTo(Member::class, 'member_id', 'id')
+            ->withTrashed();
     }
 
     public function getDurasiAttribute()

@@ -22,63 +22,77 @@ class IzinLatihanController extends Controller
     }
 
     public function index(Request $request)
-    {
-        $pageTitle = 'Permintaan Izin Baru';
+{
+    $pageTitle = 'Permintaan Izin Baru';
 
-        $query = IzinLatihan::with(['member.user'])
-            ->where('status', 'pending');
+    $query = IzinLatihan::with(['member.user'])
+        ->where('status', 'pending');
 
-        if ($request->filled('q')) {
-            $search = trim($request->q);
+    if ($request->filled('q')) {
+        $search = trim($request->q);
 
-            $query->where(function ($q) use ($search) {
-                $q->whereHas('member.user', function ($u) use ($search) {
-                    $u->where('name', 'like', $search . '%')
-                        ->orWhere('username', 'like', $search . '%');
-                });
+        $query->where(function ($q) use ($search) {
+            $q->whereHas('member.user', function ($u) use ($search) {
+                $u->where('name', 'like', $search . '%')
+                  ->orWhere('username', 'like', $search . '%');
             });
-        }
-
-        $sort = $request->input('sort', 'newest');
-        switch ($sort) {
-            case 'oldest':
-                $query->orderBy('created_at', 'asc');
-                break;
-
-            case 'days_max':
-                $query->orderBy('jumlah_hari', 'desc')
-                    ->orderBy('created_at', 'desc');
-                break;
-
-            case 'days_min':
-                $query->orderBy('jumlah_hari', 'asc')
-                    ->orderBy('created_at', 'desc');
-                break;
-
-            case 'newest':
-            default:
-                $query->orderBy('created_at', 'desc');
-                break;
-        }
-
-        $daftar_izin = $query->paginate(20)->withQueryString();
-
-        $membersForSelect = Member::query()
-            ->with(['user:id,name,username,role'])
-            ->whereHas('user', fn($q) => $q->where('role', 'member'))
-            ->orderBy(
-                User::select('name')
-                    ->whereColumn('users.id', 'members.user_id')
-                    ->limit(1)
-            )
-            ->get(['id', 'user_id']);
-
-        return view('admin.izin_latihan.index', compact(
-            'daftar_izin',
-            'pageTitle',
-            'membersForSelect',
-        ));
+        });
     }
+
+    // SORTING harus sebelum paginate
+    $sort = $request->input('sort', 'newest');
+    switch ($sort) {
+        case 'oldest':
+            $query->orderBy('created_at', 'asc');
+            break;
+
+        case 'days_max':
+            $query->orderBy('jumlah_hari', 'desc')
+                  ->orderBy('created_at', 'desc');
+            break;
+
+        case 'days_min':
+            $query->orderBy('jumlah_hari', 'asc')
+                  ->orderBy('created_at', 'desc');
+            break;
+
+        case 'newest':
+        default:
+            $query->orderBy('created_at', 'desc');
+            break;
+    }
+
+    // paginate cukup sekali
+    $daftar_izin = $query->paginate(20)->withQueryString();
+
+    // inject akhir membership (tanpa N+1)
+    $memberIds = $daftar_izin->getCollection()->pluck('member_id')->unique()->values()->all();
+    $akhirMap  = $this->mapAkhirMembership($memberIds);
+
+    $daftar_izin->setCollection(
+        $daftar_izin->getCollection()->map(function ($izin) use ($akhirMap) {
+            $izin->akhir_membership = $akhirMap[(int) $izin->member_id] ?? null;
+            return $izin;
+        })
+    );
+
+    $membersForSelect = Member::query()
+        ->with(['user:id,name,username,role'])
+        ->whereHas('user', fn($q) => $q->where('role', 'member'))
+        ->orderBy(
+            User::select('name')
+                ->whereColumn('users.id', 'members.user_id')
+                ->limit(1)
+        )
+        ->get(['id', 'user_id']);
+
+    return view('admin.izin_latihan.index', compact(
+        'daftar_izin',
+        'pageTitle',
+        'membersForSelect',
+    ));
+}
+
 
     /**
      * Admin menambahkan izin manual (langsung disetujui) + membuat transaksi kompensasi.
@@ -94,7 +108,7 @@ class IzinLatihanController extends Controller
                 'member_id'     => 'required|exists:members,id',
                 'jumlah_hari'   => 'required|integer|min:1|max:30',
                 'tanggal_mulai' => 'required|date',
-                'bukti_alasan'  => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:2048',
+                'bukti_alasan'  => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:10240',
                 'alasan'        => 'nullable|string|max:5000',
             ],
             [
@@ -106,7 +120,7 @@ class IzinLatihanController extends Controller
                 'jumlah_hari.max'        => 'Jumlah hari maksimal 30 hari.',
                 'tanggal_mulai.required' => 'Tanggal mulai wajib diisi.',
                 'tanggal_mulai.date'     => 'Format tanggal mulai tidak valid.',
-                'bukti_alasan.max'       => 'Ukuran file maksimal 2MB.',
+                'bukti_alasan.max'       => 'Ukuran file maksimal 10MB.',
                 'bukti_alasan.mimes'     => 'Format file harus JPG, JPEG, PNG, PDF, DOC, atau DOCX.',
             ]
         );
@@ -119,17 +133,23 @@ class IzinLatihanController extends Controller
         // 1) Wajib punya transaksi pembayaran (untuk paket_id kompensasi + aturan bisnis)
         $lastPaidTx = $this->getLastPaidTransactionForMember($memberId);
         if (! $lastPaidTx) {
-            return back()
-                ->withErrors(['member_id' => 'Member ini belum pernah melakukan transaksi membership (pembayaran). Tidak bisa membuat izin/kompensasi.'])
-                ->withInput();
-        }
+    return back()
+        ->withErrors(
+            ['member_id' => 'Member ini belum pernah melakukan transaksi membership (pembayaran). Tidak bisa membuat izin/kompensasi.'],
+            'izin_manual'
+        )
+        ->withInput();
+}
 
-        // 2) Wajib aktif di tanggal_mulai izin (opsi A)
-        if (! $this->isMembershipActiveAtDate($memberId, $tanggalMulaiIzin)) {
-            return back()
-                ->withErrors(['tanggal_mulai' => 'Member tidak memiliki membership aktif pada tanggal mulai izin. Izin tidak bisa dibuat.'])
-                ->withInput();
-        }
+if (! $this->isMembershipActiveAtDate($memberId, $tanggalMulaiIzin)) {
+    return back()
+        ->withErrors(
+            ['tanggal_mulai' => 'Member tidak memiliki membership aktif pada tanggal mulai izin. Izin tidak bisa dibuat.'],
+            'izin_manual'
+        )
+        ->withInput();
+}
+
 
         $tanggalSelesaiIzin = $tanggalMulaiIzin->copy()->addDays($jumlahHari - 1);
 
@@ -193,59 +213,73 @@ class IzinLatihanController extends Controller
     }
 
     public function history(Request $request)
-    {
-        $pageTitle = 'Riwayat Persetujuan Izin';
+{
+    $pageTitle = 'Riwayat Persetujuan Izin';
 
-        $query = IzinLatihan::with(['member.user'])
-            ->whereIn('status', ['disetujui', 'ditolak']);
+    $query = IzinLatihan::with(['member.user'])
+        ->whereIn('status', ['disetujui', 'ditolak']);
 
-        $sort = $request->input('sort', 'processed_newest');
+    // SORTING harus sebelum paginate
+    $sort = $request->input('sort', 'processed_newest');
 
-        $processedAtExpr = "COALESCE(tanggal_persetujuan, updated_at, created_at)";
-        $approvedDaysExpr = "CASE
-            WHEN status = 'disetujui' THEN COALESCE(durasi_izin_disetujui, 0)
-            ELSE 0
-        END";
+    $processedAtExpr  = "COALESCE(tanggal_persetujuan, updated_at, created_at)";
+    $approvedDaysExpr = "CASE
+        WHEN status = 'disetujui' THEN COALESCE(durasi_izin_disetujui, 0)
+        ELSE 0
+    END";
 
-        switch ($sort) {
-            case 'processed_oldest':
-                $query->orderByRaw("$processedAtExpr ASC")->orderBy('id', 'ASC');
-                break;
+    switch ($sort) {
+        case 'processed_oldest':
+            $query->orderByRaw("$processedAtExpr ASC")->orderBy('id', 'ASC');
+            break;
 
-            case 'approved_max':
-                $query->orderByRaw("$approvedDaysExpr DESC")
-                    ->orderByRaw("$processedAtExpr DESC")
-                    ->orderBy('id', 'DESC');
-                break;
+        case 'approved_max':
+            $query->orderByRaw("$approvedDaysExpr DESC")
+                  ->orderByRaw("$processedAtExpr DESC")
+                  ->orderBy('id', 'DESC');
+            break;
 
-            case 'approved_min':
-                $query->orderByRaw("$approvedDaysExpr ASC")
-                    ->orderByRaw("$processedAtExpr DESC")
-                    ->orderBy('id', 'DESC');
-                break;
+        case 'approved_min':
+            $query->orderByRaw("$approvedDaysExpr ASC")
+                  ->orderByRaw("$processedAtExpr DESC")
+                  ->orderBy('id', 'DESC');
+            break;
 
-            case 'requested_max':
-                $query->orderBy('jumlah_hari', 'DESC')
-                    ->orderByRaw("$processedAtExpr DESC")
-                    ->orderBy('id', 'DESC');
-                break;
+        case 'requested_max':
+            $query->orderBy('jumlah_hari', 'DESC')
+                  ->orderByRaw("$processedAtExpr DESC")
+                  ->orderBy('id', 'DESC');
+            break;
 
-            case 'requested_min':
-                $query->orderBy('jumlah_hari', 'ASC')
-                    ->orderByRaw("$processedAtExpr DESC")
-                    ->orderBy('id', 'DESC');
-                break;
+        case 'requested_min':
+            $query->orderBy('jumlah_hari', 'ASC')
+                  ->orderByRaw("$processedAtExpr DESC")
+                  ->orderBy('id', 'DESC');
+            break;
 
-            case 'processed_newest':
-            default:
-                $query->orderByRaw("$processedAtExpr DESC")->orderBy('id', 'DESC');
-                break;
-        }
-
-        $riwayat_izin = $query->paginate(15)->withQueryString();
-
-        return view('admin.izin_latihan.history', compact('riwayat_izin', 'pageTitle'));
+        case 'processed_newest':
+        default:
+            $query->orderByRaw("$processedAtExpr DESC")->orderBy('id', 'DESC');
+            break;
     }
+
+    // paginate cukup sekali
+    $riwayat_izin = $query->paginate(15)->withQueryString();
+
+    // inject akhir membership (tanpa N+1)
+    $memberIds = $riwayat_izin->getCollection()->pluck('member_id')->unique()->values()->all();
+    $akhirMap  = $this->mapAkhirMembership($memberIds);
+
+    $riwayat_izin->setCollection(
+        $riwayat_izin->getCollection()->map(function ($izin) use ($akhirMap) {
+            $izin->akhir_membership = $akhirMap[(int) $izin->member_id] ?? null;
+            return $izin;
+        })
+    );
+
+    return view('admin.izin_latihan.history', compact('riwayat_izin', 'pageTitle'));
+}
+
 
     public function show($id)
     {
@@ -474,4 +508,40 @@ class IzinLatihanController extends Controller
 
         return [$start->toDateString(), $finish->toDateString()];
     }
+    private function mapAkhirMembership(array $memberIds): array
+{
+    $memberIds = array_values(array_unique(array_map('intval', array_filter($memberIds))));
+    if (count($memberIds) === 0) return [];
+
+    // MAX tanggal_akhir sebagai buyer
+    $maxBuyer = TransaksiMembership::query()
+        ->valid()
+        ->whereIn('buyer_member_id', $memberIds)
+        ->select('buyer_member_id', DB::raw('MAX(tanggal_akhir) as max_akhir'))
+        ->groupBy('buyer_member_id')
+        ->pluck('max_akhir', 'buyer_member_id')
+        ->toArray();
+
+    // MAX tanggal_akhir sebagai participant
+    $maxParticipant = TransaksiMembership::query()
+        ->valid()
+        ->join('transaksi_membership_members as tmm', 'tmm.transaksi_membership_id', '=', 'transaksi_memberships.id')
+        ->whereIn('tmm.member_id', $memberIds)
+        ->select('tmm.member_id', DB::raw('MAX(transaksi_memberships.tanggal_akhir) as max_akhir'))
+        ->groupBy('tmm.member_id')
+        ->pluck('max_akhir', 'tmm.member_id')
+        ->toArray();
+
+    // Merge: ambil yang paling besar
+    $out = [];
+    foreach ($memberIds as $id) {
+        $a = $maxBuyer[$id] ?? null;
+        $b = $maxParticipant[$id] ?? null;
+
+        if ($a && $b) $out[$id] = max($a, $b);
+        else $out[$id] = $a ?: $b;
+    }
+
+    return $out;
+}
 }

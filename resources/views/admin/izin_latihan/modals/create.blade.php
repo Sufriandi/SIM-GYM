@@ -170,16 +170,17 @@
                 >
                     @csrf
 
-                    @if ($errors->any())
-                        <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
-                            <p class="text-sm font-semibold">Ada kesalahan input:</p>
-                            <ul class="list-disc list-inside text-xs mt-1">
-                                @foreach ($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
+                    @if ($errors->hasBag('izin_manual') && $errors->izin_manual->any())
+    <div class="bg-danger-soft text-danger p-3 rounded-xl border border-danger/50 mb-4">
+        <p class="text-sm font-semibold">Ada kesalahan input:</p>
+        <ul class="list-disc list-inside text-xs mt-1">
+            @foreach ($errors->izin_manual->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {{-- PANEL KIRI: PREVIEW BUKTI --}}
@@ -281,9 +282,10 @@
                                             </div>
                                         </div>
 
-                                        @error('member_id')
-                                            <p class="text-xs text-danger mt-1">{{ $message }}</p>
-                                        @enderror
+                                        @error('member_id', 'izin_manual')
+  <p class="text-xs text-danger mt-1">{{ $message }}</p>
+@enderror
+
 
                                         <p class="text-[11px] text-text-muted">
                                             Dipilih:
@@ -298,8 +300,8 @@
                                         <x-ui.label for="jumlah_hari">Jumlah Hari Izin</x-ui.label>
                                         <input type="number" name="jumlah_hari" id="jumlah_hari"
                                             value="{{ old('jumlah_hari', 1) }}" min="1" max="30" required
-                                            class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('jumlah_hari') border-danger ring-danger-soft @enderror">
-                                        @error('jumlah_hari')
+                                            class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent {{ ($errors->hasBag('izin_manual') && $errors->izin_manual->has('jumlah_hari')) ? 'border-danger ring-danger-soft' : '' }}">
+                                        @error('jumlah_hari', 'izin_manual')
                                             <p class="text-xs text-danger mt-1">{{ $message }}</p>
                                         @enderror
                                     </div>
@@ -308,8 +310,8 @@
                                         <x-ui.label for="tanggal_mulai">Tanggal Mulai Izin</x-ui.label>
                                         <input type="date" name="tanggal_mulai" id="tanggal_mulai"
                                             value="{{ old('tanggal_mulai', now()->toDateString()) }}" required
-                                            class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('tanggal_mulai') border-danger ring-danger-soft @enderror">
-                                        @error('tanggal_mulai')
+                                            class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent {{ ($errors->hasBag('izin_manual') && $errors->izin_manual->has('tanggal_mulai')) ? 'border-danger ring-danger-soft' : '' }}">
+                                        @error('tanggal_mulai', 'izin_manual')
                                             <p class="text-xs text-danger mt-1">{{ $message }}</p>
                                         @enderror
                                     </div>
@@ -319,9 +321,9 @@
                                 <div>
                                     <x-ui.label for="alasan">Alasan Izin</x-ui.label>
                                     <textarea name="alasan" id="alasan" rows="3"
-                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent @error('alasan') border-danger ring-danger-soft @enderror"
+                                        class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent {{ ($errors->hasBag('izin_manual') && $errors->izin_manual->has('alasan')) ? 'border-danger ring-danger-soft' : '' }}"
                                         placeholder="Contoh: Izin karena sakit, melampirkan surat dokter.">{{ old('alasan') }}</textarea>
-                                    @error('alasan')
+                                    @error('alasan', 'izin_manual')
                                         <p class="text-xs text-danger mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
@@ -331,9 +333,9 @@
                                     <x-ui.label for="bukti_alasan">Bukti / Dokumen (opsional)</x-ui.label>
                                     <input type="file" name="bukti_alasan" id="bukti_alasan"
                                         accept="image/*,.pdf,.doc,.docx"
-                                        class="block w-full text-sm text-text-main file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gold-600 file:text-white hover:file:bg-gold-700 @error('bukti_alasan') border-danger ring-danger-soft @enderror"
+                                        class="block w-full text-sm text-text-main file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gold-600 file:text-white hover:file:bg-gold-700 {{ ($errors->hasBag('izin_manual') && $errors->izin_manual->has('bukti_alasan')) ? 'border-danger ring-danger-soft' : '' }}"
                                         @change="onFileChange($event)">
-                                    @error('bukti_alasan')
+                                    @error('bukti_alasan', 'izin_manual')
                                         <p class="text-xs text-danger mt-1">{{ $message }}</p>
                                     @enderror
                                     <p class="text-[11px] text-text-muted mt-1">

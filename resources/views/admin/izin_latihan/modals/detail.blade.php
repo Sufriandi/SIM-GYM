@@ -3,13 +3,15 @@
     use Illuminate\Support\Facades\Storage;
     use Illuminate\Support\Str;
     use Carbon\Carbon;
+    use App\Models\TransaksiMembership;
 
     $memberName = $izin->member?->user?->name ?? '[Member dihapus]';
-    $memberUsername = $izin->member?->user?->username; // tanpa '@'
+    $memberUsername = $izin->member?->user?->username;
 
-    $akhirMembership = $izin->member?->tanggal_akhir
-        ? Carbon::parse($izin->member->tanggal_akhir)
-        : null;
+    $akhirMembership = !empty($izin->akhir_membership)
+    ? Carbon::parse($izin->akhir_membership)
+    : null;
+
 
     $processedAt = $izin->tanggal_persetujuan ? Carbon::parse($izin->tanggal_persetujuan) : null;
 
