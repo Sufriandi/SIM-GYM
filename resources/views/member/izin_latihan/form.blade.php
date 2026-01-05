@@ -2,24 +2,24 @@
 
 @php
     /** @var \Illuminate\Support\Collection|\App\Models\IzinLatihan[] $blockedRanges */
-    $pageTitle = $pageTitle ?? 'Ajukan Izin Latihan';
+    $pageTitle = $pageTitle ?? 'Ajukan Kompensasi Membership';
 @endphp
 
 <x-layouts.member
     :pageTitle="$pageTitle"
-    pageSubtitle="Isi form berikut dengan jujur dan lengkap."
+    pageSubtitle="Lengkapi form berikut untuk mengajukan kompensasi membership."
 >
     <div class="max-w-6xl mx-auto space-y-6">
 
         {{-- HEADER + BACK --}}
         <x-ui.section-header
             :title="$pageTitle"
-            subtitle="Tanggal mulai, durasi, dan alasan izin akan digunakan sebagai dasar penilaian Admin."
+            subtitle="Tanggal mulai dan durasi yang Anda isi akan dihitung sebagai periode kompensasi yang diajukan. Admin dapat menyetujui sebagian atau seluruh durasi."
         />
 
         <x-ui.back-button
             href="{{ route('member.izin_latihan.index') }}"
-            text="Kembali ke Pengajuan Saat Ini"
+            text="Kembali ke Pengajuan Pending"
         />
 
         <hr class="border-t border-brand-borderSoft mb-4">
@@ -38,8 +38,8 @@
 
         {{-- FORM CARD --}}
         <x-ui.card
-            title="Formulir Pengajuan Izin"
-            subtitle="Tanggal mulai dan durasi izin akan dihitung otomatis sebagai periode izin Anda."
+            title="Formulir Pengajuan Kompensasi"
+            subtitle="Isian bertanda bintang merah wajib diisi."
         >
             @php
                 // Pesan clash dari server (jika ada)
@@ -58,7 +58,10 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {{-- Tanggal Mulai --}}
                     <div>
-                        <x-ui.label for="tanggal_mulai">Tanggal Mulai Izin</x-ui.label>
+                        <x-ui.label for="tanggal_mulai">
+                            Tanggal Mulai Kompensasi <span class="text-danger">*</span>
+                        </x-ui.label>
+
                         <div class="mt-1 relative">
                             <input
                                 type="date"
@@ -81,13 +84,16 @@
                         </p>
 
                         <p class="text-[11px] text-text-muted mt-1">
-                            Pilih tanggal pertama Anda mulai tidak dapat mengikuti latihan.
+                            Pilih tanggal pertama Anda tidak dapat mengikuti latihan (awal periode kompensasi).
                         </p>
                     </div>
 
-                    {{-- Durasi Izin --}}
+                    {{-- Durasi --}}
                     <div>
-                        <x-ui.label for="jumlah_hari">Durasi Izin (Hari)</x-ui.label>
+                        <x-ui.label for="jumlah_hari">
+                            Durasi Kompensasi (Hari) <span class="text-danger">*</span>
+                        </x-ui.label>
+
                         <input
                             type="number"
                             id="jumlah_hari"
@@ -96,29 +102,35 @@
                             max="30"
                             value="{{ old('jumlah_hari') }}"
                             class="mt-1 w-full rounded-xl border border-brand-borderSoft bg-brand-card text-sm text-text-main px-3 py-2.5 focus:ring-2 focus:ring-gold-500/60 focus:border-gold-500"
-                            placeholder="Masukkan jumlah hari izin yang dibutuhkan"
+                            placeholder="Masukkan jumlah hari kompensasi yang diajukan"
                             required
                         >
+
                         @error('jumlah_hari')
                             <p class="text-xs text-danger mt-1">{{ $message }}</p>
                         @enderror
+
                         <p class="text-[11px] text-text-muted mt-1">
-                            Masukkan jumlah hari izin yang Anda perlukan untuk periode tersebut.
+                            Admin dapat menyetujui sebagian durasi sesuai kebijakan.
                         </p>
                     </div>
                 </div>
 
                 {{-- Alasan --}}
                 <div>
-                    <x-ui.label for="alasan">Alasan Pengajuan Izin</x-ui.label>
+                    <x-ui.label for="alasan">
+                        Alasan Pengajuan Kompensasi <span class="text-danger">*</span>
+                    </x-ui.label>
+
                     <textarea
                         id="alasan"
                         name="alasan"
                         rows="4"
                         class="mt-1 w-full rounded-xl border border-brand-borderSoft bg-brand-card text-sm text-text-main px-3 py-2.5 focus:ring-2 focus:ring-gold-500/60 focus:border-gold-500"
-                        placeholder="Tuliskan alasan Anda tidak dapat mengikuti latihan pada periode tersebut."
+                        placeholder="Tuliskan alasan Anda mengajukan kompensasi pada periode tersebut."
                         required
                     >{{ old('alasan') }}</textarea>
+
                     @error('alasan')
                         <p class="text-xs text-danger mt-1">{{ $message }}</p>
                     @enderror
@@ -146,7 +158,7 @@
                 {{-- FOOTER ACTION --}}
                 <div class="pt-2 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
                     <p class="text-[11px] text-text-muted max-w-md">
-                        Dengan mengajukan izin, Anda menyatakan bahwa data yang Anda kirimkan adalah benar
+                        Dengan mengajukan kompensasi, Anda menyatakan bahwa informasi yang Anda kirimkan adalah benar
                         dan dapat dipertanggungjawabkan.
                     </p>
 
@@ -155,7 +167,7 @@
                         type="submit"
                         class="justify-center sm:w-auto w-full"
                     >
-                        Kirim Pengajuan
+                        Kirim Pengajuan Kompensasi
                         <i data-lucide="send" class="w-4 h-4 ml-2"></i>
                     </x-ui.button-primary>
                 </div>
@@ -163,10 +175,10 @@
         </x-ui.card>
     </div>
 
-    {{-- JS untuk blok tombol ketika periode izin bentrok --}}
+    {{-- JS untuk blok tombol ketika periode bentrok (pending + disetujui sesuai logic backend Anda) --}}
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Range izin yang diblokir dari controller (pending + disetujui)
+            // Range yang diblokir dari controller (pending + disetujui)
             const blocked = @json(
                 ($blockedRanges ?? collect())->map(function ($i) {
                     return [
@@ -213,7 +225,6 @@
                 const days     = parseInt(durasiInput?.value || '0', 10);
 
                 if (!startStr || !days) {
-                    // Tidak cukup data → tombol boleh diklik & pesan clash disembunyikan
                     setDisabledState(false, '');
                     return;
                 }
@@ -246,9 +257,8 @@
                     const sText = conflictRange.start.toLocaleDateString('id-ID', opt);
                     const eText = conflictRange.end.toLocaleDateString('id-ID', opt);
 
-                    const msg = `Sudah ada izin lain pada ${sText}–${eText}.`;
+                    const msg = `Sudah ada pengajuan lain pada ${sText}–${eText}.`;
 
-                    // Tombol diblokir ketika bentrok
                     setDisabledState(true, msg);
                 } else {
                     setDisabledState(false, '');
@@ -258,7 +268,6 @@
             startInput?.addEventListener('change', checkOverlap);
             durasiInput?.addEventListener('input', checkOverlap);
 
-            // Jalankan sekali saat halaman selesai dimuat
             checkOverlap();
         });
     </script>

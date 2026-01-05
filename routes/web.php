@@ -44,6 +44,9 @@ use App\Http\Controllers\Member\CoachController as MemberCoachController;
 use App\Http\Controllers\Member\ProdukGymController;
 use App\Http\Controllers\Member\KehadiranMemberController as MemberKehadiranMemberController;
 
+// Notifikasi
+use App\Http\Controllers\Admin\AdminNotifikasiController;
+
 /*
 |--------------------------------------------------------------------------
 | 1. RUTE PUBLIK / GUEST
@@ -146,7 +149,18 @@ Route::middleware(['auth', 'admin'])
         // ================== DASHBOARD ==================
         Route::get('dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
+        // ================== NOTIFIKASI (ADMIN) ==================
+        Route::prefix('notifikasi')->name('notifikasi.')->group(function () {
+        Route::get('/', [AdminNotifikasiController::class, 'index'])->name('index');
+        Route::post('/read-all', [AdminNotifikasiController::class, 'readAll'])->name('read_all');
+        Route::post('/{id}/read', [AdminNotifikasiController::class, 'readOne'])->name('read_one');
+        Route::post('/{id}/hide', [AdminNotifikasiController::class, 'hideOne'])->name('hide_one');
+        Route::post('/hide-all', [AdminNotifikasiController::class, 'hideAll'])->name('hide_all');
+        Route::get('/{id}/go', [AdminNotifikasiController::class, 'go'])->name('go');
 
+        // ===== realtime polling endpoint =====
+        Route::get('/poll', [AdminNotifikasiController::class, 'poll'])->name('poll');
+    });
 
         // ================== INVENTARIS ALAT ==================
         Route::resource('inventaris', InventarisAlatController::class)
@@ -325,11 +339,50 @@ Route::middleware(['auth', 'member'])
             })->name('index_redirect');
         });
 
-        Route::resource('produk_gym', ProdukGymController::class)
-            ->only(['index', 'store'])
-            ->names('produk_gym');
+        // =========================
+        // Marketplace (Index + Show)
+        // =========================
+        Route::get('/produk_gym', [ProdukGymController::class, 'index'])
+            ->name('produk_gym.index');
 
-        Route::get('coach', [MemberCoachController::class, 'index'])->name('coach.index');
+        Route::get('/produk_gym/{slug}', [ProdukGymController::class, 'show'])
+            ->where('slug', '^[0-9]+-.*$')
+            ->name('produk_gym.show');
+
+        // =========================
+        // Cart (Member)
+        // =========================
+        Route::get('/produk_gym/cart', [ProdukGymController::class, 'cart'])
+            ->name('produk_gym.cart');
+
+        Route::post('/produk_gym/cart/add/{id}', [ProdukGymController::class, 'addToCart'])
+            ->whereNumber('id')
+            ->name('produk_gym.cart.add');
+
+        // AJAX remove (sesuai JS Anda yang POST)
+        Route::post('/produk_gym/cart/remove/{id}', [ProdukGymController::class, 'removeFromCart'])
+            ->whereNumber('id')
+            ->name('produk_gym.cart.remove');
+
+        // AJAX qty update (sesuai JS Anda yang POST ke .../quantity)
+        Route::post('/produk_gym/cart/{id}/quantity', [ProdukGymController::class, 'updateCartQuantity'])
+            ->whereNumber('id')
+            ->name('produk_gym.cart.qty');
+    
+
+        /**
+         * COACH: index + show (slug)
+         * URL:
+         * - /member/coach
+         * - /member/coach/{id}-{nama-coach}
+         */
+        Route::prefix('coach')->name('coach.')->group(function () {
+            Route::get('/', [MemberCoachController::class, 'index'])->name('index');
+
+            Route::get('/{slug}', [MemberCoachController::class, 'show'])
+                ->where('slug', '^[0-9]+-[A-Za-z0-9\-]+$')
+                ->name('show');
+        });
     });
 
 /*

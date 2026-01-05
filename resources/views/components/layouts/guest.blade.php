@@ -4,7 +4,6 @@
     use Illuminate\Support\Str;
 
     // WA Admin dari .env
-    // contoh .env: WHATSAPP_NUMBER=6281212345678 atau 081212345678
     $waRaw = env('WHATSAPP_NUMBER', '');
     $waDigits = preg_replace('/\D+/', '', (string) $waRaw);
 
@@ -35,7 +34,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
+        
 
         [x-cloak]{ display:none !important; }
 

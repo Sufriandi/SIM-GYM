@@ -1,0 +1,519 @@
+{{-- resources/views/admin/dashboard/index.blade.php --}}
+
+@php
+    use Illuminate\Support\Str;
+
+    // =========================
+    // FALLBACK DATA
+    // =========================
+    $totalMembers        = (int)($totalMembers ?? 0);
+    $activeMemberships   = (int)($activeMemberships ?? 0);
+    $todayCheckins       = (int)($todayCheckins ?? 0);
+    $totalProducts       = (int)($totalProducts ?? 0);
+    $izinPending         = (int)($izinPending ?? 0);
+    $recentIzin          = $recentIzin ?? collect();
+
+    $activeRate          = (int)($activeRate ?? ($totalMembers > 0 ? round(($activeMemberships / max($totalMembers, 1)) * 100) : 0));
+
+    $pendapatanProdukBulanIni = (int)($pendapatanProdukBulanIni ?? 0);
+    $produkTerlaris           = $produkTerlaris ?? null;
+
+    $payload = $dashboardStatsPayload ?? [];
+
+    $seriesCheckins = data_get($payload, 'series.checkinsLast7Days', []);
+    if (!is_array($seriesCheckins)) $seriesCheckins = [];
+
+    $maxCheckin = 1;
+    foreach ($seriesCheckins as $row) {
+        $v = (int)($row['value'] ?? 0);
+        if ($v > $maxCheckin) $maxCheckin = $v;
+    }
+@endphp
+
+<x-layouts.admin pageTitle="Dashboard" pageSubtitle="Ringkasan cepat aktivitas dan manajemen BETA GYM.">
+
+    <style>
+        .dash-no-x { max-width: 100%; overflow-x: hidden; }
+        .stat-number { font-variant-numeric: tabular-nums; }
+
+        /* reveal */
+        .reveal {
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 520ms ease, transform 520ms ease;
+        }
+        .reveal.is-visible { opacity: 1; transform: translateY(0); }
+
+        /* bar animation - pakai transform biar halus */
+        .bar-fill {
+            transform: scaleY(0);
+            transform-origin: bottom;
+            transition: transform 900ms cubic-bezier(.2,.9,.2,1);
+            will-change: transform;
+        }
+
+        /* progress animation */
+        .prog {
+            width: 0%;
+            transition: width 900ms cubic-bezier(.2,.9,.2,1);
+            will-change: width;
+        }
+
+        /* chart gridlines */
+        .chart-grid {
+            background-image:
+                linear-gradient(to top, rgba(0,0,0,.06) 1px, transparent 1px);
+            background-size: 100% 25%;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .reveal { transition: none; transform: none; }
+            .bar-fill { transition: none; transform: none; }
+            .prog { transition: none; width: auto; }
+        }
+    </style>
+
+    <div class="dash-no-x">
+
+        {{-- ====== HERO SUMMARY ====== --}}
+        <div class="mb-8">
+            <x-ui.card class="relative overflow-hidden border border-brand-borderSoft/70 bg-brand-shell">
+
+                <div class="absolute inset-0">
+                    <div class="w-full h-full"
+                        style="
+                            background-image: url('{{ asset('images/dashboard-hero.jpg') }}');
+                            background-size: cover;
+                            background-position: center;
+                        ">
+                    </div>
+                    <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/55 to-black/10"></div>
+                </div>
+
+                <div class="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold tracking-wide text-gold-300 uppercase">
+                            Selamat datang di BETA GYM
+                        </p>
+                        <h1 class="mt-1 text-3xl md:text-4xl font-extrabold text-brand-shell drop-shadow-md">
+                            Dashboard Manajemen Gym
+                        </h1>
+                        <p class="mt-2 text-sm text-brand-shell/90 max-w-xl">
+                            Pantau aktivitas harian, kelola member dan produk, proses izin latihan,
+                            serta akses laporan operasional dalam satu tampilan.
+                        </p>
+
+                        <div class="mt-4 inline-flex flex-wrap items-center gap-2 text-[11px] text-brand-shell/80">
+                            <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-black/40 border border-brand-borderSoft/60">
+                                <i data-lucide="calendar" class="w-3 h-3"></i>
+                                {{ now()->translatedFormat('l, d F Y') }}
+                            </span>
+                            <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-black/30 border border-brand-borderSoft/40">
+                                <i data-lucide="activity" class="w-3 h-3"></i>
+                                Sistem berjalan normal
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 lg:w-[380px] w-full">
+                        <div class="rounded-2xl bg-black/35 border border-brand-borderSoft/60 px-4 py-3 backdrop-blur-sm reveal js-reveal js-scope">
+                            <p class="text-[11px] text-brand-shell/80 uppercase tracking-wide font-semibold">Member Terdaftar</p>
+                            <p class="mt-1 text-2xl font-bold text-brand-shell stat-number js-count" data-count="{{ $totalMembers }}">0</p>
+                            <div class="mt-1 flex items-center gap-1 text-[11px] text-brand-shell/80">
+                                <i data-lucide="users" class="w-3 h-3"></i>
+                                <span>Semua member di sistem</span>
+                            </div>
+                        </div>
+
+                        <div class="rounded-2xl bg-black/35 border border-brand-borderSoft/60 px-4 py-3 backdrop-blur-sm reveal js-reveal js-scope">
+                            <p class="text-[11px] text-brand-shell/80 uppercase tracking-wide font-semibold">Membership Aktif</p>
+                            <p class="mt-1 text-2xl font-bold text-emerald-300 stat-number js-count" data-count="{{ $activeMemberships }}">0</p>
+                            <div class="mt-1 flex items-center justify-between text-[11px] text-brand-shell/80">
+                                <span><span class="js-count" data-count="{{ $activeRate }}">0</span>% aktif</span>
+                                <span class="inline-flex items-center gap-1">
+                                    <i data-lucide="badge-check" class="w-3 h-3"></i> aktif
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="rounded-2xl bg-black/35 border border-brand-borderSoft/60 px-4 py-3 backdrop-blur-sm reveal js-reveal js-scope">
+                            <p class="text-[11px] text-brand-shell/80 uppercase tracking-wide font-semibold">Check-in Hari Ini</p>
+                            <p class="mt-1 text-2xl font-bold text-gold-300 stat-number js-count" data-count="{{ $todayCheckins }}">0</p>
+                            <div class="mt-1 flex items-center gap-1 text-[11px] text-brand-shell/80">
+                                <i data-lucide="clock-4" class="w-3 h-3"></i>
+                                <span>Kehadiran hari ini</span>
+                            </div>
+                        </div>
+
+                        <div class="rounded-2xl bg-black/35 border border-brand-borderSoft/60 px-4 py-3 backdrop-blur-sm reveal js-reveal js-scope">
+                            <p class="text-[11px] text-brand-shell/80 uppercase tracking-wide font-semibold">Izin Pending</p>
+                            <p class="mt-1 text-2xl font-bold {{ $izinPending > 0 ? 'text-amber-300' : 'text-brand-shell' }} stat-number js-count" data-count="{{ $izinPending }}">0</p>
+                            <div class="mt-1 flex items-center justify-between text-[11px] text-brand-shell/80">
+                                <span>Menunggu proses</span>
+                                @if ($izinPending > 0)
+                                    <a href="{{ route('admin.izin_latihan.index') }}" class="inline-flex items-center gap-1 hover:text-gold-200 transition-colors">
+                                        <span>Proses</span>
+                                        <i data-lucide="arrow-right" class="w-3 h-3"></i>
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </x-ui.card>
+        </div>
+
+        {{-- ========================================================= --}}
+        {{-- STATISTIK --}}
+        {{-- ========================================================= --}}
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+
+            {{-- CHART CHECK-IN 7 HARI --}}
+            <x-ui.card class="lg:col-span-8 border-brand-borderSoft/80 reveal js-reveal js-scope js-chart-scope">
+                <div class="flex items-start justify-between gap-4 mb-4">
+                    <div class="min-w-0">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Statistik Aktivitas</p>
+                        <h2 class="text-lg font-semibold text-text-main">Check-in 7 Hari Terakhir</h2>
+                        <p class="text-xs text-text-muted mt-1">Grafik untuk memantau tren kunjungan harian (valid check-in).</p>
+                    </div>
+
+                    <div class="shrink-0 text-right">
+                        <p class="text-[10px] font-bold text-text-muted uppercase tracking-widest">Hari ini</p>
+                        <p class="text-xl font-bold text-text-main">
+                            <span class="stat-number js-count" data-count="{{ $todayCheckins }}">0</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="rounded-2xl bg-brand-shell/60 border border-brand-borderSoft/60 p-4">
+                    <div class="w-full overflow-x-auto custom-scrollbar">
+                        <div class="min-w-[560px]">
+                            <div class="chart-grid rounded-2xl border border-brand-borderSoft/40 bg-black/5 p-4">
+                                <div class="h-44 flex items-end gap-3">
+                                    @foreach ($seriesCheckins as $row)
+                                        @php
+                                            $label = (string)($row['label'] ?? '');
+                                            $val   = (int)($row['value'] ?? 0);
+                                            $pct   = (int) round(($val / max($maxCheckin,1)) * 100);
+                                            $pct   = max(0, min(100, $pct));
+                                            $isMax = $val === $maxCheckin && $maxCheckin > 0;
+                                        @endphp
+
+                                        <div class="flex-1 min-w-[52px] group">
+                                            {{-- TRACK harus punya tinggi tetap --}}
+                                            <div class="h-28 flex items-end">
+                                                <div class="w-full h-28 rounded-xl bg-black/10 border border-brand-borderSoft/40 overflow-hidden flex items-end">
+                                                    <div
+                                                        class="w-full bar-fill {{ $isMax ? 'bg-gold-500' : 'bg-gold-500/80' }}"
+                                                        data-bar="{{ $pct }}"
+                                                        style="height:100%; transform: scaleY(0);"
+                                                        title="{{ $label }}: {{ $val }}"
+                                                        aria-label="checkin {{ $label }}: {{ $val }}"
+                                                    ></div>
+                                                </div>
+                                            </div>
+
+                                            <div class="mt-2 text-center">
+                                                <div class="text-[10px] text-text-muted font-semibold truncate">{{ $label }}</div>
+                                                <div class="text-[12px] text-text-main font-extrabold stat-number">{{ $val }}</div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+
+                                <div class="mt-4 flex items-center justify-between text-[11px] text-text-muted">
+                                    <span class="inline-flex items-center gap-2">
+                                        <span class="w-2 h-2 rounded-full bg-gold-500/80"></span>
+                                        Check-in (valid)
+                                    </span>
+                                    <span>Max referensi: {{ $maxCheckin }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </x-ui.card>
+
+            {{-- RINGKASAN BISNIS --}}
+            <x-ui.card class="lg:col-span-4 border-brand-borderSoft/80 reveal js-reveal js-scope">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Ringkasan Penjualan</p>
+                        <h2 class="text-lg font-semibold text-text-main">Marketplace & Produk</h2>
+                    </div>
+                    <div class="w-10 h-10 rounded-2xl bg-brand-shell flex items-center justify-center text-gold-600">
+                        <i data-lucide="wallet" class="w-5 h-5"></i>
+                    </div>
+                </div>
+
+                <div class="space-y-3 text-xs">
+                    <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft/60 p-4">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Pendapatan Produk (Bulan Ini)</p>
+                        <p class="mt-1 text-2xl font-bold text-text-main stat-number">
+                            Rp <span class="js-count" data-count="{{ $pendapatanProdukBulanIni }}">0</span>
+                        </p>
+                        <p class="mt-1 text-[11px] text-text-muted">
+                            Total dari transaksi produk (sum kolom <span class="font-semibold">total</span>).
+                        </p>
+                    </div>
+
+                    <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft/60 p-4">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Produk Terlaris</p>
+
+                        @if($produkTerlaris)
+                            <p class="mt-1 text-sm font-bold text-text-main line-clamp-2">
+                                {{ $produkTerlaris->nama ?? '-' }}
+                            </p>
+                            <p class="mt-1 text-[11px] text-text-muted">
+                                Terjual: <span class="font-semibold text-text-main">{{ (int)($produkTerlaris->terjual ?? 0) }}</span>
+                            </p>
+                        @else
+                            <p class="mt-1 text-[11px] text-text-muted">
+                                Data belum tersedia (pastikan ada tabel transaksi_produk_items dan kolom qty).
+                            </p>
+                        @endif
+                    </div>
+
+                    <div class="rounded-2xl bg-brand-shell/70 border border-brand-borderSoft/60 p-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-text-muted">Total Produk</span>
+                            <span class="font-bold text-text-main stat-number js-count" data-count="{{ $totalProducts }}">0</span>
+                        </div>
+
+                        <div class="mt-3">
+                            <p class="text-[11px] text-text-muted mb-1">Rasio Member Aktif</p>
+                            <div class="w-full h-2 rounded-full bg-black/10 overflow-hidden border border-brand-borderSoft/40">
+                                <div class="h-full bg-emerald-500 prog js-progress" data-progress="{{ min($activeRate, 100) }}"></div>
+                            </div>
+                            <p class="mt-2 text-[11px] text-text-muted">
+                                <span class="font-bold text-text-main">{{ $activeRate }}%</span> dari total member.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </x-ui.card>
+
+        </div>
+
+        {{-- ====== BAWAH: IZIN TERBARU + AKSI CEPAT ====== --}}
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-4">
+
+            <x-ui.card class="xl:col-span-2 border-brand-borderSoft/80 reveal js-reveal js-scope">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-lg font-semibold text-text-main">Izin Latihan Terbaru</h2>
+                        <p class="text-xs text-text-muted">Monitoring cepat pengajuan izin terakhir dari member.</p>
+                    </div>
+
+                    <a href="{{ route('admin.izin_latihan.index') }}"
+                        class="inline-flex items-center gap-1 text-xs font-semibold text-gold-600 hover:text-gold-500 transition-colors">
+                        Lihat semua <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </a>
+                </div>
+
+                @if ($recentIzin->isEmpty())
+                    <p class="py-6 text-center text-sm text-text-muted italic">Belum ada pengajuan izin terbaru.</p>
+                @else
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full border-collapse text-xs md:text-sm">
+                            <thead>
+                                <tr class="border-b border-brand-borderSoft/70 bg-brand-shell/70">
+                                    <th class="px-3 py-2 text-left text-[11px] font-semibold tracking-wide uppercase text-text-main">Member</th>
+                                    <th class="px-3 py-2 text-center text-[11px] font-semibold tracking-wide uppercase text-text-main">Durasi</th>
+                                    <th class="px-3 py-2 text-center text-[11px] font-semibold tracking-wide uppercase text-text-main">Mulai</th>
+                                    <th class="px-3 py-2 text-center text-[11px] font-semibold tracking-wide uppercase text-text-main">Status</th>
+                                    <th class="px-3 py-2 text-center text-[11px] font-semibold tracking-wide uppercase text-text-main">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($recentIzin as $izin)
+                                    @php
+                                        // NAMA BENAR: ambil dari users.name (member tidak punya kolom nama)
+                                        $namaMember =
+                                            $izin->member?->user?->name
+                                            ?? $izin->member?->user?->username
+                                            ?? ('Member #' . (int)$izin->member_id);
+                                    @endphp
+                                    <tr class="border-b border-brand-borderSoft/60 last:border-0 hover:bg-brand-shell/40 transition-colors">
+                                        <td class="px-3 py-2 text-text-main">{{ $namaMember }}</td>
+                                        <td class="px-3 py-2 text-center text-text-main">{{ (int)$izin->jumlah_hari }} Hari</td>
+                                        <td class="px-3 py-2 text-center text-text-muted">
+                                            {{ \Carbon\Carbon::parse($izin->tanggal_mulai)->translatedFormat('d M Y') }}
+                                        </td>
+                                        <td class="px-3 py-2 text-center">
+                                            @if ($izin->status === 'pending')
+                                                <x-ui.badge variant="warning">Pending</x-ui.badge>
+                                            @elseif($izin->status === 'disetujui')
+                                                <x-ui.badge variant="success">Disetujui</x-ui.badge>
+                                            @else
+                                                <x-ui.badge variant="danger">Ditolak</x-ui.badge>
+                                            @endif
+                                        </td>
+                                        <td class="px-3 py-2 text-center">
+                                            <a href="{{ route('admin.izin_latihan.detail', $izin->id) }}"
+                                                class="inline-flex items-center gap-1 text-[11px] font-semibold text-gold-600 hover:text-gold-500 transition-colors">
+                                                Detail <i data-lucide="arrow-right" class="w-3 h-3"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            </x-ui.card>
+
+            <x-ui.card class="border-brand-borderSoft/80 reveal js-reveal js-scope">
+                <h2 class="text-lg font-semibold text-text-main mb-3">Aksi Cepat & Info Sistem</h2>
+
+                <div class="space-y-3 text-sm mb-4">
+                    <a href="{{ route('admin.members.index') }}" class="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-brand-shell/60 transition-colors">
+                        <span class="inline-flex items-center gap-2 text-text-main">
+                            <i data-lucide="user-plus" class="w-4 h-4 text-gold-600"></i> Tambah / Kelola Member
+                        </span>
+                        <i data-lucide="arrow-right" class="w-4 h-4 text-text-muted"></i>
+                    </a>
+
+                    <a href="{{ route('admin.transaksi_produk.index') }}" class="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-brand-shell/60 transition-colors">
+                        <span class="inline-flex items-center gap-2 text-text-main">
+                            <i data-lucide="shopping-cart" class="w-4 h-4 text-gold-600"></i> Input Transaksi Produk
+                        </span>
+                        <i data-lucide="arrow-right" class="w-4 h-4 text-text-muted"></i>
+                    </a>
+
+                    <a href="{{ route('admin.transaksi_membership.index') }}" class="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-brand-shell/60 transition-colors">
+                        <span class="inline-flex items-center gap-2 text-text-main">
+                            <i data-lucide="credit-card" class="w-4 h-4 text-gold-600"></i> Input Penjualan Membership
+                        </span>
+                        <i data-lucide="arrow-right" class="w-4 h-4 text-text-muted"></i>
+                    </a>
+
+                    <a href="{{ route('admin.coaches.index') }}" class="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-brand-shell/60 transition-colors">
+                        <span class="inline-flex items-center gap-2 text-text-main">
+                            <i data-lucide="user-square-2" class="w-4 h-4 text-gold-600"></i> Kelola Coach / Trainer
+                        </span>
+                        <i data-lucide="arrow-right" class="w-4 h-4 text-text-muted"></i>
+                    </a>
+
+                    <a href="{{ route('admin.absensi.index') }}" class="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-brand-shell/60 transition-colors">
+                        <span class="inline-flex items-center gap-2 text-text-main">
+                            <i data-lucide="clipboard-check" class="w-4 h-4 text-gold-600"></i> Rekap Kehadiran Hari Ini
+                        </span>
+                        <span class="text-[11px] text-text-muted">{{ number_format($todayCheckins) }} check-in</span>
+                    </a>
+                </div>
+
+                <x-ui.divider class="my-4" />
+
+                <h3 class="text-xs font-semibold tracking-wide uppercase text-text-muted mb-2">Status Sistem</h3>
+                <ul class="space-y-1 text-xs text-text-muted">
+                    <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-success"></span> Sistem berjalan normal, tidak ada gangguan terdeteksi.</li>
+                    <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-gold-500"></span> Rutin unduh laporan keuangan & kehadiran setiap akhir bulan.</li>
+                    <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span> Pastikan data member & membership selalu diperbarui.</li>
+                </ul>
+            </x-ui.card>
+
+        </div>
+    </div>
+
+    {{-- =========================
+         JS: animasi berbasis viewport (lebih kerasa & rapi)
+       ========================= --}}
+    <script>
+        (function () {
+            const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            function formatID(n) {
+                try { return new Intl.NumberFormat('id-ID').format(n); }
+                catch (e) { return String(n); }
+            }
+
+            function animateCount(el, to, duration = 900) {
+                if (prefersReduced) { el.textContent = formatID(to); return; }
+
+                const from = 0;
+                const start = performance.now();
+
+                function tick(now) {
+                    const p = Math.min((now - start) / duration, 1);
+                    const eased = 1 - Math.pow(1 - p, 3);
+                    const val = Math.round(from + (to - from) * eased);
+                    el.textContent = formatID(val);
+                    if (p < 1) requestAnimationFrame(tick);
+                }
+                requestAnimationFrame(tick);
+            }
+
+            function runCounters(scope) {
+                scope.querySelectorAll('.js-count').forEach(el => {
+                    if (el.dataset.done === '1') return;
+                    el.dataset.done = '1';
+
+                    const to = parseInt(el.getAttribute('data-count') || '0', 10);
+                    el.textContent = prefersReduced ? formatID(to) : '0';
+                    animateCount(el, isNaN(to) ? 0 : to, 900);
+                });
+            }
+
+            function runBars(scope) {
+                const bars = scope.querySelectorAll('[data-bar]');
+                bars.forEach(b => {
+                    if (b.dataset.done === '1') return;
+                    b.dataset.done = '1';
+
+                    const pct = parseInt(b.getAttribute('data-bar') || '0', 10);
+                    const scale = Math.max(0, Math.min(100, isNaN(pct) ? 0 : pct)) / 100;
+
+                    // bar-fill sudah pakai transition transform
+                    b.style.transform = prefersReduced ? 'none' : ('scaleY(' + scale + ')');
+                    if (prefersReduced) b.style.transform = 'scaleY(' + scale + ')';
+                });
+            }
+
+            function runProgress(scope) {
+                scope.querySelectorAll('.js-progress').forEach(p => {
+                    if (p.dataset.done === '1') return;
+                    p.dataset.done = '1';
+
+                    const w = parseInt(p.getAttribute('data-progress') || '0', 10);
+                    const val = Math.max(0, Math.min(100, isNaN(w) ? 0 : w));
+                    p.style.width = prefersReduced ? (val + '%') : '0%';
+
+                    requestAnimationFrame(() => {
+                        p.style.width = (val + '%');
+                    });
+                });
+            }
+
+            function revealAndAnimate(el) {
+                el.classList.add('is-visible');
+                runCounters(el);
+                runBars(el);
+                runProgress(el);
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                const items = document.querySelectorAll('.js-reveal');
+
+                if (!items.length) return;
+
+                if ('IntersectionObserver' in window) {
+                    const io = new IntersectionObserver((entries) => {
+                        entries.forEach(e => {
+                            if (!e.isIntersecting) return;
+                            revealAndAnimate(e.target);
+                            io.unobserve(e.target);
+                        });
+                    }, { threshold: 0.12 });
+
+                    items.forEach(i => io.observe(i));
+                } else {
+                    items.forEach(i => revealAndAnimate(i));
+                }
+            });
+        })();
+    </script>
+
+</x-layouts.admin>

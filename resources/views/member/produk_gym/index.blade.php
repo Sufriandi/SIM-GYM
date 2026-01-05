@@ -1,425 +1,433 @@
 {{-- resources/views/member/produk_gym/index.blade.php --}}
-
 @php
     use Illuminate\Support\Facades\Storage;
-    use Illuminate\Support\Js;
-    use Illuminate\Support\Facades\Auth;
+    use Illuminate\Support\Str;
 
-    $pageTitle    = $pageTitle    ?? 'Marketplace Gym';
-    $pageSubtitle = 'Suplemen, gear, dan kebutuhan latihan terbaik untukmu.';
+    $pageTitle  = $pageTitle ?? 'Marketplace';
 
-    // Nomor WA admin dari controller
-    $adminNumber = app(\App\Http\Controllers\Member\ProdukGymController::class)->getAdminNumber();
+    // Kompatibel: controller bisa mengirim $products atau $produks
+    $products   = $products ?? ($produks ?? collect());
+    $categories = $categories ?? [];
 
-    // State filter dari request
-    $search   = $search   ?? request('search', '');
-    $kategori = $kategori ?? request('kategori', 'all');
-    $sort     = request('sort', 'popular');
+    $kategoriOptions = collect($categories)->filter()->values()->all();
+    $currentQ   = request('q');
+    $currentKat = request('kategori');
 
-    $kategoriOptions = $kategoriOptions ?? ['minuman', 'suplemen', 'lainnya'];
+    // Hitung cart (member: jumlah total quantity)
+    $cartRaw = session('cart', []);
+    $cartCount = 0;
+    foreach ($cartRaw as $it) {
+        $cartCount += (int)($it['quantity'] ?? 1);
+    }
+    if ($cartCount <= 0 && !empty($cartRaw)) {
+        $cartCount = count($cartRaw);
+    }
 
-    // Data member untuk identitas di WhatsApp
-    $member           = Auth::user();
-    $memberName       = $member->name ?? 'Member';
-    $memberIdentifier = "{$memberName}";
+    // Image resolver (ikut pola guest)
+    $imgUrl = function ($path, $fallbackText) {
+        $path = trim((string) $path);
+        if ($path === '') {
+            // fallback cream
+            return 'https://placehold.co/800x1066/f6efe4/cca43b?text=' . urlencode($fallbackText ?: 'PRODUK') . '&font=raleway';
+        }
+        if (Str::startsWith($path, ['http://', 'https://'])) return $path;
+
+        $path = str_replace('\\', '/', $path);
+        $path = ltrim($path, '/');
+
+        if (Str::startsWith($path, 'storage/')) return url('/' . $path);
+        if (Str::startsWith($path, 'public/'))  $path = Str::after($path, 'public/');
+
+        return Storage::url($path);
+    };
+
+    $heroImg = 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop';
+
+    $totalItems = method_exists($products, 'total')
+        ? (int) $products->total()
+        : (is_countable($products) ? count($products) : 0);
+
+    $pageCount = (is_object($products) && method_exists($products, 'count')) ? (int) $products->count() : 0;
 @endphp
 
-<x-layouts.member
-    :pageTitle="$pageTitle"
-    :pageSubtitle="$pageSubtitle"
->
-    <div class="max-w-7xl mx-auto space-y-8 pb-10">
+<x-layouts.member :title="($pageTitle ?? 'Marketplace') . ' – BETA GYM'">
 
-        {{-- ========================================================= --}}
-        {{-- 1. HERO BANNER --}}
-        {{-- ========================================================= --}}
-        <div class="relative w-full rounded-3xl overflow-hidden shadow-card-strong bg-brand-nav">
-            {{-- Pattern --}}
-            <div class="absolute inset-0 opacity-10"
-                 style="background-image: radial-gradient(#D4A757 1px, transparent 1px); background-size: 20px 20px;">
+    {{-- Perubahan utama: surface-card LIGHT jadi CREAM (bukan putih) --}}
+    <style>
+        /* ===== CARD (LIGHT: CREAM) ===== */
+        .surface-card {
+            /* cream base (mirip #F6EFE4 / beige hangat) */
+            background: linear-gradient(180deg, rgba(246,239,228,.92), rgba(246,239,228,.78));
+            border: 1px solid rgba(212,167,87,.22);
+            box-shadow: 0 16px 44px rgba(20, 22, 26, .10);
+            transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+        }
+        .surface-card:hover{
+            transform: translateY(-2px);
+            border-color: rgba(234,179,8,.40);
+            box-shadow: 0 26px 70px rgba(20, 22, 26, .14);
+        }
+
+        /* ===== CARD (DARK) ===== */
+        .dark .surface-card{
+            background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+            border: 1px solid rgba(212,167,87,.14);
+            box-shadow: 0 18px 50px rgba(0,0,0,.45);
+        }
+        .dark .surface-card:hover{
+            border-color: rgba(212,167,87,.22);
+            box-shadow: 0 26px 70px rgba(0,0,0,.55);
+        }
+
+        /* ===== STICKY BAR (LIGHT) ===== */
+        .bar-shell{
+            background: rgba(246, 239, 228, .86); /* cream glass */
+            border: 1px solid rgba(212,167,87,.20);
+            box-shadow: 0 22px 60px rgba(20, 22, 26, .10);
+            backdrop-filter: blur(16px);
+        }
+        /* ===== STICKY BAR (DARK) ===== */
+        .dark .bar-shell{
+            background: rgba(21,21,21,.95);
+            border: 1px solid rgba(148,163,184,.18);
+            box-shadow: 0 25px 60px -15px rgba(0,0,0,.90);
+            backdrop-filter: blur(18px);
+        }
+    </style>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-20">
+
+        {{-- HERO (tetap sama) --}}
+        <section
+            class="relative min-h-[50vh] flex flex-col items-center justify-center overflow-hidden
+                   rounded-[2.25rem] border border-brand-borderSoft/50 shadow-xl mb-12
+                   bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell
+                   pb-36 pt-16">
+
+            <div class="absolute inset-0 z-0">
+                <img
+                    src="{{ $heroImg }}"
+                    alt="Background Gym"
+                    class="w-full h-full object-cover opacity-25 grayscale dark:opacity-40 dark:grayscale-0">
+
+                <div class="absolute inset-0
+                            bg-gradient-to-b
+                            from-brand-shell/85 via-brand-shell/70 to-brand-shell
+                            dark:from-brand-dark/90 dark:via-brand-dark/70 dark:to-brand-dark"></div>
             </div>
 
-            <div class="relative z-10 flex flex-col md:flex-row items-center justify-between p-8 md:p-10 gap-6">
-                <div class="space-y-4 max-w-lg">
-                    <span class="inline-block px-3 py-1 rounded-full bg-gold-500/15 text-gold-500 text-xs font-bold tracking-widest uppercase border border-gold-500/25">
-                        Official Store Member
+            <div class="relative z-10 container mx-auto px-6 text-center animate-slide-up">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full
+                            border border-gold-500/30
+                            bg-white/65 dark:bg-black/50
+                            backdrop-blur-md mb-5 shadow-lg">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold-400 opacity-75"></span>
+                        </span>
                     </span>
-                    <h2 class="text-3xl md:text-5xl font-display font-bold text-brand-white leading-tight">
-                        FUEL YOUR
-                        <br>
-                        <span class="text-transparent bg-clip-text bg-brand-gold">TRAINING.</span>
-                    </h2>
-                    <p class="text-brand-silver text-sm md:text-base">
-                        Dapatkan suplemen original dan gear berkualitas. Harga khusus dan stok prioritas untuk member aktif.
-                    </p>
+                    <span class="text-[9px] font-bold tracking-[0.25em] text-gold-600 dark:text-gold-500 uppercase font-heading">
+                        Official Marketplace
+                    </span>
                 </div>
 
-                <div class="hidden md:flex items-center justify-center text-gold-500/70">
-                    <i data-lucide="shopping-bag" class="w-32 h-32"></i>
+                <h1 class="text-4xl md:text-5xl lg:text-6xl font-display font-bold
+                           text-brand-nav dark:text-white
+                           leading-tight mb-4 drop-shadow-2xl">
+                    ELITE
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-gold-400 via-gold-500 to-gold-600">
+                        GEAR
+                    </span>
+                    <br>
+                    FOR ELITE
+                    <span class="italic text-brand-nav/35 dark:text-brand-silver/70 font-serif">
+                        PERFORMANCE
+                    </span>
+                </h1>
+
+                <p class="text-brand-nav/60 dark:text-brand-silver/90 text-sm md:text-base leading-relaxed max-w-xl mx-auto drop-shadow-md font-medium">
+                    Koleksi peralatan premium, suplemen teruji, dan apparel eksklusif untuk member BETA GYM.
+                </p>
+            </div>
+        </section>
+
+        {{-- STICKY FILTER BAR  --}}
+        <div class="sticky top-20 z-40 px-2 pb-8 transition-all duration-300">
+            <div class="-translate-y-24">
+            <div class="container mx-auto max-w-2xl">
+                <div class="bar-shell rounded-full p-1.5 flex items-center gap-2 relative ring-1 ring-black/5 dark:ring-white/10">
+
+                    <div class="pl-5 pr-2 text-brand-nav/45 dark:text-brand-silver">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+                        </svg>
+                    </div>
+
+                    <form action="{{ route('member.produk_gym.index') }}" method="GET" class="flex-grow min-w-0">
+                        @if($currentKat && $currentKat !== 'all')
+                            <input type="hidden" name="kategori" value="{{ $currentKat }}">
+                        @endif
+                        <input
+                            type="text"
+                            name="q"
+                            value="{{ $currentQ }}"
+                            class="w-full h-12 bg-transparent border-none
+                                   text-brand-nav dark:text-white
+                                   placeholder:text-brand-nav/35 dark:placeholder-brand-silver/40
+                                   text-sm font-medium focus:ring-0 px-0"
+                            placeholder="Cari produk..."
+                            autocomplete="off"
+                        >
+                    </form>
+
+                    <div class="w-[1px] h-8 bg-brand-borderSoft/45 dark:bg-brand-borderSoft/30 mx-1"></div>
+
+                    <div class="relative" x-data="{ open: false }">
+                        <button
+                            @click="open = !open"
+                            @click.outside="open = false"
+                            class="w-12 h-12 flex items-center justify-center rounded-full transition-all cursor-pointer relative group"
+                            :class="open
+                                ? 'bg-gold-500 text-brand-nav'
+                                : 'bg-black/5 text-brand-nav/55 hover:bg-black/10 hover:text-brand-nav dark:bg-brand-surface-200/20 dark:text-brand-silver dark:hover:bg-brand-surface-200/40 dark:hover:text-white'">
+
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+                            </svg>
+
+                            @if($currentKat && $currentKat !== 'all')
+                                <span class="absolute top-3 right-3 w-2 h-2 bg-gold-500 rounded-full border border-white dark:border-brand-sidebar" x-show="!open"></span>
+                            @endif
+                        </button>
+
+                        <div
+                            x-show="open"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+                            x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                            x-transition:leave-end="opacity-0 translate-y-2 scale-95"
+                            class="absolute right-0 top-full mt-4 w-60
+                                   bg-brand-card dark:bg-[#1a1a1a]
+                                   border border-brand-borderSoft/45 dark:border-brand-borderSoft/30
+                                   rounded-2xl shadow-2xl overflow-hidden py-2 z-[60]
+                                   ring-1 ring-black/5 dark:ring-white/10"
+                            style="display: none;">
+
+                            <div class="px-4 py-3 border-b border-brand-borderSoft/30 dark:border-brand-borderSoft/10 bg-black/2 dark:bg-brand-surface-200/5 mb-1">
+                                <p class="text-[10px] font-bold text-brand-nav/60 dark:text-brand-silver uppercase tracking-widest">
+                                    Filter Kategori
+                                </p>
+                            </div>
+
+                            <div class="max-h-64 overflow-y-auto custom-scrollbar p-1">
+                                <a
+                                    href="{{ route('member.produk_gym.index', ['q' => $currentQ]) }}"
+                                    class="flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-lg transition-colors
+                                           {{ !$currentKat || $currentKat == 'all'
+                                                ? 'bg-gold-500 text-brand-nav'
+                                                : 'text-brand-nav hover:bg-black/5 dark:text-brand-white dark:hover:bg-brand-surface-200/20' }}">
+                                    <span>Semua Kategori</span>
+                                    @if(!$currentKat || $currentKat == 'all')
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                    @endif
+                                </a>
+
+                                @foreach($kategoriOptions as $cat)
+                                    <a
+                                        href="{{ route('member.produk_gym.index', ['kategori' => $cat, 'q' => $currentQ]) }}"
+                                        class="flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-lg transition-colors
+                                               {{ $currentKat == $cat
+                                                    ? 'bg-gold-500 text-brand-nav'
+                                                    : 'text-brand-nav hover:bg-black/5 dark:text-brand-white dark:hover:bg-brand-surface-200/20' }}">
+                                        <span>{{ $cat }}</span>
+                                        @if($currentKat == $cat)
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12"/>
+                                            </svg>
+                                        @endif
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    <a
+                        href="{{ route('member.produk_gym.cart') }}"
+                        class="relative flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full
+                               bg-gold-500 hover:bg-gold-400 text-brand-nav transition-all
+                               shadow-lg hover:shadow-gold-glow group">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="group-hover:-rotate-6 transition-transform">
+                            <circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+                        </svg>
+
+                        @if($cartCount > 0)
+                            <span class="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] w-5 h-5 flex items-center justify-center rounded-full
+                                         border-2 border-white dark:border-brand-sidebar shadow-sm font-bold animate-bounce-slow">
+                                {{ $cartCount }}
+                            </span>
+                        @endif
+                    </a>
+
                 </div>
+
+                @if($currentQ || ($currentKat && $currentKat !== 'all'))
+                    <div class="flex justify-center gap-2 mt-3 animate-fade-in-up">
+                        <span class="text-xs text-brand-nav/45 dark:text-brand-silver py-1 drop-shadow-sm">Filter:</span>
+
+                        @if($currentKat && $currentKat !== 'all')
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold text-brand-nav bg-gold-500 shadow-lg">
+                                {{ $currentKat }}
+                            </span>
+                        @endif
+
+                        @if($currentQ)
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold
+                                         text-brand-nav bg-white/60 border border-brand-borderSoft/45 backdrop-blur-md
+                                         dark:text-white dark:bg-brand-black/50 dark:border-brand-borderSoft/30">
+                                "{{ $currentQ }}"
+                            </span>
+                        @endif
+
+                        <a
+                            href="{{ route('member.produk_gym.index') }}"
+                            class="text-[10px] font-bold text-red-500 hover:text-red-400 py-0.5 underline decoration-red-500/40 ml-1 drop-shadow-sm">
+                            Reset
+                        </a>
+                    </div>
+                @endif
+            </div>
             </div>
         </div>
 
-        {{-- ========================================================= --}}
-        {{-- 2. SEARCH + KATEGORI + SORT --}}
-        {{-- ========================================================= --}}
-        <div
-            x-data="{
-                activeKategori: '{{ $kategori }}',
-                showSort: false,
-                applyKategori(k) {
-                    this.activeKategori = k;
-                    const form = document.getElementById('produkFilterForm');
-                    if (form) form.submit();
-                }
-            }"
-            class="sticky top-20 z-30 bg-brand-bg/95 backdrop-blur-sm py-4 border-b border-brand-borderSoft/40"
-        >
-            <form
-                id="produkFilterForm"
-                action="{{ route('member.produk_gym.index') }}"
-                method="GET"
-                class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
-            >
-                <input type="hidden" name="kategori" x-model="activeKategori">
+        {{-- CATALOG GRID --}}
+        <section class="pb-32 relative z-10 pt-8">
+            <div class="container mx-auto px-6">
 
-                {{-- SEARCH --}}
-                <div class="relative w-full lg:max-w-xl flex-1">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i data-lucide="search" class="w-5 h-5 text-brand-textSoft"></i>
+                <div class="flex items-end justify-between mb-8 pb-4 border-b border-brand-borderSoft/35 dark:border-brand-borderSoft/10">
+                    <div>
+                        <h3 class="text-xl font-display font-bold text-brand-nav dark:text-brand-white">KATALOG PRODUK</h3>
+                        <p class="text-xs text-brand-nav/60 dark:text-brand-silver mt-1">Stok terupdate secara real-time.</p>
                     </div>
-                    <input
-                        type="text"
-                        name="search"
-                        value="{{ $search }}"
-                        placeholder="Cari suplemen, whey, atau aksesoris…"
-                        class="block w-full pl-10 pr-4 py-3 bg-brand-card border border-brand-borderSoft rounded-2xl
-                               text-sm text-brand-text placeholder-brand-textSoft/60
-                               focus:ring-2 focus:ring-gold-500 focus:border-transparent
-                               shadow-sm transition-all"
-                    >
+                    <div class="text-right">
+                        <p class="text-[10px] font-bold text-brand-nav/45 dark:text-brand-silver uppercase tracking-widest">TOTAL</p>
+                        <p class="text-xl font-display font-bold text-brand-nav dark:text-brand-white leading-none">
+                            {{ $totalItems }}
+                            <span class="text-sm font-sans text-brand-nav/45 dark:text-brand-silver font-normal">ITEM</span>
+                        </p>
+                    </div>
                 </div>
 
-                {{-- KATEGORI + SORT --}}
-                <div class="w-full lg:w-auto flex flex-wrap items-center gap-3 justify-between lg:justify-end">
-                    {{-- Kategori pills --}}
-                    <div class="flex flex-wrap items-center gap-2">
-                        <button
-                            type="button"
-                            @click="applyKategori('all')"
-                            class="px-5 py-2 rounded-full text-xs font-bold border transition-all duration-200"
-                            :class="activeKategori === 'all'
-                                ? 'bg-brand-nav text-gold-500 border-brand-nav'
-                                : 'bg-brand-card text-brand-textSoft border-brand-borderSoft hover:border-gold-500 hover:text-brand-text'"
-                        >
-                            Semua
-                        </button>
+                @if($pageCount === 0)
+                    <div class="py-32 text-center rounded-[2rem]
+                                bg-brand-card/70 dark:bg-brand-sidebar/20
+                                border border-dashed border-brand-borderSoft/35 dark:border-brand-borderSoft/20
+                                backdrop-blur-sm">
+                        <div class="w-24 h-24 bg-white/60 dark:bg-brand-surface-200/10 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-brand-borderSoft/30">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-brand-nav/30 dark:text-brand-silver/30">
+                                <path d="m21 21-4.3-4.3"/><path d="M11 8h.01"/><circle cx="11" cy="11" r="8"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-2xl font-bold font-display text-brand-nav dark:text-brand-white mb-2">Produk Tidak Ditemukan</h3>
+                        <p class="text-brand-nav/60 dark:text-brand-silver text-sm max-w-md mx-auto mb-8 leading-relaxed">
+                            Kami tidak dapat menemukan produk yang sesuai dengan kriteria Anda. <br> Coba gunakan kata kunci yang lebih umum.
+                        </p>
+                        <a href="{{ route('member.produk_gym.index') }}"
+                           class="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-brand-nav text-white hover:bg-gold-500 hover:text-brand-nav transition-all font-bold text-sm shadow-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+                            </svg>
+                            Reset Pencarian
+                        </a>
+                    </div>
+                @else
 
-                        @foreach($kategoriOptions as $opt)
-                            <button
-                                type="button"
-                                @click="applyKategori('{{ $opt }}')"
-                                class="px-5 py-2 rounded-full text-xs font-bold border transition-all duration-200"
-                                :class="activeKategori === '{{ $opt }}'
-                                    ? 'bg-brand-nav text-gold-500 border-brand-nav'
-                                    : 'bg-brand-card text-brand-textSoft border-brand-borderSoft hover:border-gold-500 hover:text-brand-text'"
-                            >
-                                {{ ucfirst($opt) }}
-                            </button>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 lg:gap-8">
+                        @foreach($products as $p)
+                            @php
+                                $slug = $p->id . '-' . Str::slug($p->nama ?? 'produk');
+                                $imageUrl = $imgUrl($p->foto ?? '', $p->nama ?? 'PRODUK');
+                                $ready = ((int)($p->stok ?? 0)) > 0;
+                            @endphp
+
+                            <div class="group rounded-3xl overflow-hidden surface-card flex flex-col
+                                        hover:shadow-[0_10px_30px_-5px_rgba(234,179,8,0.15)]">
+
+                                <a href="{{ route('member.produk_gym.show', $slug) }}" class="relative w-full aspect-[3/4] bg-black/5 dark:bg-[#0b0b0b] block overflow-hidden">
+                                    @if(!empty($p->kategori))
+                                        <div class="absolute top-3 left-3 z-20">
+                                            <span class="px-2 py-1
+                                                         bg-white/70 text-brand-nav border border-brand-borderSoft/35
+                                                         dark:bg-black/60 dark:text-white dark:border-white/10
+                                                         backdrop-blur text-[9px] font-bold uppercase tracking-wider rounded shadow-sm">
+                                                {{ $p->kategori }}
+                                            </span>
+                                        </div>
+                                    @endif
+
+                                    <img src="{{ $imageUrl }}"
+                                         alt="{{ $p->nama }}"
+                                         class="w-full h-full object-cover object-center
+                                                brightness-[0.98] dark:brightness-95
+                                                group-hover:brightness-105 group-hover:scale-[1.06]
+                                                transition duration-700"
+                                         loading="lazy">
+
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/20 via-black/0 to-transparent dark:from-black/85 dark:via-black/20"></div>
+                                </a>
+
+                                <div class="p-4 flex flex-col flex-grow border-t border-brand-borderSoft/25 dark:border-brand-borderSoft/10 relative z-10">
+                                    <a href="{{ route('member.produk_gym.show', $slug) }}" class="block mb-2">
+                                        <h3 class="text-sm font-bold text-brand-nav dark:text-brand-white leading-snug line-clamp-2 h-[2.5rem]
+                                                   group-hover:text-gold-600 dark:group-hover:text-gold-500 transition-colors"
+                                            title="{{ $p->nama }}">
+                                            {{ $p->nama }}
+                                        </h3>
+                                    </a>
+
+                                    <div class="mt-auto pt-3 border-t border-brand-borderSoft/25 dark:border-brand-borderSoft/10">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <span class="text-base font-display font-bold text-brand-nav dark:text-brand-white">
+                                                Rp {{ number_format((int)($p->harga ?? 0), 0, ',', '.') }}
+                                            </span>
+                                        </div>
+
+                                        <div class="flex items-center justify-between">
+                                            @if($ready)
+                                                <span class="text-[10px] font-bold text-success flex items-center gap-1 bg-success/10 px-2 py-0.5 rounded">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-success"></span> Stok: {{ (int)($p->stok ?? 0) }}
+                                                </span>
+                                            @else
+                                                <span class="text-[10px] font-bold text-red-500 flex items-center gap-1 bg-red-500/10 px-2 py-0.5 rounded">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Habis
+                                                </span>
+                                            @endif
+
+                                            <a href="{{ route('member.produk_gym.show', $slug) }}" class="text-brand-nav/45 hover:text-gold-600 dark:text-brand-silver dark:hover:text-gold-500 transition-colors">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+                                                </svg>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
                         @endforeach
                     </div>
 
-                    {{-- Sort --}}
-                    <div class="relative">
-                        <button
-                            type="button"
-                            @click="showSort = !showSort"
-                            @click.outside="showSort = false"
-                            class="flex items-center gap-2 px-4 py-3 bg-brand-card border border-brand-borderSoft rounded-2xl
-                                   text-sm font-medium text-brand-text hover:bg-brand-surface-50 transition-colors"
-                        >
-                            <i data-lucide="arrow-up-down" class="w-4 h-4 text-gold-600"></i>
-                            <span>Urutkan</span>
-                        </button>
-
-                        <div
-                            x-show="showSort"
-                            x-cloak
-                            x-transition:enter="transition ease-out duration-100"
-                            x-transition:enter-start="opacity-0 scale-95"
-                            x-transition:enter-end="opacity-100 scale-100"
-                            class="absolute right-0 mt-2 w-48 bg-brand-card rounded-xl shadow-card-strong border border-brand-borderSoft z-40 overflow-hidden"
-                        >
-                            @php
-                                $sortOptions = [
-                                    'popular'   => 'Paling Populer',
-                                    'newest'    => 'Terbaru',
-                                    'price_low' => 'Harga Terendah',
-                                    'price_high'=> 'Harga Tertinggi',
-                                ];
-                            @endphp
-
-                            @foreach($sortOptions as $key => $label)
-                                <button
-                                    type="submit"
-                                    name="sort"
-                                    value="{{ $key }}"
-                                    class="w-full text-left px-4 py-3 text-xs font-medium transition-colors
-                                           {{ $sort === $key ? 'bg-brand-surface-50 text-gold-600' : 'text-brand-text hover:bg-brand-surface-100' }}"
-                                >
-                                    {{ $label }}
-                                </button>
-                            @endforeach
+                    @if(method_exists($products, 'hasPages') && $products->hasPages())
+                        <div class="mt-14">
+                            {{ $products->onEachSide(1)->links() }}
                         </div>
-                    </div>
-                </div>
-            </form>
-        </div>
+                    @endif
 
-        {{-- FLASH MESSAGE --}}
-        @if (session('success'))
-            <x-ui.toast type="success" class="mt-2">
-                {{ session('success') }}
-            </x-ui.toast>
-        @endif
-
-        @if (session('error'))
-            <x-ui.toast type="danger" class="mt-2">
-                {{ session('error') }}
-            </x-ui.toast>
-        @endif
-
-        {{-- ========================================================= --}}
-        {{-- 3. CONTENT --}}
-        {{-- ========================================================= --}}
-        @if($produks->isEmpty())
-            {{-- EMPTY STATE --}}
-            <div class="flex flex-col items-center justify-center py-20 text-center">
-                <div class="w-24 h-24 bg-brand-surface-100 rounded-full flex items-center justify-center mb-6 border border-brand-borderSoft">
-                    <i data-lucide="search-x" class="w-10 h-10 text-brand-textSoft"></i>
-                </div>
-                <h3 class="text-xl font-bold text-brand-text" style="text-shadow:none;">
-                    Produk Tidak Ditemukan
-                </h3>
-                <p class="text-brand-textSoft mt-2 max-w-md mx-auto">
-                    Coba ubah kata kunci atau pilih kategori yang berbeda.
-                </p>
-                <a
-                    href="{{ route('member.produk_gym.index') }}"
-                    class="mt-6 px-6 py-2 bg-brand-nav text-gold-500 text-sm font-bold rounded-full hover:bg-brand-sidebar transition-colors"
-                >
-                    Reset Filter
-                </a>
-            </div>
-        @else
-
-            {{-- A. PALING DICARI (SLIDER) – hanya jika tanpa search & kategori = all --}}
-            @php
-                $featuredProducts = $produks instanceof \Illuminate\Contracts\Pagination\Paginator
-                    ? $produks->take(5)
-                    : $produks->take(5);
-            @endphp
-
-            @if($featuredProducts->isNotEmpty() && $search === '' && $kategori === 'all')
-                <section
-                    x-data="{
-                        scrollNext() { const c = this.$refs.track; c.scrollBy({left: c.clientWidth*0.7, behavior:'smooth'}); },
-                        scrollPrev() { const c = this.$refs.track; c.scrollBy({left: -c.clientWidth*0.7, behavior:'smooth'}); },
-                    }"
-                    class="space-y-4"
-                >
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="flame" class="w-5 h-5 text-accent-500"></i>
-                        <h3 class="text-lg font-bold text-brand-text uppercase tracking-wide"
-                            style="text-shadow:none;">
-                            Paling Dicari
-                        </h3>
-                    </div>
-
-                    <div class="relative">
-                        <div
-                            x-ref="track"
-                            class="flex gap-4 overflow-x-auto pb-3 scroll-smooth custom-scrollbar"
-                        >
-                            @foreach($featuredProducts as $produk)
-                                @php
-                                    $imageUrl = $produk->foto
-                                        ? Storage::url($produk->foto)
-                                        : 'https://placehold.co/300x300/F5E6D6/A67C39?text=BETA+GYM';
-                                @endphp
-
-                                <article
-                                    class="min-w-[180px] md:min-w-[220px] bg-brand-card border border-brand-borderSoft rounded-2xl overflow-hidden
-                                           hover:border-gold-500 hover:shadow-md transition-all duration-200 flex flex-col cursor-pointer"
-                                    onclick="window.bukaModalProduk && window.bukaModalProduk({{ Js::from($produk->nama) }}, {{ $produk->harga }}, {{ Js::from($imageUrl) }})"
-                                >
-                                    <div class="relative aspect-[4/3] overflow-hidden bg-brand-surface-50">
-                                        <img
-                                            src="{{ $imageUrl }}"
-                                            alt="{{ $produk->nama }}"
-                                            class="w-full h-full object-cover transition-transform duration-500"
-                                            loading="lazy"
-                                        >
-                                        <span class="absolute top-2 right-2 bg-accent-500 text-white text-[10px] font-bold px-2 py-1 rounded-md">
-                                            HOT
-                                        </span>
-                                    </div>
-                                    <div class="p-3 space-y-1">
-                                        <h4 class="text-xs md:text-sm font-semibold text-brand-text line-clamp-1">
-                                            {{ $produk->nama }}
-                                        </h4>
-                                        <p class="text-sm md:text-base font-bold text-accent-600"
-                                           style="text-shadow:none;">
-                                            Rp{{ number_format($produk->harga, 0, ',', '.') }}
-                                        </p>
-                                    </div>
-                                </article>
-                            @endforeach
-                        </div>
-
-                        {{-- Arrows overlay (desktop & mobile) --}}
-                        <div class="pointer-events-none absolute inset-y-0 left-0 right-0 flex items-center justify-between">
-                            <button
-                                type="button"
-                                @click="scrollPrev()"
-                                class="pointer-events-auto ml-1 md:ml-2 w-8 h-8 md:w-9 md:h-9 rounded-full bg-brand-bg/90 border border-brand-borderSoft flex items-center justify-center text-brand-textSoft hover:bg-brand-surface-100 hover:text-brand-text transition-colors"
-                            >
-                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
-                            </button>
-                            <button
-                                type="button"
-                                @click="scrollNext()"
-                                class="pointer-events-auto mr-1 md:mr-2 w-8 h-8 md:w-9 md:h-9 rounded-full bg-brand-bg/90 border border-brand-borderSoft flex items-center justify-center text-brand-textSoft hover:bg-brand-surface-100 hover:text-brand-text transition-colors"
-                            >
-                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
-                            </button>
-                        </div>
-                    </div>
-                </section>
-            @endif
-
-            {{-- B. GRID KATALOG LENGKAP --}}
-            <section class="space-y-4">
-                <div class="flex items-center gap-2">
-                    <h3 class="text-lg font-bold text-brand-text uppercase tracking-wide"
-                        style="text-shadow:none;">
-                        {{ $kategori === 'all' ? 'Katalog Lengkap' : 'Kategori: ' . ucfirst($kategori) }}
-                    </h3>
-                    <span class="text-xs text-brand-textSoft bg-brand-surface-100 px-2 py-0.5 rounded-md font-bold border border-brand-borderSoft">
-                        {{ $produks->total() ?? $produks->count() }} Item
-                    </span>
-                </div>
-
-                {{-- Grid: semua card tinggi seragam --}}
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-                    @foreach ($produks as $produk)
-                        @php
-                            $imageUrl     = $produk->foto ? Storage::url($produk->foto) : 'https://placehold.co/400x400/F5E6D6/A67C39?text=BETA+GYM';
-                            $isOutOfStock = $produk->stok <= 0;
-                            $isLowStock   = $produk->stok > 0 && $produk->stok <= 5;
-                        @endphp
-
-                        <article
-                            class="group relative bg-brand-card border border-brand-borderSoft rounded-2xl overflow-hidden
-                                   hover:shadow-card-strong hover:border-gold-500/60 transition-all duration-300 flex flex-col h-full"
-                        >
-                            {{-- IMAGE: ukuran fix --}}
-                            <div class="relative w-full aspect-[3/4] overflow-hidden bg-brand-surface-50">
-                                <img
-                                    src="{{ $imageUrl }}"
-                                    alt="{{ $produk->nama }}"
-                                    class="w-full h-full object-cover transition-transform duration-500 {{ $isOutOfStock ? 'grayscale opacity-70' : 'group-hover:scale-105' }}"
-                                    loading="lazy"
-                                >
-
-                                {{-- Badges stok --}}
-                                <div class="absolute top-2 left-2 flex flex-col gap-1">
-                                    @if($isOutOfStock)
-                                        <span class="px-2 py-1 bg-brand-nav/90 text-brand-white text-[10px] font-bold uppercase rounded-md">
-                                            Habis
-                                        </span>
-                                    @elseif($isLowStock)
-                                        <span class="px-2 py-1 bg-accent-500 text-white text-[10px] font-bold uppercase rounded-md">
-                                            Sisa {{ $produk->stok }}
-                                        </span>
-                                    @endif
-                                </div>
-
-                                {{-- Badge kategori (di gambar, bukan di atas nama) --}}
-                                <span class="absolute top-2 right-2 px-2 py-1 bg-brand-bg/90 text-brand-text text-[10px] font-bold rounded-md border border-brand-borderSoft">
-                                    {{ strtoupper($produk->kategori) }}
-                                </span>
-                            </div>
-
-                            {{-- CONTENT --}}
-                            <div class="p-3 md:p-4 flex flex-col flex-1">
-                                {{-- kategori di atas nama DIHAPUS sesuai permintaan --}}
-
-                                <h4 class="text-sm font-semibold text-brand-text leading-snug line-clamp-2 mb-2 min-h-[2.5em]">
-                                    {{ $produk->nama }}
-                                </h4>
-
-                                <div class="mt-auto pt-2 border-t border-brand-borderSoft/40">
-                                    {{-- Harga (tanpa bayangan / hover) --}}
-                                    <p class="text-base md:text-lg font-bold text-brand-text"
-                                       style="text-shadow:none;">
-                                        Rp{{ number_format($produk->harga, 0, ',', '.') }}
-                                    </p>
-
-                                    <div class="flex items-center gap-1 mt-1 opacity-80">
-                                        <i data-lucide="star" class="w-3 h-3 text-gold-500 fill-gold-500"></i>
-                                        <span class="text-[10px] text-brand-textSoft">4,9</span>
-                                        <span class="text-[10px] text-brand-borderStrong mx-1">•</span>
-                                        <span class="text-[10px] text-brand-textSoft">Terjual 10+</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {{-- ACTION BUTTON: hover profesional --}}
-                            <div class="p-3 md:p-4 pt-0">
-                                <button
-                                    type="button"
-                                    onclick="window.bukaModalProduk && window.bukaModalProduk({{ Js::from($produk->nama) }}, {{ $produk->harga }}, {{ Js::from($imageUrl) }})"
-                                    @disabled($isOutOfStock)
-                                    class="w-full py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2
-                                           focus:outline-none transition-all duration-200
-                                           {{ $isOutOfStock
-                                                ? 'bg-brand-surface-200 text-brand-textSoft cursor-not-allowed'
-                                                : 'bg-red-600 text-white shadow-sm hover:bg-red-700 hover:shadow-lg hover:shadow-red-500/20 focus:ring-2 focus:ring-red-500/40 active:scale-95' }}"
-                                >
-                                    <i data-lucide="shopping-cart" class="w-3.5 h-3.5"></i>
-                                    {{ $isOutOfStock ? 'Stok Habis' : '+ Keranjang' }}
-                                </button>
-                            </div>
-                        </article>
-                    @endforeach
-                </div>
-
-                {{-- PAGINATION --}}
-                @if(method_exists($produks, 'links'))
-                    <div class="mt-8">
-                        {{ $produks->appends(['search' => $search, 'kategori' => $kategori, 'sort' => $sort])->links() }}
-                    </div>
                 @endif
-            </section>
-        @endif
+            </div>
+        </section>
+
     </div>
 
-    {{-- MODAL KONFIRMASI WHATSAPP --}}
-    @include('member.produk_gym.modals.whatsapp_modal', [
-        'adminNumber'      => $adminNumber,
-        'memberIdentifier' => $memberIdentifier,
-    ])
-
-    {{-- CSS tambahan --}}
-    <style>
-        /* Hilangkan scrollbar horizontal tapi tetap bisa scroll untuk slider */
-        .custom-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-        .custom-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-    </style>
 </x-layouts.member>

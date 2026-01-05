@@ -14,7 +14,7 @@ class IzinLatihan extends Model
     protected $table = 'izin_latihan';
 
     protected $fillable = [
-        'member_id',             // ⬅️ penting
+        'member_id',
         'tanggal_mulai',
         'tanggal_selesai',
         'jumlah_hari',
@@ -32,13 +32,12 @@ class IzinLatihan extends Model
         'tanggal_persetujuan' => 'datetime',
     ];
 
-    // Relasi: izin dimiliki oleh 1 member via member_id
     public function member()
     {
-        return $this->belongsTo(Member::class, 'member_id', 'id');
+        return $this->belongsTo(Member::class, 'member_id', 'id')
+            ->withTrashed();
     }
 
-    // Accessor: Hitung jumlah hari otomatis
     public function getDurasiAttribute()
     {
         if (!$this->tanggal_mulai || !$this->tanggal_selesai) {

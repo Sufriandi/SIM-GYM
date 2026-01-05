@@ -167,225 +167,270 @@
             </div>
         </section>
 
-        {{-- DAFTAR KEHADIRAN --}}
-        <section class="bg-brand-card rounded-3xl border border-brand-borderSoft shadow-card-soft overflow-visible">
-            {{-- HEADER + SEARCH + FILTER --}}
-            <div class="px-6 pt-6 pb-4 border-b border-brand-borderSoft/60 hidden-print">
-                {{-- HEADER TITLE + TOTAL --}}
-                <div class="flex items-start justify-between gap-4 mb-4">
-                    <div>
-                        <h3 class="text-base font-heading font-bold text-brand-text">
-                            Daftar Kehadiran
-                        </h3>
-                        <p class="text-[11px] text-brand-textSoft mt-0.5">
-                            Menampilkan kehadiran member dalam periode absensi aktif dengan filter yang sudah diterapkan.
-                        </p>
+        {{-- ========================================================= --}}
+{{-- DAFTAR KEHADIRAN 1 BULAN PENUH --}}
+{{-- ========================================================= --}}
+@php
+    // Periode tampilan tabel: 1 bulan penuh.
+    // Jika user memilih filter tanggal, bulan yang dipakai mengikuti bulan dari tanggal itu.
+    $baseDate   = request('tanggal') ? Carbon::parse(request('tanggal')) : now();
+    $monthStart = $baseDate->copy()->startOfMonth();
+    $monthEnd   = $baseDate->copy()->endOfMonth();
+
+    // Apakah server memang punya data di halaman ini
+    $hasServerData = $kehadiran->count() > 0;
+@endphp
+
+<section class="bg-brand-card rounded-3xl border border-brand-borderSoft shadow-card-soft overflow-visible">
+    {{-- HEADER + SEARCH + FILTER --}}
+    <div class="px-6 pt-6 pb-4 border-b border-brand-borderSoft/60 hidden-print">
+        {{-- HEADER TITLE + TOTAL --}}
+        <div class="flex items-start justify-between gap-4 mb-4">
+            <div>
+                <h3 class="text-base font-heading font-bold text-brand-text">
+                    Daftar Kehadiran
+                </h3>
+                <p class="text-[11px] text-brand-textSoft mt-0.5">
+                    Menampilkan data 1 bulan penuh:
+                    <span class="font-semibold text-brand-text">
+                        {{ $monthStart->format('d M Y') }} – {{ $monthEnd->format('d M Y') }}
+                    </span>
+                </p>
+            </div>
+
+            <div class="text-[11px] text-brand-textSoft text-right">
+                <p>
+                    Total:
+                    <span class="font-semibold text-brand-text">
+                        {{ method_exists($kehadiran, 'total') ? $kehadiran->total() : $kehadiran->count() }} data
+                    </span>
+                </p>
+            </div>
+        </div>
+
+        {{-- SEARCH + FILTER BAR --}}
+        <div class="relative max-w-xl">
+            <form action="{{ route('admin.absensi.index') }}" method="GET">
+                {{-- mode tetap dibawa (untuk kartu QR), meski tabel ini tidak mengikuti mode --}}
+                <input type="hidden" name="mode" value="{{ $currentMode }}">
+
+                <div class="flex items-center w-full rounded-full border border-brand-borderSoft bg-brand-card shadow-sm h-[46px]">
+                    <div class="pl-4 text-brand-textSoft">
+                        <i data-lucide="search" class="w-4 h-4"></i>
                     </div>
-                    <div class="text-[11px] text-brand-textSoft text-right">
-                        <p>
-                            Total:
-                            <span class="font-semibold text-brand-text">
-                                {{ $kehadiran->total() }} data
-                            </span>
-                        </p>
-                    </div>
+
+                    {{-- SEARCH FRONTEND (tanpa name → tidak ikut ke query string) --}}
+                    <input
+                        type="text"
+                        x-model="searchTerm"
+                        @input="/* reset counter realtime */"
+                        placeholder="Cari nama member..."
+                        class="w-full bg-transparent border-none text-sm text-brand-text placeholder:text-brand-textSoft/60 focus:ring-0 py-2 pl-3 pr-2 rounded-l-full"
+                        @keydown.enter.prevent
+                    >
+
+                    <div class="h-6 w-px bg-brand-borderSoft mx-1"></div>
+
+                    {{-- BUTTON FILTER --}}
+                    <button
+                        type="button"
+                        @click="showFilter = !showFilter"
+                        class="flex items-center gap-2 px-5 py-2 text-sm font-medium text-brand-textSoft hover:text-brand-text mr-1 rounded-full hover:bg-brand-surface-50"
+                    >
+                        <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Filter</span>
+                    </button>
                 </div>
+                
 
-                {{-- SEARCH + FILTER BAR --}}
-                <div class="relative max-w-xl">
-                    <form action="{{ route('admin.absensi.index') }}" method="GET">
-                        {{-- mode tetap dibawa untuk filter tanggal & sort --}}
-                        <input type="hidden" name="mode" value="{{ $currentMode }}">
-
-                        <div class="flex items-center w-full rounded-full border border-brand-borderSoft bg-brand-card shadow-sm h-[46px]">
-                            <div class="pl-4 text-brand-textSoft">
-                                <i data-lucide="search" class="w-4 h-4"></i>
-                            </div>
-
-                            {{-- SEARCH FRONTEND (tanpa name → tidak ikut ke query string) --}}
-                            <input
-                                type="text"
-                                x-model="searchTerm"
-                                @input="visibleCount = 0"
-                                placeholder="Cari nama member..."
-                                class="w-full bg-transparent border-none text-sm text-brand-text placeholder:text-brand-textSoft/60 focus:ring-0 py-2 pl-3 pr-2 rounded-l-full"
-                                @keydown.enter.prevent
+                {{-- FILTER DROPDOWN --}}
+                <div
+                    x-show="showFilter"
+                    x-cloak
+                    @click.outside="showFilter = false"
+                    @keydown.escape.window="showFilter = false"
+                    class="absolute z-30 mt-3 left-0 w-full bg-brand-card border border-brand-borderSoft rounded-2xl shadow-xl p-5"
+                >
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center pb-2 border-b border-brand-borderSoft/50">
+                            <h4 class="text-sm font-semibold text-brand-text">Filter & Urutkan</h4>
+                            <a
+                                href="{{ route('admin.absensi.index', ['mode' => $currentMode]) }}"
+                                class="text-xs text-danger hover:underline"
                             >
-
-                            <div class="h-6 w-px bg-brand-borderSoft mx-1"></div>
-
-                            {{-- BUTTON FILTER --}}
-                            <button
-                                type="button"
-                                @click="showFilter = !showFilter"
-                                class="flex items-center gap-2 px-5 py-2 text-sm font-medium text-brand-textSoft hover:text-brand-text mr-1 rounded-full hover:bg-brand-surface-50"
-                            >
-                                <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
-                                <span class="hidden sm:inline">Filter</span>
-                            </button>
+                                Reset
+                            </a>
                         </div>
+                        
 
-                        {{-- FILTER DROPDOWN --}}
-                        <div
-                            x-show="showFilter"
-                            x-cloak
-                            @click.outside="showFilter = false"
-                            @keydown.escape.window="showFilter = false"
-                            class="absolute z-30 mt-3 left-0 w-full bg-brand-card border border-brand-borderSoft rounded-2xl shadow-xl p-5"
-                        >
-                            <div class="space-y-4">
-                                <div class="flex justify-between items-center pb-2 border-b border-brand-borderSoft/50">
-                                    <h4 class="text-sm font-semibold text-brand-text">Filter & Urutkan</h4>
-                                    <a
-                                        href="{{ route('admin.absensi.index', ['mode' => $currentMode]) }}"
-                                        class="text-xs text-danger hover:underline"
-                                    >
-                                        Reset
-                                    </a>
-                                </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {{-- FILTER TANGGAL (mulai dari) --}}
+<div>
+    <label class="block text-[10px] font-bold uppercase text-brand-textSoft mb-1">
+        Mulai dari tanggal (opsional)
+    </label>
+    <input
+        type="date"
+        name="tanggal"
+        value="{{ request('tanggal') }}"
+        class="w-full rounded-lg border bg-brand-shell text-xs text-brand-text px-3 py-2 border-brand-borderSoft
+               focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
+    >
+    <p class="text-[10px] text-brand-textSoft mt-1">
+        Jika diisi, data ditampilkan dari tanggal ini sampai akhir bulan yang dipilih.
+    </p>
+</div>
 
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {{-- FILTER TANGGAL --}}
-                                    <div>
-                                        <label class="block text-[10px] font-bold uppercase text-brand-textSoft mb-1">
-                                            Tanggal Kehadiran
-                                        </label>
-                                        <input
-                                            type="date"
-                                            name="tanggal"
-                                            value="{{ request('tanggal') }}"
-                                            class="w-full rounded-lg border bg-brand-shell text-xs text-brand-text px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
-                                        >
-                                        <p class="text-[10px] text-brand-textSoft mt-1">
-                                            Kosongkan jika ingin menampilkan semua tanggal dalam periode aktif.
-                                        </p>
-                                    </div>
+                            {{-- FILTER BULAN (termasuk tahun) --}}
+<div>
+    <label class="block text-[10px] font-bold uppercase text-brand-textSoft mb-1">
+        Bulan yang ditampilkan
+    </label>
+    <input
+        type="month"
+        name="bulan"
+        value="{{ request('bulan', $monthStart->format('Y-m')) }}"
+        class="w-full rounded-lg border bg-brand-shell text-xs text-brand-text px-3 py-2 border-brand-borderSoft
+               focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
+    >
+    <p class="text-[10px] text-brand-textSoft mt-1">
+        Pilih bulan & tahun (mis. 2025-12).
+    </p>
+</div>
 
-                                    {{-- URUTKAN BERDASARKAN --}}
-                                    <div>
-                                        <label class="block text-[10px] font-bold uppercase text-brand-textSoft mb-1">
-                                            Urutkan berdasarkan
-                                        </label>
-                                        <select
-                                            name="sort"
-                                            class="w-full rounded-lg border bg-brand-shell text-xs text-brand-text px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
-                                        >
-                                            @foreach ($sortOptions as $key => $label)
-                                                <option value="{{ $key }}" {{ $currentSort === $key ? 'selected' : '' }}>
-                                                    {{ $label }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                        <p class="text-[10px] text-brand-textSoft mt-1">
-                                            Atur urutan data berdasarkan waktu kehadiran.
-                                        </p>
-                                    </div>
-                                </div>
+                            
 
-                                <button
-                                    type="submit"
-                                    class="w-full bg-primary-dark text-white text-sm font-medium py-2 rounded-lg"
+                            {{-- URUTKAN BERDASARKAN --}}
+                            <div>
+                                <label class="block text-[10px] font-bold uppercase text-brand-textSoft mb-1">
+                                    Urutkan berdasarkan
+                                </label>
+                                <select
+                                    name="sort"
+                                    class="w-full rounded-lg border bg-brand-shell text-xs text-brand-text px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-2 focus:ring-primary-dark focus:border-transparent"
                                 >
-                                    Terapkan
-                                </button>
+                                    @foreach ($sortOptions as $key => $label)
+                                        <option value="{{ $key }}" {{ $currentSort === $key ? 'selected' : '' }}>
+                                            {{ $label }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <p class="text-[10px] text-brand-textSoft mt-1">
+                                    Atur urutan data berdasarkan waktu kehadiran.
+                                </p>
                             </div>
                         </div>
-                    </form>
+
+                        <button
+                            type="submit"
+                            class="w-full bg-primary-dark text-white text-sm font-medium py-2 rounded-lg"
+                        >
+                            Terapkan
+                        </button>
+                    </div>
                 </div>
-            </div>
+            </form>
+        </div>
+    </div>
 
-            {{-- TABEL KEHADIRAN --}}
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
-                    <thead class="bg-brand-surface-100 border-b border-brand-borderSoft">
-                        <tr>
-                            <th class="px-4 py-3 text-center text-xs font-semibold text-brand-textSoft uppercase tracking-wide w-[60px]">
-                                No
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
-                                Tanggal
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
-                                Member
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
-                                Jam Masuk
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
-                                Keterangan
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-brand-borderSoft/60">
-                        @forelse ($kehadiran as $row)
-                            @php
-                                $rowName     = optional($row->member->user)->name ?? '';
-                                $rowUsername = optional($row->member->user)->username ?? '';
-                            @endphp
+    {{-- TABEL KEHADIRAN --}}
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-brand-surface-100 border-b border-brand-borderSoft">
+                <tr>
+                    <th class="px-4 py-3 text-center text-xs font-semibold text-brand-textSoft uppercase tracking-wide w-[60px]">
+                        No
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
+                        Tanggal
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
+                        Member
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
+                        Jam Masuk
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-semibold text-brand-textSoft uppercase tracking-wide">
+                        Keterangan
+                    </th>
+                </tr>
+            </thead>
 
-                            <tr
-                                x-show="matches(@js($rowName), @js($rowUsername))"
-                                x-effect="if (matches(@js($rowName), @js($rowUsername))) visibleCount++"
-                                class="hover:bg-brand-surface-50"
-                            >
-                                {{-- NO --}}
-                                <td class="px-4 py-4 text-center align-middle text-xs text-brand-textSoft">
-                                    {{ $loop->iteration + ($kehadiran->currentPage() - 1) * $kehadiran->perPage() }}
-                                </td>
+            <tbody class="divide-y divide-brand-borderSoft/60">
+                @forelse ($kehadiran as $row)
+                    @php
+                        $rowName     = optional($row->member->user)->name ?? '';
+                        $rowUsername = optional($row->member->user)->username ?? '';
+                    @endphp
 
-                                {{-- TANGGAL --}}
-                                <td class="px-6 py-4 align-middle">
-                                    {{ Carbon::parse($row->tanggal)->format('d M Y') }}
-                                </td>
+                    <tr
+                        data-row
+                        x-show="matches(@js($rowName), @js($rowUsername))"
+                        x-effect="
+                            // Counter stabil (tidak terus nambah saat re-render)
+                            const ok = matches(@js($rowName), @js($rowUsername));
+                            if (ok && !$el.__counted) { $el.__counted = true; visibleCount = (visibleCount || 0) + 1; }
+                            if (!ok && $el.__counted) { $el.__counted = false; visibleCount = Math.max((visibleCount || 1) - 1, 0); }
+                        "
+                        class="hover:bg-brand-surface-50"
+                    >
+                        {{-- NO --}}
+                        <td class="px-4 py-4 text-center align-middle text-xs text-brand-textSoft">
+                            {{ $loop->iteration + ($kehadiran->currentPage() - 1) * $kehadiran->perPage() }}
+                        </td>
 
-                                {{-- MEMBER (NAMA SAJA) --}}
-                                <td class="px-6 py-4 align-middle text-sm font-semibold text-brand-text">
-                                    {{ optional($row->member->user)->name ?? '-' }}
+                        {{-- TANGGAL --}}
+                        <td class="px-6 py-4 align-middle">
+                            {{ Carbon::parse($row->tanggal)->format('d M Y') }}
+                        </td>
 
-                                </td>
+                        {{-- MEMBER (NAMA SAJA) --}}
+                        <td class="px-6 py-4 align-middle text-sm font-semibold text-brand-text">
+                            {{ optional($row->member->user)->name ?? '-' }}
+                        </td>
 
-                                {{-- JAM MASUK --}}
-                                <td class="px-6 py-4 align-middle">
-                                    {{ $row->jam_masuk ? Carbon::parse($row->jam_masuk)->format('H:i') : '-' }}
-                                </td>
+                        {{-- JAM MASUK --}}
+                        <td class="px-6 py-4 align-middle">
+                            {{ $row->jam_masuk ? Carbon::parse($row->jam_masuk)->format('H:i') : '-' }}
+                        </td>
 
-                                {{-- KETERANGAN --}}
-                                <td class="px-6 py-4 align-middle text-xs text-brand-textSoft">
-                                    {{ $row->is_valid ? 'Valid' : 'Perlu ditinjau' }}
-                                </td>
-                            </tr>
-                        @empty
-                            {{-- Kalau dari server memang tidak ada data sama sekali --}}
-                            <tr>
-                                <td colspan="5" class="px-6 py-8 text-center text-sm text-brand-textSoft">
-                                    Belum ada kehadiran tercatat dalam periode ini.
-                                </td>
-                            </tr>
-                        @endforelse
+                        {{-- KETERANGAN --}}
+                        <td class="px-6 py-4 align-middle text-xs text-brand-textSoft">
+                            {{ $row->is_valid ? 'Valid' : 'Perlu ditinjau' }}
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="5" class="px-6 py-8 text-center text-sm text-brand-textSoft">
+                            Belum ada kehadiran tercatat pada bulan ini.
+                        </td>
+                    </tr>
+                @endforelse
 
-                        {{-- Pesan jika server punya data, tapi hasil pencarian di halaman ini kosong --}}
-                        @if ($hasServerData)
-                            <tr x-show="searchTerm && visibleCount === 0">
-                                <td colspan="5" class="px-6 py-8 text-center text-sm text-brand-textSoft">
-                                    Data yang Anda cari tidak ditemukan dalam periode ini.
-                                </td>
-                            </tr>
-                        @endif
-                    </tbody>
-                </table>
-            </div>
+                {{-- Pesan jika server punya data, tapi hasil pencarian di halaman ini kosong --}}
+                @if ($hasServerData)
+                    <tr x-show="searchTerm && (visibleCount === 0 || !visibleCount)">
+                        <td colspan="5" class="px-6 py-8 text-center text-sm text-brand-textSoft">
+                            Data yang Anda cari tidak ditemukan pada bulan ini.
+                        </td>
+                    </tr>
+                @endif
+            </tbody>
+        </table>
+    </div>
 
-            {{-- PAGINATION --}}
-            @if($kehadiran->hasPages())
-                <div class="px-6 py-4 border-t border-brand-borderSoft bg-brand-card/60 hidden-print">
-                    {{ $kehadiran->appends([
-                        'mode'    => $currentMode,
-                        'tanggal' => request('tanggal'),
-                        'sort'    => $currentSort,
-                    ])->links() }}
-                </div>
-            @endif
-        </section>
+    {{-- PAGINATION --}}
+    @if($kehadiran->hasPages())
+        <div class="px-6 py-4 border-t border-brand-borderSoft bg-brand-card/60 hidden-print">
+            {{ $kehadiran->appends([
+                'mode'    => $currentMode,       // untuk kartu QR
+                'tanggal' => request('tanggal'), // untuk bulan yang dipilih
+                'sort'    => $currentSort,
+            ])->links() }}
+        </div>
+    @endif
+</section>
+
     </div>
 
     {{-- CSS khusus untuk print --}}
