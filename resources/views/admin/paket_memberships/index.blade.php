@@ -7,10 +7,11 @@
     // Parameter dari Controller
     $search = request('q', '');
     $filterTipe = request('tipe', '');
+    $filterVisibility = request('visibility', '');
     $sort = request('sort', 'newest');
 
     // Cek apakah ada filter aktif untuk styling tombol filter
-    $hasActiveFilter = $filterTipe || $sort !== 'newest';
+    $hasActiveFilter = $filterTipe || $filterVisibility !== '' || $sort !== 'newest';
 
     // Modal Create auto-open jika error validation
     $openCreateOnLoad = $errors->any() && old('_method') !== 'PUT' ? 'true' : 'false';
@@ -34,6 +35,12 @@
         'price_desc' => 'Harga Termahal',
         'duration_asc' => 'Durasi Terpendek',
         'duration_desc' => 'Durasi Terpanjang',
+    ];
+
+    $visibilityOptions = [
+        '' => 'Semua',
+        'public' => 'Public (tampil di member)',
+        'internal' => 'Internal (admin only)',
     ];
 @endphp
 
@@ -60,6 +67,7 @@
         // State untuk Filter Popup
         showFilter: false,
         tipeDraft: @js($filterTipe),
+        visibilityDraft: @js($filterVisibility),
         sortDraft: @js($sort),
     }"
         @keydown.escape.window="
@@ -83,6 +91,7 @@
 
                     {{-- Hidden inputs agar value filter tetap terbawa saat search diketik --}}
                     <input type="hidden" name="tipe" :value="tipeDraft">
+                    <input type="hidden" name="visibility" :value="visibilityDraft">
                     <input type="hidden" name="sort" :value="sortDraft">
 
                     <div class="pl-4 text-text-muted">
@@ -118,7 +127,6 @@
                     x-transition:leave-end="opacity-0 translate-y-2"
                     class="absolute top-full left-0 right-0 mt-3 bg-brand-card border border-brand-borderSoft rounded-2xl shadow-xl p-5 z-40">
 
-                    {{-- Form Filter sebenarnya (menggunakan Alpine variables) --}}
                     <div class="space-y-4">
                         <div class="flex justify-between items-center pb-2 border-b border-brand-borderSoft/50">
                             <h4 class="text-sm font-semibold text-text-main">Filter &amp; Urutan</h4>
@@ -135,6 +143,18 @@
                                 class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark">
                                 <option value="">Semua Tipe</option>
                                 @foreach ($tipeOptions as $val => $label)
+                                    <option value="{{ $val }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Filter Visibilitas --}}
+                        <div>
+                            <label
+                                class="block text-[10px] font-bold uppercase text-text-muted mb-1">Visibilitas</label>
+                            <select x-model="visibilityDraft"
+                                class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark">
+                                @foreach ($visibilityOptions as $val => $label)
                                     <option value="{{ $val }}">{{ $label }}</option>
                                 @endforeach
                             </select>
@@ -172,30 +192,43 @@
         <x-ui.card title="Daftar Paket Membership" subtitle="Semua paket membership yang tersedia di BETA GYM."
             class="border-brand-borderSoft">
             <div class="overflow-x-auto custom-scrollbar">
-                <table class="w-full border-collapse min-w-[720px] text-sm">
+                <table class="w-full border-collapse min-w-[860px] text-sm">
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
                             <th
                                 class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[5%]">
-                                No.</th>
+                                No.
+                            </th>
+                            {{-- UBAH: Lebar dikurangi dari 22% menjadi 18% --}}
                             <th
-                                class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[25%]">
-                                Nama Paket</th>
+                                class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[18%]">
+                                Nama Paket
+                            </th>
                             <th
-                                class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[15%]">
-                                Tipe Paket</th>
+                                class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[12%]">
+                                Tipe Paket
+                            </th>
                             <th
-                                class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[15%]">
-                                Durasi</th>
+                                class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[12%]">
+                                Durasi
+                            </th>
+                            {{-- UBAH: Lebar ditambah dari 12% menjadi 16% --}}
                             <th
-                                class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[15%]">
-                                Harga</th>
+                                class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[16%]">
+                                Harga
+                            </th>
                             <th
-                                class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[20%]">
-                                Deskripsi</th>
+                                class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%]">
+                                Visibilitas
+                            </th>
                             <th
-                                class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[15%]">
-                                Aksi</th>
+                                class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[17%]">
+                                Deskripsi
+                            </th>
+                            <th
+                                class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%]">
+                                Aksi
+                            </th>
                         </tr>
                     </thead>
 
@@ -209,13 +242,16 @@
                                 $tipeIcon = $meta['icon'];
                                 $badgeVar = $meta['variant'];
                                 $durasiText = $paket->durasi . ' hari';
+                                // Format harga disiapkan di sini
+                                $hargaFormatted = 'Rp ' . number_format($paket->harga, 0, ',', '.');
                             @endphp
 
                             <tr class="hover:bg-brand-surface-50 transition-colors duration-150">
                                 <td class="p-3 text-center align-middle text-text-muted">{{ $no++ }}</td>
 
                                 <td class="p-3 align-middle">
-                                    <div class="text-sm font-semibold text-text-main line-clamp-1">{{ $paket->nama }}
+                                    <div class="text-sm font-semibold text-text-main line-clamp-1">
+                                        {{ $paket->nama }}
                                     </div>
                                 </td>
 
@@ -230,10 +266,20 @@
                                     <div class="text-sm text-text-main">{{ $durasiText }}</div>
                                 </td>
 
+                                {{-- UBAH: Tambahkan class 'truncate' dan title agar tooltip muncul saat di-hover --}}
                                 <td class="p-3 align-middle">
-                                    <div class="text-sm font-semibold text-text-main">
-                                        {{ 'Rp ' . number_format($paket->harga, 0, ',', '.') }}
+                                    <div class="text-sm font-semibold text-text-main truncate"
+                                        title="{{ $hargaFormatted }}">
+                                        {{ $hargaFormatted }}
                                     </div>
+                                </td>
+
+                                <td class="p-3 align-middle">
+                                    @if ($paket->is_public)
+                                        <x-ui.badge variant="success" class="px-3 py-1">Public</x-ui.badge>
+                                    @else
+                                        <x-ui.badge variant="info" class="px-3 py-1">Internal</x-ui.badge>
+                                    @endif
                                 </td>
 
                                 <td class="p-3 align-middle">
@@ -268,9 +314,10 @@
                                 </td>
                             </tr>
                         @empty
+                            {{-- ... (bagian empty tetap sama) ... --}}
                             <tr>
-                                <td colspan="7" class="p-6 text-center text-text-muted italic">
-                                    @if ($search || $filterTipe)
+                                <td colspan="8" class="p-6 text-center text-text-muted italic">
+                                    @if ($search || $filterTipe || $filterVisibility)
                                         Tidak ada paket membership yang cocok dengan filter pencarian.
                                     @else
                                         Belum ada paket membership yang tersimpan.
@@ -284,7 +331,12 @@
 
             {{-- PAGINATION --}}
             <div class="mt-6">
-                {{ $paketMemberships->appends(['q' => $search, 'tipe' => $filterTipe, 'sort' => $sort])->links() }}
+                {{ $paketMemberships->appends([
+                        'q' => $search,
+                        'tipe' => $filterTipe,
+                        'visibility' => $filterVisibility,
+                        'sort' => $sort,
+                    ])->links() }}
             </div>
         </x-ui.card>
 
@@ -302,7 +354,6 @@
             'openCreateOnLoad' => $openCreateOnLoad,
         ])
 
-        {{-- CSS Styles --}}
         <style>
             [x-cloak] {
                 display: none !important;
@@ -329,7 +380,6 @@
         </style>
     </div>
 
-    {{-- Script Delete (SweetAlert) --}}
     <script>
         function confirmDeletePaket(paketId, paketNama) {
             if (typeof Swal === 'undefined') {

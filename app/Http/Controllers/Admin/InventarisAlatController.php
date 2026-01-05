@@ -30,8 +30,8 @@ class InventarisAlatController extends Controller
             $query->where('kondisi', $kondisi);
         }
 
-        // Ambil hasil (kalau mau bisa diganti ->paginate(10))
-        $data = $query->get();
+        // Ambil hasil (kalau mau bisa diganti ->paginate(20))
+        $data = $query->paginate(20)->appends($request->query());
 
         // Kirim juga nilai search & kondisi ke view supaya bisa dipakai ulang di form
         return view('admin.inventaris.index', [

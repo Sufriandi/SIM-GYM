@@ -165,7 +165,8 @@
             {{-- TOMBOL TRANSAKSI BARU --}}
             <div class="flex items-center justify-end">
                 <a href="{{ route('admin.transaksi_produk.index') }}"
-                    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gold-600 text-white text-sm font-semibold hover:bg-gold-700 transition shadow-md">
+                    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary-dark text-white text-sm font-semibold
+               hover:bg-primary-dark/90 transition shadow-md shrink-0">
                     <i data-lucide="plus" class="w-5 h-5"></i>
                     Transaksi Baru
                 </a>
@@ -252,15 +253,15 @@
                                         </button>
 
                                         {{-- CETAK --}}
-                                        <a href="#"
-                                            class="js-trx-print relative group/btn p-2 rounded-full text-yellow-600 hover:bg-yellow-100/60 transition-colors duration-150"
-                                            data-message="Fitur Cetak Struk akan segera tersedia.">
+                                        <a href="{{ route('admin.transaksi_produk.cetak', $t) }}" target="_blank"
+                                            class="relative group/btn p-2 rounded-full text-yellow-600 hover:bg-yellow-100/60 transition-colors duration-150"
+                                            title="Cetak Struk">
                                             <i data-lucide="printer" class="w-5 h-5"></i>
                                             <span
                                                 class="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2
-                                                       text-[10px] font-medium text-yellow-600
-                                                       opacity-0 group-hover/btn:opacity-100
-                                                       transition-opacity duration-150 whitespace-nowrap">
+                                                text-[10px] font-medium text-yellow-600
+                                                opacity-0 group-hover/btn:opacity-100
+                                                transition-opacity duration-150 whitespace-nowrap">
                                                 Cetak
                                             </span>
                                         </a>
@@ -437,12 +438,6 @@
 
             // Delegation: aman dari masalah quote/parse error
             document.addEventListener('click', function(e) {
-                var printEl = e.target.closest('.js-trx-print');
-                if (printEl) {
-                    e.preventDefault();
-                    trxSwalInfo(printEl.getAttribute('data-message'));
-                    return;
-                }
 
                 var cancelEl = e.target.closest('.js-trx-cancel');
                 if (cancelEl) {
