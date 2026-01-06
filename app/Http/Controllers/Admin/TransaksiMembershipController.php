@@ -27,10 +27,11 @@ class TransaksiMembershipController extends Controller
             'participants.member.user',
         ]);
 
-        // Search
+        // Search (termasuk no_nota)
         if ($q !== '') {
             $query->where(function ($w) use ($q) {
-                $w->whereHas('buyer.user', fn($u) => $u->where('name', 'like', "%{$q}%"))
+                $w->where('no_nota', 'like', "%{$q}%")
+                    ->orWhereHas('buyer.user', fn($u) => $u->where('name', 'like', "%{$q}%"))
                     ->orWhereHas('buyer.user', fn($u) => $u->where('username', 'like', "%{$q}%"))
                     ->orWhereHas('paket', fn($p) => $p->where('nama', 'like', "%{$q}%"));
             });
@@ -59,7 +60,7 @@ class TransaksiMembershipController extends Controller
 
         $transaksis = $query->paginate(20)->withQueryString();
 
-        // Data dropdown modal
+        // Dropdown modal: member
         $members = Member::query()
             ->with('user')
             ->whereHas('user', fn($u) => $u->where('role', 'member'))
@@ -68,7 +69,7 @@ class TransaksiMembershipController extends Controller
             ->orderBy('users.name')
             ->get();
 
-        // Admin butuh melihat semua paket (termasuk internal) untuk trial/bonus.
+        // Admin lihat semua paket
         $paketList = PaketMembership::orderBy('tipe')->orderBy('durasi')->get();
 
         return view('admin.transaksi_membership.index', compact(
@@ -104,7 +105,7 @@ class TransaksiMembershipController extends Controller
             'participant_ids.*' => ['integer', 'distinct', 'exists:members,id'],
         ]);
 
-        $paket         = PaketMembership::findOrFail($validated['paket_id']);
+        $paket         = PaketMembership::findOrFail((int) $validated['paket_id']);
         $buyerId        = (int) $validated['buyer_member_id'];
         $participantIds = $validated['participant_ids'] ?? [];
 
@@ -129,36 +130,36 @@ class TransaksiMembershipController extends Controller
             foreach ($allMemberIds as $mid) {
                 $mid = (int) $mid;
 
-                // endDateTerakhirUntukMember sudah pivot-based & valid-only
                 $lastEnd = TransaksiMembership::endDateTerakhirUntukMember($mid);
 
                 $mulai = $lastEnd
                     ? ($lastEnd->gte($transDay) ? $lastEnd->copy()->addDay() : $transDay)
                     : $transDay;
 
-                // durasi paket disimpan dalam hari
                 $akhir = $mulai->copy()->addDays(((int) $paket->durasi) - 1);
 
                 $periods[$mid] = ['mulai' => $mulai, 'akhir' => $akhir];
             }
 
-            // Header summary: MIN start & MAX end
+            // Header: MIN start & MAX end
             $trxMulai = collect($periods)->min(fn($p) => $p['mulai']->toDateString());
             $trxAkhir = collect($periods)->max(fn($p) => $p['akhir']->toDateString());
 
+            // no_nota otomatis dari Model booted()
             $trx = TransaksiMembership::create([
+                'total'             => (int) $paket->harga, // PENTING untuk laporan
                 'buyer_member_id'   => $buyerId,
-                'created_by'        => auth()->id(),
-                'paket_id'          => $paket->id,
+                'created_by'        => (int) auth()->id(),
+                'paket_id'          => (int) $paket->id,
                 'tanggal_transaksi' => $tanggalTransaksi,
 
-                // summary (bukan sumber kebenaran per member)
                 'tanggal_mulai'     => $trxMulai ? Carbon::parse($trxMulai) : null,
                 'tanggal_akhir'     => $trxAkhir ? Carbon::parse($trxAkhir) : null,
 
                 'jenis_transaksi'   => TransaksiMembership::JENIS_PEMBAYARAN,
                 'metode_pembayaran' => $validated['metode_pembayaran'],
                 'keterangan'        => $validated['keterangan'] ?? null,
+                'canceled_at'       => null,
             ]);
 
             // Buyer (primary)
@@ -222,19 +223,21 @@ class TransaksiMembershipController extends Controller
 
             $tanggalAkhir = $tanggalMulai->copy()->addDays($jumlahHari - 1);
 
+            // no_nota otomatis dari Model booted()
             $trx = TransaksiMembership::create([
+                'total'             => 0, // kompensasi tidak dihitung sebagai revenue
                 'buyer_member_id'   => $memberId,
-                'created_by'        => auth()->id(),
+                'created_by'        => (int) auth()->id(),
                 'paket_id'          => $paketId,
                 'tanggal_transaksi' => $tanggalTransaksi,
 
-                // summary (untuk single kompensasi sama dengan canonical)
                 'tanggal_mulai'     => $tanggalMulai,
                 'tanggal_akhir'     => $tanggalAkhir,
 
                 'jenis_transaksi'   => TransaksiMembership::JENIS_KOMPENSASI,
                 'metode_pembayaran' => null,
                 'keterangan'        => $validated['keterangan'] ?: "Bonus/Trial admin {$jumlahHari} hari",
+                'canceled_at'       => null,
             ]);
 
             TransaksiMembershipMember::create([
@@ -272,7 +275,7 @@ class TransaksiMembershipController extends Controller
                 abort(403, 'Transaksi kompensasi tidak bisa dibatalkan dari modul transaksi membership.');
             }
 
-            // Cancel hanya boleh jika belum berlaku untuk siapapun.
+            // Cancel hanya boleh jika belum berlaku untuk siapapun
             $today = Carbon::today();
 
             $earliestStart = TransaksiMembershipMember::where('transaksi_membership_id', $transaksiMembership->id)
@@ -283,7 +286,6 @@ class TransaksiMembershipController extends Controller
                 : ($transaksiMembership->tanggal_mulai ? Carbon::parse($transaksiMembership->tanggal_mulai)->startOfDay() : null);
 
             if ($mulai === null) {
-                // Jika terjadi data korup/invalid, amankan: blok cancel via rule lama
                 abort(403, 'Tanggal mulai transaksi tidak valid.');
             }
 
@@ -301,15 +303,10 @@ class TransaksiMembershipController extends Controller
                 $memberIds = [(int) $transaksiMembership->buyer_member_id];
             }
 
-            /**
-             * Proteksi: tidak boleh cancel jika ada transaksi yang lebih baru untuk salah satu member.
-             * Versi sederhana: cek transaksi valid lain yang melibatkan salah satu member dan punya tanggal_transaksi lebih baru.
-             * (Cukup aman untuk fase developing; versi paling ketat bisa dibuat pivot-based per-member start.)
-             */
             $adaLebihBaru = TransaksiMembership::query()
                 ->valid()
                 ->where('id', '!=', $transaksiMembership->id)
-                ->where('tanggal_transaksi', '>=', $transaksiMembership->tanggal_transaksi) // guard kasar
+                ->where('tanggal_transaksi', '>=', $transaksiMembership->tanggal_transaksi)
                 ->where(function ($q) use ($memberIds) {
                     $q->whereIn('buyer_member_id', $memberIds)
                         ->orWhereHas('participants', fn($p) => $p->whereIn('member_id', $memberIds));

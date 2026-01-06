@@ -22,6 +22,8 @@ class PaketMembership extends Model
 
     protected $casts = [
         'is_public' => 'boolean',
+        'harga'     => 'integer', // MINIMAL
+        'durasi'    => 'integer', // MINIMAL
     ];
 
     public function transaksiMemberships()
@@ -29,9 +31,6 @@ class PaketMembership extends Model
         return $this->hasMany(TransaksiMembership::class, 'paket_id');
     }
 
-    /**
-     * Paket yang boleh ditampilkan & dibeli oleh member (marketplace).
-     */
     public function scopePublic(Builder $q): Builder
     {
         return $q->where('is_public', true);

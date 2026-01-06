@@ -39,8 +39,6 @@ class TransaksiProdukController extends Controller
 
         $produks = Produk::orderBy('nama')->get();
 
-
-
         $members = Member::with('user')
             ->whereHas('user', fn($q) => $q->where('role', 'member'))
             ->orderBy('id', 'desc')
@@ -58,12 +56,14 @@ class TransaksiProdukController extends Controller
 
     /**
      * HISTORY (Riwayat): List transaksi + filter + modal detail.
+     * Default: hanya yang belum dibatalkan (canceled_at null).
      */
     public function history(Request $request)
     {
         $pageTitle = 'Riwayat Transaksi Produk';
 
-        $query = TransaksiProduk::with(['buyer.user', 'creator', 'items.produk']);
+        $query = TransaksiProduk::with(['buyer.user', 'creator', 'items.produk'])
+            ->whereNull('canceled_at'); // NEW: exclude canceled by default
 
         $search       = $request->input('q');
         $filterMetode = $request->input('metode_pembayaran');
@@ -162,7 +162,8 @@ class TransaksiProdukController extends Controller
                 }
             }
 
-            $noNota = $this->generateNoNota16();
+            // NEW: nota sistematis 16 char (TP-YYMMDD-XXXXXX)
+            $noNota = $this->generateNoNota16('TP');
 
             $transaksi = TransaksiProduk::create([
                 'no_nota'           => $noNota,
@@ -172,6 +173,7 @@ class TransaksiProdukController extends Controller
                 'metode_pembayaran' => $metode,
                 'total'             => 0, // update setelah items dihitung
                 'keterangan'        => $validated['keterangan'] ?? null,
+                'canceled_at'       => null, // NEW (optional explicit)
             ]);
 
             $total = 0;
@@ -192,11 +194,11 @@ class TransaksiProdukController extends Controller
                 // Kurangi stok produk
                 $produk->decrement('stok', (int) $qty);
 
-                // Log stok
+                // Log stok (keluar)
                 StokProduk::create([
                     'produk_id'  => $produk->id,
                     'jumlah'     => -(int) $qty,
-                    'tanggal'    => now(),
+                    'tanggal' => now()->toDateString(),
                     'keterangan' => "Produk dijual. [NO_NOTA:{$noNota}]",
                 ]);
             }
@@ -215,28 +217,54 @@ class TransaksiProdukController extends Controller
     }
 
     /**
-     * DESTROY: Batalkan transaksi (kembalikan stok + hapus log terkait).
+     * DESTROY: Batalkan transaksi (set canceled_at) + kembalikan stok + buat log pembatalan.
+     * (Tidak hard delete lagi).
      */
     public function destroy(TransaksiProduk $transaksiProduk)
     {
         DB::beginTransaction();
         try {
-            $transaksiProduk->load('items');
+            // Lock transaksi agar tidak double-cancel (idempotent)
+            $trx = TransaksiProduk::whereKey($transaksiProduk->id)
+                ->lockForUpdate()
+                ->with('items')
+                ->firstOrFail();
 
-            $noNota = $transaksiProduk->no_nota;
+            $noNota = $trx->no_nota;
 
-            foreach ($transaksiProduk->items as $item) {
-                // Kembalikan stok
-                Produk::where('id', $item->produk_id)->increment('stok', (int) $item->qty);
-
-                // Hapus log stok terkait transaksi ini
-                StokProduk::where('produk_id', $item->produk_id)
-                    ->where('keterangan', 'like', "%[NO_NOTA:{$noNota}]%")
-                    ->delete();
+            if (!is_null($trx->canceled_at)) {
+                DB::commit();
+                return back()->with('info', "Transaksi {$noNota} sudah dibatalkan sebelumnya.");
             }
 
-            // Hapus transaksi (items ikut terhapus jika FK cascade sudah benar)
-            $transaksiProduk->delete();
+            // Lock produk terkait agar update stok aman
+            $produkIds = $trx->items->pluck('produk_id')->unique()->values()->all();
+            $produkMap = Produk::whereIn('id', $produkIds)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+            foreach ($trx->items as $item) {
+                $qty = (int) $item->qty;
+                $produk = $produkMap->get((int) $item->produk_id);
+
+                if ($produk) {
+                    // Kembalikan stok
+                    $produk->increment('stok', $qty);
+
+                    // Log stok (masuk) karena pembatalan
+                    StokProduk::create([
+                        'produk_id'  => $produk->id,
+                        'jumlah'     => $qty,
+                        'tanggal' => now()->toDateString(),
+                        'keterangan' => "Pembatalan transaksi. [NO_NOTA:{$noNota}]",
+                    ]);
+                }
+            }
+
+            // Tandai canceled (audit trail tetap)
+            $trx->canceled_at = now();
+            $trx->save();
 
             DB::commit();
 
@@ -251,8 +279,8 @@ class TransaksiProdukController extends Controller
     {
         $transaksiProduk->load([
             'items.produk',
-            'buyer.user',   // asumsi Member punya relasi user()
-            'creator',      // user kasir/admin
+            'buyer.user',
+            'creator',
         ]);
 
         return view('admin.transaksi_produk.struk', [
@@ -261,18 +289,23 @@ class TransaksiProdukController extends Controller
     }
 
     /**
-     * Generate no_nota 16 char, alnum, uppercase, unique.
+     * Generate no_nota 16 char sistematis:
+     * TP-YYMMDD-XXXXXX (total 16 char) dan unique.
      */
-    private function generateNoNota16(): string
+    private function generateNoNota16(string $prefix = 'TP'): string
     {
-        for ($i = 0; $i < 30; $i++) {
-            $code = Str::upper(Str::random(16));
+        $date = now()->format('ymd'); // YYMMDD
+
+        for ($i = 0; $i < 50; $i++) {
+            $rand = Str::upper(Str::random(6)); // 6 alnum
+            $code = "{$prefix}-{$date}-{$rand}"; // 16 char
+
             if (!TransaksiProduk::where('no_nota', $code)->exists()) {
                 return $code;
             }
         }
 
         // fallback (sangat jarang)
-        return Str::upper(Str::random(16));
+        return "{$prefix}-{$date}-" . Str::upper(Str::random(6));
     }
 }

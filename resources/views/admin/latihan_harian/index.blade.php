@@ -15,7 +15,6 @@
 <x-layouts.admin :title="$pageTitle . ' – BETA GYM'" :page-title="$pageTitle"
     page-subtitle="Catat kunjungan latihan harian (umum dan pelajar) beserta tarifnya.">
 
-    {{-- X-DATA UTAMA: Menambahkan openEditId: null --}}
     <div x-data="{
         openCreate: false,
         openDetail: false,
@@ -39,7 +38,6 @@
 
         {{-- HEADER HALAMAN --}}
         <x-ui.section-header :title="$pageTitle" subtitle="Catat siapa saja yang latihan dengan sistem bayar per hari." />
-
         <div class="mt-2 h-px w-full bg-brand-borderSoft/70"></div>
 
         {{-- BARIS PENCARIAN + TOMBOL TAMBAH --}}
@@ -79,8 +77,9 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label
-                                        class="block text-[10px] font-bold uppercase text-text-muted mb-1">Kategori</label>
+                                    <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">
+                                        Kategori
+                                    </label>
                                     <div class="relative">
                                         <select x-model="kategoriFilter"
                                             class="custom-select w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark">
@@ -94,8 +93,9 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">Metode
-                                        Pembayaran</label>
+                                    <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">
+                                        Metode Pembayaran
+                                    </label>
                                     <div class="relative">
                                         <select x-model="metodeFilter"
                                             class="custom-select w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark">
@@ -111,15 +111,18 @@
                             </div>
 
                             <div>
-                                <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">Urutkan
-                                    berdasarkan</label>
+                                <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">
+                                    Urutkan berdasarkan
+                                </label>
                                 <select name="sort"
                                     class="w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2">
                                     <option value="newest"
-                                        {{ request('sort', 'newest') === 'newest' ? 'selected' : '' }}>Tanggal · Terbaru
-                                        dulu</option>
-                                    <option value="oldest" {{ request('sort') === 'oldest' ? 'selected' : '' }}>Tanggal
-                                        · Terlama dulu</option>
+                                        {{ request('sort', 'newest') === 'newest' ? 'selected' : '' }}>
+                                        Tanggal · Terbaru dulu
+                                    </option>
+                                    <option value="oldest" {{ request('sort') === 'oldest' ? 'selected' : '' }}>
+                                        Tanggal · Terlama dulu
+                                    </option>
                                 </select>
                             </div>
 
@@ -163,30 +166,42 @@
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
                             <th
                                 class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[5%]">
-                                No</th>
+                                No
+                            </th>
                             <th
                                 class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[14%]">
-                                Tanggal</th>
+                                Tanggal
+                            </th>
                             <th
                                 class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[30%]">
-                                Nama</th>
+                                Nama
+                            </th>
                             <th
                                 class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%]">
-                                Kategori</th>
+                                Kategori
+                            </th>
                             <th
                                 class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[13%]">
-                                Harga</th>
+                                Total
+                            </th>
                             <th
                                 class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%]">
-                                Metode</th>
+                                Metode
+                            </th>
                             <th
                                 class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%]">
-                                Aksi</th>
+                                Aksi
+                            </th>
                         </tr>
                     </thead>
 
                     <tbody class="divide-y divide-brand-borderSoft/80">
                         @forelse ($data as $item)
+                            @php
+                                // Defensive cast: total harus integer (sesuai migration baru yang disarankan)
+                                $rowTotal = (int) ($item->total ?? 0);
+                            @endphp
+
                             <tr x-data="{
                                 nama: @js($item->nama),
                                 kategori: '{{ $item->kategori }}',
@@ -207,7 +222,7 @@
                                 {{-- TANGGAL --}}
                                 <td class="p-3 align-middle">
                                     <span class="text-sm text-text-main whitespace-nowrap">
-                                        {{ $item->tanggal->translatedFormat('d M Y') }}
+                                        {{ $item->tanggal?->translatedFormat('d M Y') ?? '—' }}
                                     </span>
                                 </td>
 
@@ -230,14 +245,14 @@
                                     @endif
                                 </td>
 
-                                {{-- HARGA --}}
+                                {{-- TOTAL --}}
                                 <td class="p-3 align-middle text-left">
                                     <span class="text-sm font-semibold text-text-main whitespace-nowrap">
-                                        Rp {{ number_format($item->harga, 0, ',', '.') }}
+                                        Rp {{ number_format($rowTotal, 0, ',', '.') }}
                                     </span>
                                 </td>
 
-                                {{-- METODE --}}
+                                {{-- METODE (wajib ada) --}}
                                 <td class="p-3 align-middle text-center">
                                     @if ($item->metode_pembayaran === 'cash')
                                         <x-ui.badge variant="neutral"
@@ -249,7 +264,9 @@
                                         <x-ui.badge variant="primary"
                                             class="px-2 py-0.5 text-[10px]">QRIS</x-ui.badge>
                                     @else
-                                        <span class="text-xs text-text-muted">-</span>
+                                        {{-- Defensive: tidak seharusnya terjadi kalau DB sudah NOT NULL + enum --}}
+                                        <x-ui.badge variant="neutral"
+                                            class="px-2 py-0.5 text-[10px]">Unknown</x-ui.badge>
                                     @endif
                                 </td>
 
@@ -260,17 +277,18 @@
                                         <button type="button" title="Detail Transaksi"
                                             class="p-1.5 rounded-full text-info hover:bg-info-soft/60 transition-colors"
                                             @click="$dispatch('open-latihan-detail', {
-                                                tanggal_label: '{{ $item->tanggal->translatedFormat('d M Y') }}',
+                                                tanggal_label: '{{ $item->tanggal?->translatedFormat('d M Y') ?? '—' }}',
                                                 nama: @js($item->nama),
                                                 kategori: '{{ ucfirst($item->kategori) }}',
-                                                harga_label: 'Rp {{ number_format($item->harga, 0, ',', '.') }}',
+                                                // supaya modal detail lama tetap jalan: pakai key 'harga_label'
+                                                harga_label: 'Rp {{ number_format($rowTotal, 0, ',', '.') }}',
                                                 metode_label: '{{ ucfirst($item->metode_pembayaran) }}',
                                                 keterangan: @js($item->keterangan ?: '-'),
                                             })">
                                             <i data-lucide="eye" class="w-5 h-5"></i>
                                         </button>
 
-                                        {{-- EDIT (MENGESET ID GLOBAL) --}}
+                                        {{-- EDIT --}}
                                         <button type="button" title="Edit Transaksi"
                                             class="p-1.5 rounded-full text-yellow-600 hover:bg-yellow-100/60 transition-colors"
                                             @click="openEditId = {{ $item->id }}">

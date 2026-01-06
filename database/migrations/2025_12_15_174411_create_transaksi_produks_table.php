@@ -11,35 +11,33 @@ return new class extends Migration
         Schema::create('transaksi_produks', function (Blueprint $table) {
             $table->id();
 
-            // 16 char alnum, unique (generate di controller/service)
             $table->char('no_nota', 16)->unique();
-
-            $table->dateTime('tanggal_transaksi');
+            $table->dateTime('tanggal_transaksi')->index();
 
             // Pembeli (member). Nullable untuk guest/non-member.
             $table->foreignId('buyer_member_id')
                 ->nullable()
+                ->index() // <-- PINDAH KE SINI
                 ->constrained('members')
                 ->nullOnDelete();
 
             // Petugas yang input (admin/kasir)
             $table->foreignId('created_by')
+                ->index() // <-- PINDAH KE SINI
                 ->constrained('users')
                 ->restrictOnDelete();
 
-            // Simpan lowercase agar konsisten
-            $table->enum('metode_pembayaran', ['cash', 'transfer', 'qris']);
+            $table->enum('metode_pembayaran', ['cash', 'transfer', 'qris'])->index();
 
-            // Total grand total (hasil sum item: qty * harga_satuan)
             $table->unsignedBigInteger('total')->default(0);
 
             $table->text('keterangan')->nullable();
 
+            $table->dateTime('canceled_at')->nullable()->index();
+
             $table->timestamps();
 
-            $table->index('tanggal_transaksi');
-            $table->index('buyer_member_id');
-            $table->index('created_by');
+            $table->index(['tanggal_transaksi', 'id'], 'tp_trx_date_id_idx');
         });
     }
 

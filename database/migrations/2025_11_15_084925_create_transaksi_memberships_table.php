@@ -11,20 +11,26 @@ return new class extends Migration
         Schema::create('transaksi_memberships', function (Blueprint $table) {
             $table->id();
 
+            // Nota/invoice id untuk konsistensi laporan gabungan & struk
+            $table->char('no_nota', 16)->unique();
+
             $table->foreignId('buyer_member_id')
                 ->constrained('members')
                 ->cascadeOnUpdate()
-                ->restrictOnDelete();
+                ->restrictOnDelete()
+                ->index('tm_trx_buyer_idx');
 
             $table->foreignId('created_by')
                 ->constrained('users')
                 ->cascadeOnUpdate()
-                ->restrictOnDelete();
+                ->restrictOnDelete()
+                ->index('tm_trx_creator_idx');
 
             $table->foreignId('paket_id')
                 ->constrained('paket_memberships')
                 ->cascadeOnUpdate()
-                ->restrictOnDelete();
+                ->restrictOnDelete()
+                ->index('tm_trx_paket_idx');
 
             $table->dateTime('tanggal_transaksi')->index();
 
@@ -49,6 +55,12 @@ return new class extends Migration
                 ->nullable()
                 ->index();
 
+            /**
+             * Snapshot nilai transaksi (penting untuk laporan keuangan yang tidak berubah saat harga paket berubah).
+             * Untuk kompensasi: total bisa 0.
+             */
+            $table->unsignedBigInteger('total')->default(0);
+
             $table->string('keterangan')->nullable();
 
             $table->dateTime('canceled_at')->nullable()->index();
@@ -58,13 +70,8 @@ return new class extends Migration
             // Index untuk listing/pagination yang stabil (tanggal_transaksi + tie-breaker id)
             $table->index(['tanggal_transaksi', 'id'], 'tm_trx_date_id_idx');
 
-            // Index ringkasan range (opsional; Anda sudah punya index individual mulai/akhir)
+            // Index ringkasan range
             $table->index(['tanggal_mulai', 'tanggal_akhir'], 'tm_trx_range_idx');
-
-            // FK indexes (boleh tetap, tapi sebenarnya MySQL sering otomatis; tidak masalah)
-            $table->index('buyer_member_id', 'tm_trx_buyer_idx');
-            $table->index('created_by', 'tm_trx_creator_idx');
-            $table->index('paket_id', 'tm_trx_paket_idx');
         });
     }
 
