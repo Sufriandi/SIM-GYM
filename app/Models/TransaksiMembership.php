@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Builder;
-use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class TransaksiMembership extends Model
 {
@@ -13,16 +16,18 @@ class TransaksiMembership extends Model
 
     protected $table = 'transaksi_memberships';
 
-    public const JENIS_PEMBAYARAN  = 'pembayaran';
-    public const JENIS_KOMPENSASI  = 'kompensasi';
+    public const JENIS_PEMBAYARAN = 'pembayaran';
+    public const JENIS_KOMPENSASI = 'kompensasi';
 
     protected $fillable = [
+        'no_nota',
+        'total',
         'buyer_member_id',
         'created_by',
         'paket_id',
         'tanggal_transaksi',
-        'tanggal_mulai',   // summary header (MIN start)
-        'tanggal_akhir',   // summary header (MAX end)
+        'tanggal_mulai',
+        'tanggal_akhir',
         'jenis_transaksi',
         'metode_pembayaran',
         'keterangan',
@@ -34,29 +39,29 @@ class TransaksiMembership extends Model
         'tanggal_mulai'     => 'date',
         'tanggal_akhir'     => 'date',
         'canceled_at'       => 'datetime',
+        'total'             => 'integer',
     ];
 
     /**
      * Relationships
      */
-    public function buyer()
+    public function buyer(): BelongsTo
     {
         return $this->belongsTo(Member::class, 'buyer_member_id');
     }
 
-    public function creator()
+    public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function paket()
+    public function paket(): BelongsTo
     {
         return $this->belongsTo(PaketMembership::class, 'paket_id');
     }
 
-    public function participants()
+    public function participants(): HasMany
     {
-        // participants di sini adalah pivot rows (TransaksiMembershipMember)
         return $this->hasMany(TransaksiMembershipMember::class, 'transaksi_membership_id');
     }
 
@@ -70,7 +75,7 @@ class TransaksiMembership extends Model
 
     public function scopeValid(Builder $q): Builder
     {
-        return $q->whereNull('canceled_at');
+        return $this->scopeNotCanceled($q);
     }
 
     public function scopePembayaran(Builder $q): Builder
@@ -83,23 +88,15 @@ class TransaksiMembership extends Model
         return $q->where('jenis_transaksi', self::JENIS_KOMPENSASI);
     }
 
-    /**
-     * Scope: transaksi yang melibatkan member tertentu (untuk kebutuhan list/filter transaksi).
-     * Catatan: BUKAN sumber kebenaran masa aktif individu.
-     */
-    public function scopeMelibatkanMember(Builder $q, int $memberId): Builder
+    public function scopeRevenue(Builder $q): Builder
     {
-        return $q->where(function ($w) use ($memberId) {
-            $w->where('buyer_member_id', $memberId)
-                ->orWhereHas('participants', function ($p) use ($memberId) {
-                    $p->where('member_id', $memberId);
-                });
-        });
+        return $q->notCanceled()
+            ->pembayaran()
+            ->whereNotNull('metode_pembayaran');
     }
 
     /**
-     * Helper canonical: End date terakhir untuk member.
-     * Sumber kebenaran di transaksi_membership_members (pivot), join ke transaksi untuk valid().
+     * Helpers canonical
      */
     public static function endDateTerakhirUntukMember(int $memberId): ?Carbon
     {
@@ -112,88 +109,83 @@ class TransaksiMembership extends Model
         return $end ? Carbon::parse($end)->startOfDay() : null;
     }
 
-    /**
-     * Helper canonical: Transaksi pembayaran terakhir untuk member
-     * (untuk "current paket" & referensi paket_id saat kompensasi).
-     */
-    public static function pembayaranTerakhirUntukMember(int $memberId): ?self
-    {
-        $trxId = TransaksiMembershipMember::query()
-            ->join('transaksi_memberships as tm', 'tm.id', '=', 'transaksi_membership_members.transaksi_membership_id')
-            ->whereNull('tm.canceled_at')
-            ->where('tm.jenis_transaksi', self::JENIS_PEMBAYARAN)
-            ->where('transaksi_membership_members.member_id', $memberId)
-            ->orderByDesc('tm.tanggal_transaksi')
-            ->orderByDesc('tm.id')
-            ->value('tm.id');
-
-        return $trxId ? static::query()->find($trxId) : null;
-    }
-
-    /**
-     * Helper canonical: apakah membership individu sedang aktif pada tanggal tertentu?
-     * Dipakai untuk validasi izin latihan, dsb.
-     */
-    public static function isAktifUntukMember(int $memberId, ?Carbon $tanggal = null): bool
-    {
-        $d = ($tanggal ?? Carbon::today())->startOfDay()->toDateString();
-
-        return TransaksiMembershipMember::query()
-            ->join('transaksi_memberships as tm', 'tm.id', '=', 'transaksi_membership_members.transaksi_membership_id')
-            ->whereNull('tm.canceled_at')
-            ->where('transaksi_membership_members.member_id', $memberId)
-            ->whereDate('transaksi_membership_members.tanggal_mulai', '<=', $d)
-            ->whereDate('transaksi_membership_members.tanggal_akhir', '>=', $d)
-            ->exists();
-    }
-
-    /**
-     * Helper canonical: ambil transaksi yang sedang aktif untuk member (kalau butuh detail).
-     */
-    public static function transaksiAktifUntukMember(int $memberId, ?Carbon $tanggal = null): ?self
-    {
-        $d = ($tanggal ?? Carbon::today())->startOfDay()->toDateString();
-
-        $trxId = TransaksiMembershipMember::query()
-            ->join('transaksi_memberships as tm', 'tm.id', '=', 'transaksi_membership_members.transaksi_membership_id')
-            ->whereNull('tm.canceled_at')
-            ->where('transaksi_membership_members.member_id', $memberId)
-            ->whereDate('transaksi_membership_members.tanggal_mulai', '<=', $d)
-            ->whereDate('transaksi_membership_members.tanggal_akhir', '>=', $d)
-            ->orderByDesc('transaksi_membership_members.tanggal_akhir')
-            ->orderByDesc('tm.id')
-            ->value('tm.id');
-
-        return $trxId ? static::query()->find($trxId) : null;
-    }
-
-    /**
-     * Accessor: status transaksi ini (berdasarkan summary header).
-     * Catatan: status ini status "transaksi", bukan status tiap member.
-     */
     public function getStatusAttribute(): string
     {
         if ($this->canceled_at) {
             return 'canceled';
         }
 
-        $today = Carbon::today();
+        // Ambil periode PRIMARY dari pivot jika ada
+        $primary = null;
 
-        if ($this->tanggal_mulai && $today->lt($this->tanggal_mulai)) {
+        if ($this->relationLoaded('participants')) {
+            $primary = $this->participants->firstWhere('role', 'primary');
+        }
+
+        if (!$primary) {
+            $primary = $this->participants()->where('role', 'primary')->first();
+        }
+
+        $mulai = $primary?->tanggal_mulai ?? $this->tanggal_mulai;
+        $akhir = $primary?->tanggal_akhir ?? $this->tanggal_akhir;
+
+        if (!$mulai || !$akhir) {
+            return 'unknown';
+        }
+
+        $m = Carbon::parse($mulai)->startOfDay();
+        $a = Carbon::parse($akhir)->startOfDay();
+        $t = Carbon::today()->startOfDay();
+
+        if ($t->lt($m)) {
             return 'belum_aktif';
         }
 
-        if (
-            $this->tanggal_mulai && $this->tanggal_akhir
-            && $today->between($this->tanggal_mulai, $this->tanggal_akhir, true)
-        ) {
+        if ($t->between($m, $a, true)) {
             return 'aktif';
         }
 
-        if ($this->tanggal_akhir && $today->gt($this->tanggal_akhir)) {
+        if ($t->gt($a)) {
             return 'expired';
         }
 
         return 'unknown';
+    }
+
+
+    /**
+     * Auto-generate no_nota + default total
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $trx) {
+            if (empty($trx->tanggal_transaksi)) {
+                $trx->tanggal_transaksi = now();
+            }
+
+            // no_nota: TM-YYMMDD-XXXXXX
+            if (empty($trx->no_nota)) {
+                $tanggal = Carbon::parse($trx->tanggal_transaksi);
+                $date = $tanggal->format('ymd');
+
+                for ($i = 0; $i < 50; $i++) {
+                    $rand = Str::upper(Str::random(6));
+                    $code = "TM-{$date}-{$rand}";
+
+                    if (!self::where('no_nota', $code)->exists()) {
+                        $trx->no_nota = $code;
+                        break;
+                    }
+                }
+
+                if (empty($trx->no_nota)) {
+                    $trx->no_nota = "TM-{$date}-" . Str::upper(Str::random(6));
+                }
+            }
+
+            if ($trx->total === null) {
+                $trx->total = 0;
+            }
+        });
     }
 }

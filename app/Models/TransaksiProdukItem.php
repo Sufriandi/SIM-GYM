@@ -20,29 +20,22 @@ class TransaksiProdukItem extends Model
     ];
 
     protected $casts = [
-        'qty' => 'integer',
-        'harga_satuan' => 'integer',
+        'transaksi_produk_id' => 'integer',
+        'produk_id'           => 'integer',
+        'qty'                 => 'integer',
+        'harga_satuan'        => 'integer',
     ];
 
-    /**
-     * Header transaksi.
-     */
     public function transaksi(): BelongsTo
     {
         return $this->belongsTo(TransaksiProduk::class, 'transaksi_produk_id');
     }
 
-    /**
-     * Produk yang dijual.
-     */
     public function produk(): BelongsTo
     {
         return $this->belongsTo(Produk::class, 'produk_id');
     }
 
-    /**
-     * Subtotal dihitung dari logic (tanpa kolom di DB).
-     */
     public function getSubtotalAttribute(): int
     {
         return (int) $this->qty * (int) $this->harga_satuan;
