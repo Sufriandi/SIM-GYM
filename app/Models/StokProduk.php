@@ -18,10 +18,12 @@ class StokProduk extends Model
         'keterangan',
     ];
 
-    /**
-     * Relasi ke Produk (Many-to-One)
-     * Setiap stok entry milik satu produk
-     */
+    protected $casts = [
+        'produk_id' => 'integer',
+        'jumlah'    => 'integer', // aman di PHP 64-bit; jika Anda ingin, bisa dihapus saja
+        'tanggal'   => 'date',    // SESUAI migration (date)
+    ];
+
     public function produk()
     {
         return $this->belongsTo(Produk::class, 'produk_id');

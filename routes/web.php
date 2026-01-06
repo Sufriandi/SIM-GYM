@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\StokProdukController;
 use App\Http\Controllers\Admin\CoachController;
 use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\LatihanHarianController;
+use App\Http\Controllers\Admin\LaporanKeuanganController;
 
 // Controller Membership (Admin)
 use App\Http\Controllers\Admin\PaketMembershipController;
@@ -298,12 +299,19 @@ Route::middleware(['auth', 'admin'])
             Route::get('/absensi/pdf', [AbsensiReportController::class, 'exportPdf'])
                 ->name('absensi.pdf');
 
+            // ===== Laporan Keuangan (BARU) =====
+            Route::prefix('keuangan')->name('keuangan.')->group(function () {
+                Route::get('/', [LaporanKeuanganController::class, 'index'])->name('index');
+                Route::get('/produk', [LaporanKeuanganController::class, 'produk'])->name('produk');
+                Route::get('/membership', [LaporanKeuanganController::class, 'membership'])->name('membership');
+                Route::get('/gabungan', [LaporanKeuanganController::class, 'gabungan'])->name('gabungan');
+            });
+
             // Placeholder (sementara belum ada)
             Route::get('/membership', fn() => abort(404))->name('membership.index');
             Route::get('/produk', fn() => abort(404))->name('produk.index');
             Route::get('/stok', fn() => abort(404))->name('stok.index');
             Route::get('/member', fn() => abort(404))->name('member.index');
-            Route::get('/keuangan', fn() => abort(404))->name('keuangan.index');
         });
     });
 

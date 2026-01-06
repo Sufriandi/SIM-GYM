@@ -10,6 +10,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 
 class TransaksiMembershipSeeder extends Seeder
 {
@@ -18,7 +19,7 @@ class TransaksiMembershipSeeder extends Seeder
         $admin = User::where('role', 'admin')->first();
         if (!$admin) return;
 
-        // Untuk demo transaksi "pembayaran", ambil paket yang public saja
+        // Demo: hanya paket public
         $pakets = PaketMembership::query()->where('is_public', true)->get();
         if ($pakets->isEmpty()) return;
 
@@ -27,51 +28,58 @@ class TransaksiMembershipSeeder extends Seeder
 
         $metodeList = ['cash', 'transfer', 'qris'];
 
-        for ($i = 0; $i < 50; $i++) {
-            DB::transaction(function () use ($admin, $pakets, $members, $metodeList) {
+        // Buat tanggal transaksi yang lebih “masuk akal” (acak tapi cenderung kronologis)
+        $dates = collect(range(1, 50))
+            ->map(fn() => Carbon::today()->subDays(rand(0, 90))->setTime(rand(8, 20), rand(0, 59)))
+            ->sort()
+            ->values();
+
+        foreach ($dates as $tanggalTransaksi) {
+            DB::transaction(function () use ($admin, $pakets, $members, $metodeList, $tanggalTransaksi) {
 
                 $paket = $pakets->random();
                 $buyer = $members->random();
                 $buyerId = (int) $buyer->id;
 
-                // Tentukan jumlah peserta tambahan sesuai tipe paket
-                $maxAdditional = match ($paket->tipe) {
+                $expectedAdditional = match ($paket->tipe) {
                     'single' => 0,
                     'double' => 1,
                     'triple' => 2,
                     default  => 0,
                 };
 
-                // Pilih peserta tambahan (tidak boleh sama dengan buyer)
+                // Pastikan cukup member untuk additional (buyer tidak boleh ikut)
+                if ($expectedAdditional > 0 && ($members->count() - 1) < $expectedAdditional) {
+                    // tidak cukup member, skip transaksi ini
+                    return;
+                }
+
+                // Pilih peserta tambahan secara aman dan jumlahnya HARUS tepat
                 $participantIds = [];
-                if ($maxAdditional > 0 && $members->count() > 1) {
-                    $others = $members->where('id', '!=', $buyerId);
+                if ($expectedAdditional > 0) {
+                    $others = $members->where('id', '!=', $buyerId)->values();
 
-                    $picked = $others->random(min($maxAdditional, $others->count()));
+                    // random(n) -> kalau n=1 bisa return Model, jadi kita normalisasi ke Collection
+                    $picked = $others->random($expectedAdditional);
+                    $picked = $picked instanceof Collection ? $picked : collect([$picked]);
 
-                    $participantIds = collect($picked)
+                    $participantIds = $picked
                         ->pluck('id')
                         ->map(fn($v) => (int) $v)
-                        ->unique()
                         ->values()
                         ->all();
                 }
 
                 $allMemberIds = array_values(array_unique(array_merge([$buyerId], $participantIds)));
 
-                $tanggalTransaksi = Carbon::today()
-                    ->subDays(rand(0, 90))
-                    ->setTime(rand(8, 20), rand(0, 59));
-
                 $transDay = $tanggalTransaksi->copy()->startOfDay();
 
-                // Hitung periode canonical per member (mengikuti logika controller baru)
+                // Hitung periode canonical per member
                 $periods = []; // [memberId => ['mulai'=>Carbon, 'akhir'=>Carbon]]
 
                 foreach ($allMemberIds as $mid) {
                     $mid = (int) $mid;
 
-                    // Ambil end-date terakhir per member (pivot-based, transaksi valid)
                     $lastEnd = TransaksiMembership::endDateTerakhirUntukMember($mid);
 
                     $mulai = $lastEnd
@@ -83,26 +91,30 @@ class TransaksiMembershipSeeder extends Seeder
                     $periods[$mid] = ['mulai' => $mulai, 'akhir' => $akhir];
                 }
 
-                // Header summary MIN/MAX
+                // Header MIN/MAX
                 $trxMulai = collect($periods)->min(fn($p) => $p['mulai']->toDateString());
                 $trxAkhir = collect($periods)->max(fn($p) => $p['akhir']->toDateString());
 
+                // PENTING: total wajib diisi untuk pembayaran (untuk laporan keuangan)
                 $trx = TransaksiMembership::create([
+                    // no_nota otomatis dari Model::booted()
+                    'total'             => (int) $paket->harga,
+
                     'buyer_member_id'   => $buyerId,
-                    'created_by'        => $admin->id,
-                    'paket_id'          => $paket->id,
+                    'created_by'        => (int) $admin->id,
+                    'paket_id'          => (int) $paket->id,
                     'tanggal_transaksi' => $tanggalTransaksi,
 
-                    // summary (bukan sumber kebenaran per member)
-                    'tanggal_mulai'     => $trxMulai ? Carbon::parse($trxMulai)->toDateString() : null,
-                    'tanggal_akhir'     => $trxAkhir ? Carbon::parse($trxAkhir)->toDateString() : null,
+                    'tanggal_mulai'     => $trxMulai ? Carbon::parse($trxMulai) : null,
+                    'tanggal_akhir'     => $trxAkhir ? Carbon::parse($trxAkhir) : null,
 
                     'jenis_transaksi'   => TransaksiMembership::JENIS_PEMBAYARAN,
                     'metode_pembayaran' => $metodeList[array_rand($metodeList)],
                     'keterangan'        => 'Seeder demo',
+                    'canceled_at'       => null,
                 ]);
 
-                // Buyer primary (pivot canonical)
+                // Pivot buyer
                 TransaksiMembershipMember::create([
                     'transaksi_membership_id' => $trx->id,
                     'member_id'               => $buyerId,
@@ -111,7 +123,7 @@ class TransaksiMembershipSeeder extends Seeder
                     'tanggal_akhir'           => $periods[$buyerId]['akhir']->toDateString(),
                 ]);
 
-                // Peserta tambahan (pivot canonical)
+                // Pivot participants
                 foreach ($participantIds as $pid) {
                     $pid = (int) $pid;
 
