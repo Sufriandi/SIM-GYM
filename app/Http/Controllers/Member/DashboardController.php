@@ -150,8 +150,8 @@ class DashboardController extends Controller
             ->limit(4)
             ->get();
 
-        $produkTerlaris = Produk::withCount('penjualan')
-            ->orderByDesc('penjualan_count')
+        $produkTerlaris = Produk::withCount('transaksiItems')
+            ->orderByDesc('transaksi_items_count')
             ->limit(4)
             ->get();
 
