@@ -5,31 +5,33 @@
 
     $fmt = fn($v) => number_format((float)$v, 0, ',', '.');
 
-    $totalTagihan = $total ?? 0;
-    $orderId      = $orderId ?? 'ORD-' . strtoupper(Str::random(9));
+    $orderId = $orderId ?? ('ORD-' . strtoupper(Str::random(9)));
+    $waAdmin = $waAdmin ?? '6281234567890';
 
     $qrisImg = !empty($qris?->path_gambar) ? Storage::url($qris->path_gambar) : '';
-
-    $waAdmin = $waAdmin ?? '6281234567890';
 @endphp
 
 <x-layouts.member :pageTitle="'Keranjang & Checkout – BETA GYM'" :pageSubtitle="''">
 
-    <div class="fixed inset-0 pointer-events-none z-0 bg-[#0a0a0a]">
-        <div class="absolute -top-24 -right-24 w-[520px] h-[520px] bg-gold-500/10 rounded-full blur-[160px]"></div>
-        <div class="absolute -bottom-24 -left-24 w-[520px] h-[520px] bg-white/5 rounded-full blur-[170px]"></div>
+    {{-- Background: default LIGHT, support dark mode --}}
+    <div class="fixed inset-0 -z-10 bg-gradient-to-b from-white via-gray-50 to-white dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900">
+        <div class="absolute -top-24 -right-24 h-[520px] w-[520px] rounded-full bg-gold-500/10 blur-[160px] dark:bg-gold-500/15"></div>
+        <div class="absolute -bottom-24 -left-24 h-[520px] w-[520px] rounded-full bg-gray-900/5 blur-[170px] dark:bg-white/5"></div>
     </div>
 
-    <section class="relative z-10 pb-16"
+    <section class="relative pb-16"
              x-data="cartPage()"
              x-init="init()"
-             @keydown.escape.window="closeAll()">
+             @keydown.escape.window="closePayment()">
 
-        <div class="container mx-auto px-4 sm:px-6 max-w-6xl">
+        <div class="container mx-auto max-w-6xl px-4 sm:px-6">
 
-            <div class="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
+            {{-- Header --}}
+            <div class="mb-6 sm:mb-8 flex items-center gap-3 sm:gap-4">
                 <a href="{{ route('member.produk_gym.index') }}"
-                   class="p-2 rounded-full border border-brand-borderSoft/20 text-brand-silver hover:text-white transition">
+                   class="inline-flex items-center justify-center rounded-full border border-gray-200 bg-white/70 p-2 text-gray-700 shadow-sm backdrop-blur hover:bg-white hover:text-gray-900 transition
+                          dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:bg-white/10 dark:hover:text-white"
+                   aria-label="Kembali ke marketplace">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="m15 18-6-6 6-6"/>
@@ -37,23 +39,27 @@
                 </a>
 
                 <div class="min-w-0">
-                    <h1 class="text-xl sm:text-2xl font-display font-bold text-white truncate">Keranjang Belanja</h1>
-                    <p class="text-xs sm:text-sm text-brand-silver/80">
+                    <h1 class="truncate font-display text-xl font-bold text-gray-900 sm:text-2xl dark:text-white">
+                        Keranjang Belanja
+                    </h1>
+                    <p class="text-xs text-gray-600 sm:text-sm dark:text-gray-300/80">
                         Review item, lalu pilih metode pembayaran
-                        <span class="text-brand-silver/60" x-show="hasItems" x-text="'• ' + itemsCount + ' item'"></span>
+                        <span class="text-gray-500 dark:text-gray-400" x-show="hasItems" x-text="'• ' + itemsCount + ' item'"></span>
                     </p>
                 </div>
             </div>
 
+            {{-- HAS ITEMS --}}
             <div x-show="hasItems" x-transition.opacity>
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+                <div class="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
 
-                    <div class="lg:col-span-8 space-y-4">
+                    {{-- Items list --}}
+                    <div class="space-y-4 lg:col-span-8">
                         @foreach(($cart ?? []) as $id => $details)
                             @php
                                 $img = trim((string)($details['photo'] ?? ''));
                                 if ($img !== '' && !Str::startsWith($img, ['http://','https://'])) $img = Storage::url($img);
-                                if ($img === '') $img = 'https://placehold.co/600x600/111827/FACC15?text=ITEM';
+                                if ($img === '') $img = 'https://placehold.co/600x600/f8fafc/111827?text=ITEM';
 
                                 $qty   = (int)($details['quantity'] ?? 1);
                                 $price = (float)($details['price'] ?? 0);
@@ -61,40 +67,46 @@
                                 $cat   = (string)($details['category'] ?? 'ITEM');
                             @endphp
 
-                            <div class="bg-[#151515] border border-brand-borderSoft/12 rounded-2xl p-4 sm:p-5"
+                            <div class="rounded-2xl border border-gray-200 bg-white/80 p-4 shadow-sm backdrop-blur sm:p-5
+                                        dark:border-white/10 dark:bg-white/5"
                                  x-show="items['{{ (string)$id }}']"
                                  x-cloak
                                  x-transition.opacity>
 
                                 <div class="flex gap-4">
-                                    <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-black flex-shrink-0 border border-brand-borderSoft/10">
-                                        <img src="{{ $img }}" class="w-full h-full object-cover" alt="Item">
+                                    <div class="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-50 sm:h-24 sm:w-24
+                                                dark:border-white/10 dark:bg-white/5">
+                                        <img src="{{ $img }}" class="h-full w-full object-cover" alt="{{ $name }}">
                                     </div>
 
                                     <div class="min-w-0 flex-1">
                                         <div class="flex items-start justify-between gap-3">
                                             <div class="min-w-0">
-                                                <p class="text-[10px] text-brand-silver uppercase tracking-wider mb-1">
+                                                <p class="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                                                     {{ $cat }}
                                                 </p>
 
-                                                <h4 class="font-bold text-white text-base leading-tight truncate">
+                                                <h4 class="truncate text-base font-bold leading-tight text-gray-900 dark:text-white">
                                                     {{ $name }}
                                                 </h4>
 
-                                                <p class="text-xs text-brand-silver/70 mt-1">
-                                                    Harga: <span class="text-white font-semibold">Rp {{ $fmt($price) }}</span>
+                                                <p class="mt-1 text-xs text-gray-600 dark:text-gray-300/80">
+                                                    Harga:
+                                                    <span class="font-semibold text-gray-900 dark:text-white">Rp {{ $fmt($price) }}</span>
                                                 </p>
                                             </div>
 
                                             <button type="button"
                                                     @click="removeItem('{{ (string)$id }}')"
                                                     :disabled="loading['{{ (string)$id }}']"
-                                                    class="p-2 rounded-lg text-brand-silver/50 hover:text-red-500 hover:bg-white/5 transition disabled:opacity-40"
+                                                    class="inline-flex items-center justify-center rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-red-600 transition
+                                                           disabled:opacity-40 disabled:cursor-not-allowed
+                                                           dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-red-400"
                                                     aria-label="Hapus item">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
                                                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                                    <path d="M3 6h18"/>
+                                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
                                                     <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
                                                 </svg>
                                             </button>
@@ -105,31 +117,40 @@
                                                 <button type="button"
                                                         @click="changeQty('{{ (string)$id }}','dec')"
                                                         :disabled="loading['{{ (string)$id }}']"
-                                                        class="w-9 h-9 rounded-xl bg-white/5 border border-brand-borderSoft/15 text-white hover:bg-white/10 transition disabled:opacity-40">
+                                                        class="h-10 w-10 rounded-xl border border-gray-200 bg-white text-gray-900 shadow-sm hover:bg-gray-50 transition
+                                                               disabled:opacity-40 disabled:cursor-not-allowed
+                                                               dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                                                        aria-label="Kurangi jumlah">
                                                     -
                                                 </button>
 
-                                                <input type="number" min="1"
-                                                       class="w-16 h-9 rounded-xl bg-black/30 border border-brand-borderSoft/15 text-white text-center"
+                                                <input type="number" min="1" inputmode="numeric"
+                                                       class="h-10 w-16 rounded-xl border border-gray-200 bg-white text-center text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-gold-500/40
+                                                              dark:border-white/10 dark:bg-white/5 dark:text-white"
                                                        :value="items['{{ (string)$id }}'] ? items['{{ (string)$id }}'].quantity : {{ $qty }}"
                                                        @input.debounce.450ms="setQty('{{ (string)$id }}', $event.target.value)"
-                                                       :disabled="loading['{{ (string)$id }}']">
+                                                       :disabled="loading['{{ (string)$id }}']"
+                                                       aria-label="Jumlah item">
 
                                                 <button type="button"
                                                         @click="changeQty('{{ (string)$id }}','inc')"
                                                         :disabled="loading['{{ (string)$id }}']"
-                                                        class="w-9 h-9 rounded-xl bg-white/5 border border-brand-borderSoft/15 text-white hover:bg-white/10 transition disabled:opacity-40">
+                                                        class="h-10 w-10 rounded-xl border border-gray-200 bg-white text-gray-900 shadow-sm hover:bg-gray-50 transition
+                                                               disabled:opacity-40 disabled:cursor-not-allowed
+                                                               dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                                                        aria-label="Tambah jumlah">
                                                     +
                                                 </button>
 
-                                                <span class="text-xs text-brand-silver/70 hidden sm:inline">
-                                                    Update subtotal otomatis
+                                                <span class="hidden text-xs text-gray-500 sm:inline dark:text-gray-400">
+                                                    Subtotal terupdate otomatis
                                                 </span>
                                             </div>
 
                                             <div class="text-right">
-                                                <p class="text-[11px] text-brand-silver/70">Subtotal</p>
-                                                <p class="text-gold-500 font-bold text-base" x-text="idr(lineTotal('{{ (string)$id }}'))"></p>
+                                                <p class="text-[11px] text-gray-500 dark:text-gray-400">Subtotal</p>
+                                                <p class="text-base font-bold text-gold-600 dark:text-gold-500"
+                                                   x-text="idr(lineTotal('{{ (string)$id }}'))"></p>
                                             </div>
                                         </div>
                                     </div>
@@ -139,39 +160,45 @@
                         @endforeach
                     </div>
 
+                    {{-- Summary --}}
                     <div class="lg:col-span-4">
-                        <div class="bg-[#151515] border border-brand-borderSoft/20 p-5 sm:p-6 rounded-3xl lg:sticky lg:top-28">
-                            <h3 class="font-bold text-white mb-5 text-lg">Rincian Biaya</h3>
+                        <div class="rounded-3xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur sm:p-6 lg:sticky lg:top-28
+                                    dark:border-white/10 dark:bg-white/5">
+                            <h3 class="mb-5 text-lg font-bold text-gray-900 dark:text-white">
+                                Rincian Biaya
+                            </h3>
 
-                            <div class="space-y-3 mb-6 pb-6 border-b border-brand-borderSoft/10">
-                                <div class="flex justify-between text-brand-silver text-sm">
+                            <div class="mb-6 space-y-3 border-b border-gray-200 pb-6 dark:border-white/10">
+                                <div class="flex justify-between text-sm text-gray-600 dark:text-gray-300/80">
                                     <span>Total Harga</span>
-                                    <span class="text-white" x-text="idr(subtotal)"></span>
+                                    <span class="font-semibold text-gray-900 dark:text-white" x-text="idr(subtotal)"></span>
                                 </div>
-                                <div class="flex justify-between text-brand-silver text-sm">
+
+                                <div class="flex justify-between text-sm text-gray-600 dark:text-gray-300/80">
                                     <span>Biaya Layanan</span>
-                                    <span class="text-white" x-text="idr(adminFee)"></span>
+                                    <span class="font-semibold text-gray-900 dark:text-white" x-text="idr(adminFee)"></span>
                                 </div>
                             </div>
 
-                            <div class="flex justify-between mb-6 items-end">
-                                <span class="text-brand-silver font-bold">Total Tagihan</span>
-                                <span class="text-2xl font-display font-bold text-gold-500" x-text="idr(total)"></span>
+                            <div class="mb-6 flex items-end justify-between">
+                                <span class="font-bold text-gray-700 dark:text-gray-200">Total Tagihan</span>
+                                <span class="font-display text-2xl font-extrabold text-gold-600 dark:text-gold-500" x-text="idr(total)"></span>
                             </div>
 
                             <button type="button"
-                                    @click="openGateway()"
+                                    @click="openPayment()"
                                     :disabled="!hasItems"
-                                    class="w-full py-4 bg-gold-500 hover:bg-gold-400 disabled:bg-gold-500/50 disabled:cursor-not-allowed
-                                           text-brand-nav font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2">
+                                    class="flex w-full items-center justify-center gap-2 rounded-xl bg-gold-500 py-4 font-bold text-brand-nav shadow-lg transition
+                                           hover:bg-gold-400 disabled:cursor-not-allowed disabled:opacity-60">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>
+                                    <rect x="2" y="5" width="20" height="14" rx="2"/>
+                                    <line x1="2" x2="22" y1="10" y2="10"/>
                                 </svg>
                                 Pilih Pembayaran
                             </button>
 
-                            <p class="text-[11px] text-brand-silver/70 mt-3">
+                            <p class="mt-3 text-[11px] text-gray-500 dark:text-gray-400">
                                 Setelah bayar, klik “Saya Sudah Bayar” untuk konfirmasi.
                             </p>
                         </div>
@@ -180,487 +207,195 @@
                 </div>
             </div>
 
+            {{-- EMPTY STATE --}}
             <div x-show="!hasItems" x-transition.opacity x-cloak
-                 class="text-center py-24 border border-dashed border-brand-borderSoft/20 rounded-3xl opacity-80">
-                <p class="text-brand-silver">Keranjang kosong</p>
-                <a href="{{ route('member.produk_gym.index') }}" class="text-gold-500 underline mt-2 inline-block">Belanja Dulu</a>
+                 class="rounded-3xl border border-dashed border-gray-300 bg-white/60 py-24 text-center shadow-sm backdrop-blur
+                        dark:border-white/15 dark:bg-white/5">
+                <p class="text-gray-600 dark:text-gray-300/80">Keranjang kosong</p>
+                <a href="{{ route('member.produk_gym.index') }}"
+                   class="mt-2 inline-block font-semibold text-gold-600 underline-offset-4 hover:underline dark:text-gold-500">
+                    Belanja dulu
+                </a>
             </div>
 
         </div>
 
-        {{-- PAYMENT MODAL (SAMA PERSIS) --}}
-        <template x-teleport="body">
-            <div x-show="gatewayOpen" x-cloak class="fixed inset-0 z-[2147483647] flex items-center justify-center p-4 sm:p-6">
-                <div class="absolute inset-0 bg-black/75 backdrop-blur-sm" x-transition.opacity @click="closeAll()"></div>
+        {{-- Include modal pembayaran (dipisah) --}}
+        @include('member.produk_gym.partials.payment_modal', [
+            'orderId'  => $orderId,
+            'waAdmin'  => $waAdmin,
+            'rekenings'=> $rekenings ?? [],
+            'qris'     => $qris ?? null,
+            'qrisImg'  => $qrisImg,
+        ])
 
-                <div class="relative w-full max-w-md sm:max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-                     style="max-height: calc(100vh - 2rem);"
-                     x-show="gatewayOpen"
-                     x-transition:enter="transition ease-out duration-200"
-                     x-transition:enter-start="opacity-0 scale-95 translate-y-2"
-                     x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                     x-transition:leave="transition ease-in duration-150"
-                     x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-                     x-transition:leave-end="opacity-0 scale-95 translate-y-2">
+        @once
+            <style>
+                [x-cloak] { display: none !important; }
+            </style>
 
-                    <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-b from-white to-gray-50">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="flex items-center gap-3 min-w-0">
-                                <div class="w-10 h-10 bg-black rounded-xl flex items-center justify-center text-gold-500 font-bold">B</div>
-                                <div class="min-w-0">
-                                    <p class="text-xs font-bold text-gray-900 truncate">BETA GYM</p>
-                                    <p class="text-[11px] text-gray-500 truncate">
-                                        <span x-text="step === 'menu' ? 'Payment Gateway' : 'Payment Instructions'"></span>
-                                        • Order <span class="font-mono">{{ $orderId }}</span>
-                                    </p>
-                                </div>
-                            </div>
+            <script>
+                function cartPage() {
+                    const qtyUrlTpl = @js(route('member.produk_gym.cart.quantity', ['id' => '__ID__']));
+                    const rmUrlTpl  = @js(route('member.produk_gym.cart.remove', ['id' => '__ID__']));
 
-                            <button type="button" @click="closeAll()" class="text-gray-400 hover:text-red-500" aria-label="Tutup">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
-                                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                                </svg>
-                            </button>
-                        </div>
+                    const fixedOrderId = @js($orderId);
+                    const fixedWaAdmin = @js($waAdmin);
 
-                        <div class="mt-4 bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between">
-                            <div>
-                                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total Tagihan</p>
-                                <p class="text-xl sm:text-2xl font-extrabold text-gray-900 leading-tight" x-text="idr(total)"></p>
+                    return {
+                        items: @js($cart ?? []),
+                        subtotal: Number(@js((int)($subtotal ?? 0))),
+                        adminFee: Number(@js((int)($adminFee ?? 0))),
+                        total: Number(@js((int)($total ?? 0))),
+                        loading: {},
+                        csrf: @js(csrf_token()),
 
-                                <p class="text-[11px] text-gray-500" x-show="step === 'inst'">
-                                    Metode:
-                                    <span class="font-semibold text-gray-800" x-text="selectedType === 'bank' ? 'Transfer Bank' : 'QRIS'"></span>
-                                    <span class="text-gray-400">•</span>
-                                    <span class="font-semibold text-gray-800" x-text="selectedTitle"></span>
-                                </p>
-                            </div>
-                            <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg">
-                                Secured
-                            </span>
-                        </div>
+                        get hasItems() {
+                            return Object.keys(this.items || {}).length > 0;
+                        },
+                        get itemsCount() {
+                            let c = 0;
+                            for (const k in (this.items || {})) c += Number(this.items[k]?.quantity || 0);
+                            return c;
+                        },
 
-                        <div class="mt-3 flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl px-4 py-2" x-show="step === 'inst'">
-                            <span class="text-xs text-blue-700 font-medium">Selesaikan dalam</span>
-                            <span class="text-xs font-bold text-blue-800 font-mono" x-text="timerDisplay"></span>
-                        </div>
-                    </div>
+                        idr(n) {
+                            const num = Number(n || 0);
+                            return 'Rp ' + new Intl.NumberFormat('id-ID').format(num);
+                        },
+                        lineTotal(id) {
+                            const it = (this.items || {})[id];
+                            if (!it) return 0;
+                            return Number(it.price || 0) * Number(it.quantity || 0);
+                        },
 
-                    <div class="p-4 overflow-y-auto custom-scrollbar-light flex-1">
-                        <div x-show="step === 'menu'" x-transition.opacity>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 px-1">Metode Pembayaran</p>
+                        syncTotals(payload) {
+                            this.subtotal = Number(payload.subtotal || 0);
+                            this.adminFee = Number(payload.admin_fee || 0);
+                            this.total    = Number(payload.total || 0);
 
-                            <div class="bg-white border border-gray-200 rounded-xl mb-3 overflow-hidden">
-                                <button type="button" @click="accordion = (accordion === 'bank' ? null : 'bank')"
-                                        class="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-9 h-9 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>
-                                            </svg>
-                                        </div>
-                                        <div class="text-left">
-                                            <p class="font-bold text-gray-900 text-sm">Transfer Bank</p>
-                                            <p class="text-xs text-gray-500">Pilih rekening tujuan</p>
-                                        </div>
-                                    </div>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                         class="text-gray-400 transition-transform" :class="accordion === 'bank' ? 'rotate-180' : ''">
-                                        <path d="m6 9 6 6 6-6"/>
-                                    </svg>
-                                </button>
+                            // broadcast ke payment modal jika sedang terbuka
+                            window.dispatchEvent(new CustomEvent('payment:update', {
+                                detail: { total: this.total }
+                            }));
+                        },
 
-                                <div x-show="accordion === 'bank'" x-transition.opacity class="border-t border-gray-100">
-                                    @if(!empty($rekenings) && count($rekenings) > 0)
-                                        @foreach($rekenings as $bank)
-                                            <button type="button"
-                                                    @click="selectMethod('bank', @js($bank->nama_bank), @js($bank->nomor_rekening), @js($bank->nama_pemilik))"
-                                                    class="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition border-b border-gray-100 last:border-0">
-                                                <div class="flex items-center gap-3">
-                                                    <div class="h-8 w-12 bg-white border border-gray-200 rounded-lg flex items-center justify-center text-[9px] font-bold text-gray-600 uppercase">
-                                                        {{ Str::upper(Str::substr($bank->nama_bank, 0, 4)) }}
-                                                    </div>
-                                                    <div class="text-left">
-                                                        <p class="text-sm font-semibold text-gray-800">{{ $bank->nama_bank }}</p>
-                                                        <p class="text-xs text-gray-500">Transfer manual</p>
-                                                    </div>
-                                                </div>
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                                                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300">
-                                                    <path d="m9 18 6-6-6-6"/>
-                                                </svg>
-                                            </button>
-                                        @endforeach
-                                    @else
-                                        <div class="p-4 text-xs text-gray-500">Rekening bank belum tersedia.</div>
-                                    @endif
-                                </div>
-                            </div>
+                        async postJson(url, body) {
+                            const res = await fetch(url, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': this.csrf,
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                                body: JSON.stringify(body || {})
+                            });
 
-                            <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                                <button type="button" @click="accordion = (accordion === 'qris' ? null : 'qris')"
-                                        class="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-9 h-9 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-                                                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-                                            </svg>
-                                        </div>
-                                        <div class="text-left">
-                                            <p class="font-bold text-gray-900 text-sm">QRIS</p>
-                                            <p class="text-xs text-gray-500">Tampilkan kode QR pembayaran</p>
-                                        </div>
-                                    </div>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                         class="text-gray-400 transition-transform" :class="accordion === 'qris' ? 'rotate-180' : ''">
-                                        <path d="m6 9 6 6 6-6"/>
-                                    </svg>
-                                </button>
+                            let data = null;
+                            try { data = await res.json(); } catch (e) {}
 
-                                <div x-show="accordion === 'qris'" x-transition.opacity class="border-t border-gray-100">
-                                    <button type="button"
-                                            @click="selectMethod('qris', 'QRIS', @js($qrisImg), @js($qris->nama_qris ?? 'BETA GYM'))"
-                                            class="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition">
-                                        <div class="flex items-center gap-3">
-                                            <div class="h-8 w-12 bg-white border border-gray-200 rounded-lg flex items-center justify-center text-[9px] font-bold text-gray-600">QRIS</div>
-                                            <div class="text-left">
-                                                <p class="text-sm font-semibold text-gray-800">Tampilkan QR</p>
-                                                <p class="text-xs text-gray-500">Bayar via e-wallet / m-banking</p>
-                                            </div>
-                                        </div>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300">
-                                            <path d="m9 18 6-6-6-6"/>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                            if (!res.ok || !data) throw (data || { message: 'Request gagal.' });
+                            return data;
+                        },
 
-                        <div x-show="step === 'inst'" x-transition.opacity>
-                            <div x-show="selectedType === 'bank'" x-transition.opacity>
-                                <div class="bg-white border border-gray-200 rounded-xl p-4 mb-5">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <p class="text-xs text-gray-600 font-bold uppercase">
-                                            Rekening <span class="text-gray-900" x-text="selectedTitle"></span>
-                                        </p>
-                                        <div class="h-8 w-12 bg-white border border-gray-200 rounded-lg flex items-center justify-center text-[9px] font-bold text-gray-600 uppercase"
-                                             x-text="(selectedTitle || 'BANK').substring(0,4)"></div>
-                                    </div>
+                        async changeQty(id, op) {
+                            if (!this.items[id]) return;
 
-                                    <div class="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                        <span class="font-mono text-lg sm:text-xl font-bold text-blue-700 tracking-wider" x-text="selectedValue"></span>
-                                        <button type="button" @click="copyText(selectedValue)" class="text-xs font-bold text-gray-500 hover:text-blue-700 uppercase">Salin</button>
-                                    </div>
+                            this.loading[id] = true;
+                            try {
+                                const url = qtyUrlTpl.replace('__ID__', id);
+                                const data = await this.postJson(url, { op });
 
-                                    <p class="text-[11px] text-gray-600 mt-2">
-                                        A.N <span class="text-gray-900 font-semibold" x-text="selectedExtra"></span>
-                                    </p>
-                                </div>
+                                if (!data.ok) return;
 
-                                <div class="bg-white border border-gray-200 rounded-xl p-4">
-                                    <p class="text-sm font-bold text-gray-900 mb-2">Petunjuk Transfer</p>
-                                    <ol class="text-xs text-gray-600 leading-relaxed list-decimal pl-5 space-y-1">
-                                        <li>Buka ATM / M-Banking.</li>
-                                        <li>Pilih menu transfer.</li>
-                                        <li>Masukkan nomor rekening tujuan di atas.</li>
-                                        <li>Masukkan nominal sesuai total tagihan.</li>
-                                        <li>Simpan bukti transfer untuk konfirmasi.</li>
-                                    </ol>
-                                </div>
-                            </div>
+                                if (data.removed) delete this.items[id];
+                                else this.items[id].quantity = Number(data.quantity || this.items[id].quantity || 1);
 
-                            <div x-show="selectedType === 'qris'" x-transition.opacity class="text-center">
-                                <template x-if="selectedValue">
-                                    <div class="bg-white border border-gray-200 rounded-xl p-5">
-                                        <div class="mx-auto w-56 h-56 bg-white border border-gray-200 rounded-2xl flex items-center justify-center overflow-hidden">
-                                            <img :src="selectedValue" alt="QRIS" class="w-full h-full object-contain">
-                                        </div>
-                                        <p class="mt-4 text-sm font-bold text-gray-900" x-text="selectedExtra"></p>
-                                        <p class="text-xs text-gray-600">Gunakan QR ini di e-wallet atau mobile banking Anda.</p>
-                                    </div>
-                                </template>
+                                this.syncTotals(data);
 
-                                <template x-if="!selectedValue">
-                                    <div class="bg-white border border-gray-200 rounded-xl p-5 text-left">
-                                        <p class="text-sm font-bold text-gray-900 mb-1">QRIS belum tersedia</p>
-                                        <p class="text-xs text-gray-600">Gambar QRIS belum diatur. Silakan gunakan Transfer Bank atau set QRIS dulu di admin.</p>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-
-                    </div>
-
-                    <div class="p-4 bg-white border-t border-gray-200">
-                        <a x-show="step === 'inst'" :href="waLink" target="_blank"
-                           class="w-full py-3 bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold rounded-xl text-center shadow-lg transition flex items-center justify-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-                            </svg>
-                            Saya Sudah Bayar
-                        </a>
-
-                        <p class="text-[10px] text-gray-400 text-center mt-3" x-show="step === 'menu'">
-                            Powered by BetaPay
-                        </p>
-                    </div>
-
-                    <div class="absolute left-1/2 -translate-x-1/2 top-3 z-50" x-show="toast.show" x-transition.opacity>
-                        <div class="bg-black/85 text-white text-xs px-3 py-2 rounded-lg shadow-lg">
-                            <span x-text="toast.text"></span>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </template>
-
-        <style>
-            .custom-scrollbar-light::-webkit-scrollbar { width: 6px; }
-            .custom-scrollbar-light::-webkit-scrollbar-track { background: #f1f1f1; }
-            .custom-scrollbar-light::-webkit-scrollbar-thumb { background: #d7d7d7; border-radius: 999px; }
-            [x-cloak] { display: none !important; }
-        </style>
-
-        <script>
-            function cartPage() {
-                const qtyUrlTpl = @js(route('member.produk_gym.cart.quantity', ['id' => '__ID__']));
-                const rmUrlTpl  = @js(route('member.produk_gym.cart.remove', ['id' => '__ID__']));
-
-                return {
-                    items: @js($cart ?? []),
-                    subtotal: Number(@js((int)($subtotal ?? 0))),
-                    adminFee: Number(@js((int)($adminFee ?? 0))), // selalu 0
-                    total: Number(@js((int)($total ?? 0))),
-                    loading: {},
-                    csrf: @js(csrf_token()),
-
-                    get hasItems() {
-                        return Object.keys(this.items || {}).length > 0;
-                    },
-                    get itemsCount() {
-                        let c = 0;
-                        for (const k in (this.items || {})) c += Number(this.items[k]?.quantity || 0);
-                        return c;
-                    },
-                    idr(n) {
-                        const num = Number(n || 0);
-                        return 'Rp ' + new Intl.NumberFormat('id-ID').format(num);
-                    },
-                    lineTotal(id) {
-                        const it = (this.items || {})[id];
-                        if (!it) return 0;
-                        return Number(it.price || 0) * Number(it.quantity || 0);
-                    },
-                    syncTotals(payload) {
-                        this.subtotal = Number(payload.subtotal || 0);
-                        this.adminFee = Number(payload.admin_fee || 0);
-                        this.total    = Number(payload.total || 0);
-                    },
-                    async postJson(url, body) {
-                        const res = await fetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': this.csrf,
-                                'X-Requested-With': 'XMLHttpRequest',
-                            },
-                            body: JSON.stringify(body || {})
-                        });
-
-                        let data = null;
-                        try { data = await res.json(); } catch(e) {}
-
-                        if (!res.ok || !data) throw (data || { message: 'Request gagal.' });
-                        return data;
-                    },
-
-                    async changeQty(id, op) {
-                        if (!this.items[id]) return;
-
-                        this.loading[id] = true;
-                        try {
-                            const url = qtyUrlTpl.replace('__ID__', id);
-                            const data = await this.postJson(url, { op });
-
-                            if (!data.ok) { this.showToast(data.message || 'Gagal update qty'); return; }
-
-                            if (data.removed) delete this.items[id];
-                            else this.items[id].quantity = Number(data.quantity || this.items[id].quantity || 1);
-
-                            this.syncTotals(data);
-                            if (data.message) this.showToast(data.message);
-                            if (!this.hasItems) this.closeAll();
-                        } catch (e) {
-                            this.showToast(e?.message || 'Gagal update qty');
-                        } finally {
-                            this.loading[id] = false;
-                        }
-                    },
-
-                    async setQty(id, qty) {
-                        if (!this.items[id]) return;
-
-                        const val = Math.max(1, parseInt(qty || 1, 10));
-                        this.loading[id] = true;
-
-                        try {
-                            const url = qtyUrlTpl.replace('__ID__', id);
-                            const data = await this.postJson(url, { qty: val });
-
-                            if (!data.ok) { this.showToast(data.message || 'Gagal update qty'); return; }
-
-                            if (data.removed) delete this.items[id];
-                            else this.items[id].quantity = Number(data.quantity || val);
-
-                            this.syncTotals(data);
-                            if (data.message) this.showToast(data.message);
-                            if (!this.hasItems) this.closeAll();
-                        } catch (e) {
-                            this.showToast(e?.message || 'Gagal update qty');
-                        } finally {
-                            this.loading[id] = false;
-                        }
-                    },
-
-                    async removeItem(id) {
-                        if (!this.items[id]) return;
-
-                        this.loading[id] = true;
-                        try {
-                            const url = rmUrlTpl.replace('__ID__', id);
-                            const data = await this.postJson(url, {});
-
-                            if (!data.ok) { this.showToast(data.message || 'Gagal hapus item'); return; }
-
-                            delete this.items[id];
-                            this.syncTotals(data);
-                            if (data.message) this.showToast(data.message);
-                            if (!this.hasItems) this.closeAll();
-                        } catch (e) {
-                            this.showToast(e?.message || 'Gagal hapus item');
-                        } finally {
-                            this.loading[id] = false;
-                        }
-                    },
-
-                    gatewayOpen: false,
-                    step: 'menu',
-                    accordion: null,
-                    selectedType: '',
-                    selectedTitle: '',
-                    selectedValue: '',
-                    selectedExtra: '',
-                    timerDisplay: '01:00:00',
-                    timerInterval: null,
-                    duration: 3600,
-                    toast: { show: false, text: '' },
-                    toastTimer: null,
-
-                    init() {
-                        this.$watch('gatewayOpen', () => {
-                            const lock = this.gatewayOpen;
-                            document.documentElement.classList.toggle('overflow-hidden', lock);
-                            document.body.classList.toggle('overflow-hidden', lock);
-                        });
-                    },
-
-                    openGateway() {
-                        if (!this.hasItems) return;
-                        this.gatewayOpen = true;
-                        this.step = 'menu';
-                        this.accordion = null;
-                        this.clearSelected();
-                        this.resetTimer();
-                    },
-
-                    selectMethod(type, title, value, extra) {
-                        this.selectedType  = type;
-                        this.selectedTitle = title || '';
-                        this.selectedValue = value || '';
-                        this.selectedExtra = extra || '';
-                        this.step = 'inst';
-                        this.accordion = null;
-                        this.resetTimer();
-                        this.startTimer();
-                    },
-
-                    clearSelected() {
-                        this.selectedType = '';
-                        this.selectedTitle = '';
-                        this.selectedValue = '';
-                        this.selectedExtra = '';
-                    },
-
-                    closeAll() {
-                        this.gatewayOpen = false;
-                        this.step = 'menu';
-                        this.accordion = null;
-                        this.clearSelected();
-                        this.resetTimer();
-                    },
-
-                    resetTimer() {
-                        if (this.timerInterval) clearInterval(this.timerInterval);
-                        this.timerInterval = null;
-                        this.duration = 3600;
-                        this.timerDisplay = '01:00:00';
-                    },
-
-                    startTimer() {
-                        if (this.timerInterval) return;
-
-                        this.timerInterval = setInterval(() => {
-                            const h = Math.floor(this.duration / 3600);
-                            const m = Math.floor((this.duration % 3600) / 60);
-                            const s = this.duration % 60;
-
-                            this.timerDisplay =
-                                (h < 10 ? "0"+h : h) + ":" +
-                                (m < 10 ? "0"+m : m) + ":" +
-                                (s < 10 ? "0"+s : s);
-
-                            this.duration--;
-
-                            if (this.duration < 0) {
-                                clearInterval(this.timerInterval);
-                                this.timerInterval = null;
-                                this.timerDisplay = "EXPIRED";
-                                this.showToast('Waktu pembayaran habis');
-                                this.closeAll();
+                                if (!this.hasItems) this.closePayment();
+                            } catch (e) {
+                                // optional: toast kalau mau
+                            } finally {
+                                this.loading[id] = false;
                             }
-                        }, 1000);
-                    },
+                        },
 
-                    get waLink() {
-                        const typeText = this.selectedType === 'bank' ? 'Transfer Bank' : 'QRIS';
-                        const msg = `Halo Admin BETA GYM, saya sudah bayar ${typeText} senilai ${this.idr(this.total)} untuk Order {{ $orderId }}.`;
-                        return `https://wa.me/{{ $waAdmin }}?text=${encodeURIComponent(msg)}`;
-                    },
+                        async setQty(id, qty) {
+                            if (!this.items[id]) return;
 
-                    copyText(text) {
-                        navigator.clipboard.writeText(text || '');
-                        this.showToast('Disalin ke clipboard');
-                    },
+                            const parsed = parseInt(qty, 10);
+                            const val = Number.isFinite(parsed) ? Math.max(1, parsed) : 1;
 
-                    showToast(t) {
-                        this.toast.text = t;
-                        this.toast.show = true;
-                        if (this.toastTimer) clearTimeout(this.toastTimer);
-                        this.toastTimer = setTimeout(() => { this.toast.show = false }, 1200);
-                    },
+                            const current = Number(this.items[id]?.quantity || 1);
+                            if (val === current) return;
+
+                            this.loading[id] = true;
+                            try {
+                                const url = qtyUrlTpl.replace('__ID__', id);
+                                const data = await this.postJson(url, { qty: val });
+
+                                if (!data.ok) return;
+
+                                if (data.removed) delete this.items[id];
+                                else this.items[id].quantity = Number(data.quantity || val);
+
+                                this.syncTotals(data);
+
+                                if (!this.hasItems) this.closePayment();
+                            } catch (e) {
+                                // optional: toast kalau mau
+                            } finally {
+                                this.loading[id] = false;
+                            }
+                        },
+
+                        async removeItem(id) {
+                            if (!this.items[id]) return;
+
+                            this.loading[id] = true;
+                            try {
+                                const url = rmUrlTpl.replace('__ID__', id);
+                                const data = await this.postJson(url, {});
+
+                                if (!data.ok) return;
+
+                                delete this.items[id];
+                                this.syncTotals(data);
+
+                                if (!this.hasItems) this.closePayment();
+                            } catch (e) {
+                                // optional: toast kalau mau
+                            } finally {
+                                this.loading[id] = false;
+                            }
+                        },
+
+                        init() {
+                            // sinkron awal modal bila diperlukan
+                            window.dispatchEvent(new CustomEvent('payment:update', { detail: { total: this.total } }));
+                        },
+
+                        openPayment() {
+                            if (!this.hasItems) return;
+
+                            window.dispatchEvent(new CustomEvent('payment:open', {
+                                detail: {
+                                    total: this.total,
+                                    orderId: fixedOrderId,
+                                    waAdmin: fixedWaAdmin,
+                                }
+                            }));
+                        },
+
+                        closePayment() {
+                            window.dispatchEvent(new CustomEvent('payment:close'));
+                        },
+                    }
                 }
-            }
-        </script>
+            </script>
+        @endonce
 
     </section>
 

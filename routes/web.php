@@ -379,7 +379,7 @@ Route::middleware(['auth', 'member'])
         // AJAX qty update (sesuai JS Anda yang POST ke .../quantity)
         Route::post('/produk_gym/cart/{id}/quantity', [ProdukGymController::class, 'updateCartQuantity'])
             ->whereNumber('id')
-            ->name('produk_gym.cart.qty');
+            ->name('produk_gym.cart.quantity');
 
 
         /**
