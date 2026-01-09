@@ -16,41 +16,48 @@
     <link rel="icon" type="image/png" href="{{ asset('images/Logo.png') }}">
     <script>
     (function () {
-    const saved = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-    // Default: ikut sistem kalau belum pernah pilih
-    const theme = saved || (prefersDark ? 'dark' : 'light');
-
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-    document.documentElement.dataset.theme = theme;
+        const saved = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const theme = saved || (prefersDark ? 'dark' : 'light');
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+        document.documentElement.dataset.theme = theme;
     })();
     </script>
+
     {{-- Lucide Icons --}}
     <script src="https://unpkg.com/lucide@latest"></script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-brand-bg text-text-main antialiased">
+
+{{-- NOTE:
+   - custom-scrollbar dipindah ke BODY agar scrollbar yang tampil adalah scrollbar browser
+   - overflow-x-hidden tetap aman untuk horizontal
+--}}
+<body class="min-h-screen bg-brand-bg text-text-main antialiased overflow-x-hidden custom-scrollbar">
+
+    {{-- HAPUS overflow-hidden agar BODY bisa scroll --}}
     <div class="min-h-screen flex bg-brand-bg">
+
         {{-- SIDEBAR MEMBER (FIXED) --}}
         <x-member.sidebar />
 
         {{-- WRAPPER KANAN: NAVBAR + CONTENT + FOOTER --}}
         <div class="flex-1 flex flex-col md:pl-64 min-w-0">
+
             {{-- NAVBAR MEMBER --}}
             <x-member.navbar :page-title="$pageTitle" :page-subtitle="$pageSubtitle" />
 
-            {{-- KONTEN --}}
-            <main
-                class="flex-1 mt-20 px-4 lg:px-8 pb-10 overflow-y-auto overflow-x-hidden custom-scrollbar"
-            >
+            {{-- KONTEN
+               - mt-20 HARUS tetap (sesuai permintaan)
+               - HAPUS overflow-y-auto supaya bukan main yang scroll
+            --}}
+            <main class="flex-1 mt-20 px-4 lg:px-8 pb-10">
                 {{ $slot }}
             </main>
 
             {{-- FOOTER MEMBER --}}
             <x-member.footer />
-
         </div>
     </div>
 
@@ -60,9 +67,7 @@
     {{-- Init Lucide --}}
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            if (window.lucide) {
-                window.lucide.createIcons();
-            }
+            if (window.lucide) window.lucide.createIcons();
         });
     </script>
 
