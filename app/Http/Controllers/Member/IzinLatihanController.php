@@ -219,6 +219,10 @@ class IzinLatihanController extends Controller
 }
 
 
+    /**
+     * Menampilkan detail izin latihan member.
+     * Hanya bisa melihat izin milik dirinya sendiri.
+     */
     public function detail($id)
     {
         $pageTitle = 'Detail Izin Latihan';

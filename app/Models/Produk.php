@@ -22,17 +22,18 @@ class Produk extends Model
     ];
 
     protected $casts = [
-        'harga'      => 'decimal:0',
+        'harga'      => 'integer',   // MINIMAL: rupiah tanpa desimal
         'stok'       => 'integer',
         'deleted_at' => 'datetime',
     ];
 
-    public function penjualan()
+    // Relasi yang sesuai dengan transaksi_produk_items
+    public function transaksiItems()
     {
-        return $this->hasMany(PenjualanProduk::class, 'produk_id');
-        // atau TransaksiProdukItem::class kalau struktur Anda pakai transaksi_produk_item
+        return $this->hasMany(TransaksiProdukItem::class, 'produk_id');
     }
 
+    // Biarkan method lama agar tidak ganggu alur (opsional)
     public function stok()
     {
         return $this->hasMany(StokProduk::class, 'produk_id');

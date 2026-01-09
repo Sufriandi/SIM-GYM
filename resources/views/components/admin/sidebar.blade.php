@@ -408,7 +408,7 @@
 
                 <button type="button" @click="openLaporan = !openLaporan"
                     class="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
-                        {{ $laporanActive ? 'text-gold-300 bg-brand-gunmetal/40' : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/40' }}"
+            {{ $laporanActive ? 'text-gold-300 bg-brand-gunmetal/40' : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/40' }}"
                     x-bind:aria-expanded="openLaporan" aria-controls="laporan-submenu">
                     <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
                     <span class="flex-1 text-left">Laporan &amp; Statistik</span>
@@ -420,35 +420,47 @@
                     role="menu">
                     @php
                         $lapAbsensiActive = request()->routeIs('admin.laporan.absensi.*');
+                        $lapKeuanganActive = request()->routeIs('admin.laporan.keuangan.*');
                     @endphp
 
                     {{-- Laporan Absensi --}}
                     <a href="{{ route('admin.laporan.absensi.index') }}"
                         class="group flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
-                            {{ $lapAbsensiActive
-                                ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
-                                : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
+                {{ $lapAbsensiActive
+                    ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
+                    : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
                         role="menuitem" aria-current="{{ $lapAbsensiActive ? 'page' : 'false' }}">
                         <i data-lucide="qr-code"
                             class="w-4 h-4 {{ $lapAbsensiActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
                         <span>Laporan Absensi</span>
                     </a>
 
-                    {{-- Placeholder laporan lain --}}
+                    {{-- ✅ Laporan Keuangan (AKTIF / TIDAK TERKUNCI) --}}
+                    <a href="{{ route('admin.laporan.keuangan.index') }}"
+                        class="group flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
+                {{ $lapKeuanganActive
+                    ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
+                    : 'text-brand-silver hover:text-white hover:bg-brand-gunmetal/30' }}"
+                        role="menuitem" aria-current="{{ $lapKeuanganActive ? 'page' : 'false' }}">
+                        <i data-lucide="wallet"
+                            class="w-4 h-4 {{ $lapKeuanganActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
+                        <span>Laporan Keuangan</span>
+                    </a>
+
+                    {{-- Placeholder laporan lain (tetap terkunci) --}}
                     @php
                         $placeholder = [
                             ['Laporan Membership', 'badge-check'],
                             ['Laporan Produk', 'shopping-cart'],
                             ['Laporan Stok', 'box'],
                             ['Laporan Member', 'users'],
-                            ['Laporan Keuangan / Ledger', 'wallet'],
                         ];
                     @endphp
 
                     @foreach ($placeholder as [$label, $icon])
                         <a href="#" @click.prevent
                             class="group flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
-                                   text-brand-silver opacity-60 cursor-not-allowed"
+                       text-brand-silver opacity-60 cursor-not-allowed"
                             role="menuitem">
                             <i data-lucide="{{ $icon }}" class="w-4 h-4 text-brand-silver/70"></i>
                             <span>{{ $label }}</span>

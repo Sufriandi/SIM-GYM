@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Builder;
 
 class PaketMembership extends Model
 {
@@ -16,10 +17,22 @@ class PaketMembership extends Model
         'durasi',
         'harga',
         'deskripsi',
+        'is_public',
+    ];
+
+    protected $casts = [
+        'is_public' => 'boolean',
+        'harga'     => 'integer', // MINIMAL
+        'durasi'    => 'integer', // MINIMAL
     ];
 
     public function transaksiMemberships()
     {
         return $this->hasMany(TransaksiMembership::class, 'paket_id');
+    }
+
+    public function scopePublic(Builder $q): Builder
+    {
+        return $q->where('is_public', true);
     }
 }

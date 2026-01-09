@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\LatihanHarian;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class LatihanHarianController extends Controller
 {
@@ -13,42 +14,58 @@ class LatihanHarianController extends Controller
         $pageTitle    = 'Latihan Harian';
         $defaultHarga = config('gym.harga_harian');
 
-        $sort = $request->input('sort', 'newest'); // newest | oldest
+        $sort   = $request->input('sort', 'newest'); // newest | oldest
+        $metode = $request->input('metode');         // cash|transfer|qris|null
+        $kategori = $request->input('kategori');     // umum|pelajar|null
 
         $query = LatihanHarian::query();
 
-        if ($sort === 'oldest') {
-            $query->orderBy('tanggal', 'asc');
-        } else {
-            // default: terbaru dulu
-            $query->orderBy('tanggal', 'desc');
+        // Opsional: hide canceled dari listing
+        $query->whereNull('canceled_at');
+
+        if (!empty($metode)) {
+            $query->where('metode_pembayaran', $metode);
         }
 
-        $data = $query->paginate(15)->withQueryString();
+        if (!empty($kategori)) {
+            $query->where('kategori', $kategori);
+        }
+
+        if ($sort === 'oldest') {
+            $query->orderBy('tanggal', 'asc')->orderBy('id', 'asc');
+        } else {
+            $query->orderBy('tanggal', 'desc')->orderBy('id', 'desc');
+        }
+
+        $data = $query->paginate(20)->withQueryString();
 
         return view('admin.latihan_harian.index', compact(
             'pageTitle',
             'defaultHarga',
             'data',
             'sort',
+            'metode',
+            'kategori',
         ));
     }
 
     public function store(Request $request)
     {
-        // batasi harga agar tidak melebihi kapasitas kolom & logika bisnis
-        $maxHarga = 10000000; // contoh: maksimal 10.000.000
+        $maxTotal = 10000000; // 10 juta
 
         $validated = $request->validate([
             'tanggal'           => ['required', 'date'],
             'nama'              => ['required', 'string', 'max:100'],
             'kategori'          => ['required', 'in:umum,pelajar'],
-            'harga'             => ['required', 'integer', 'min:0', 'max:' . $maxHarga],
-            'metode_pembayaran' => ['nullable', 'in:cash,transfer,qris'],
+            'total'             => ['required', 'integer', 'min:0', 'max:' . $maxTotal],
+            'metode_pembayaran' => ['required', 'in:cash,transfer,qris'],
             'keterangan'        => ['nullable', 'string', 'max:255'],
         ]);
 
-        $validated['created_by'] = auth()->id();
+        // Jika input tanggal hanya Y-m-d, set jam default agar konsisten di laporan
+        $validated['tanggal'] = Carbon::parse($validated['tanggal'])->setTime(12, 0, 0);
+        $validated['created_by'] = (int) auth()->id();
+        $validated['canceled_at'] = null;
 
         LatihanHarian::create($validated);
 
@@ -70,16 +87,18 @@ class LatihanHarianController extends Controller
 
     public function update(Request $request, LatihanHarian $latihanHarian)
     {
-        $maxHarga = 10000000;
+        $maxTotal = 10000000;
 
         $validated = $request->validate([
             'tanggal'           => ['required', 'date'],
             'nama'              => ['required', 'string', 'max:100'],
             'kategori'          => ['required', 'in:umum,pelajar'],
-            'harga'             => ['required', 'integer', 'min:0', 'max:' . $maxHarga],
-            'metode_pembayaran' => ['nullable', 'in:cash,transfer,qris'],
+            'total'             => ['required', 'integer', 'min:0', 'max:' . $maxTotal],
+            'metode_pembayaran' => ['required', 'in:cash,transfer,qris'],
             'keterangan'        => ['nullable', 'string', 'max:255'],
         ]);
+
+        $validated['tanggal'] = Carbon::parse($validated['tanggal'])->setTime(12, 0, 0);
 
         $latihanHarian->update($validated);
 
@@ -90,10 +109,13 @@ class LatihanHarianController extends Controller
 
     public function destroy(LatihanHarian $latihanHarian)
     {
-        $latihanHarian->delete();
+        // Lebih aman audit: void, bukan hard delete
+        $latihanHarian->update([
+            'canceled_at' => now(),
+        ]);
 
         return redirect()
             ->route('admin.latihan_harian.index')
-            ->with('success', 'Data latihan harian berhasil dihapus.');
+            ->with('success', 'Data latihan harian berhasil dibatalkan (void).');
     }
 }

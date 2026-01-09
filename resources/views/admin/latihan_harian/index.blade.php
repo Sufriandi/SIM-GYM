@@ -5,22 +5,21 @@
 
     $pageTitle = 'Latihan Harian';
 
-    // supaya fleksibel: kalau controller kirim $latihanHarian atau $data
     $data = $data ?? ($latihanHarian ?? collect());
-
     $defaultHarga = $defaultHarga ?? config('gym.harga_harian');
 
-    // support collection biasa & paginator
     $totalTransaksi = method_exists($data, 'total') ? $data->total() : $data->count();
     $startNumber = method_exists($data, 'currentPage') ? ($data->currentPage() - 1) * $data->perPage() : 0;
 @endphp
 
 <x-layouts.admin :title="$pageTitle . ' – BETA GYM'" :page-title="$pageTitle"
     page-subtitle="Catat kunjungan latihan harian (umum dan pelajar) beserta tarifnya.">
+
     <div x-data="{
         openCreate: false,
         openDetail: false,
         detailItem: null,
+        openEditId: null,
     
         // state filter (frontend)
         searchTerm: '',
@@ -30,11 +29,15 @@
         x-on:open-latihan-detail.window="
             detailItem = $event.detail;
             openDetail = true;
+        "
+        @keydown.escape.window="
+            openCreate = false;
+            openDetail = false;
+            openEditId = null;
         ">
+
         {{-- HEADER HALAMAN --}}
         <x-ui.section-header :title="$pageTitle" subtitle="Catat siapa saja yang latihan dengan sistem bayar per hari." />
-
-        {{-- GARIS DI BAWAH JUDUL --}}
         <div class="mt-2 h-px w-full bg-brand-borderSoft/70"></div>
 
         {{-- BARIS PENCARIAN + TOMBOL TAMBAH --}}
@@ -43,31 +46,20 @@
             {{-- SEARCH BAR + FILTER --}}
             <div class="relative w-full max-w-md" x-data="{ showFilter: false }">
                 <form action="{{ route('admin.latihan_harian.index') }}" method="GET">
-                    {{-- WRAPPER SEARCH --}}
                     <div
-                        class="flex items-center w-full rounded-full border border-brand-borderSoft bg-brand-card
-                       shadow-sm focus-within:ring-2 focus-within:ring-primary-dark/40 transition-all
-                       hover:border-brand-borderSoft/80 h-[42px]">
-                        {{-- Icon Search --}}
+                        class="flex items-center w-full rounded-full border border-brand-borderSoft bg-brand-card shadow-sm focus-within:ring-2 focus-within:ring-primary-dark/40 transition-all hover:border-brand-borderSoft/80 h-[42px]">
                         <div class="pl-4 text-text-muted">
                             <i data-lucide="search" class="w-5 h-5"></i>
                         </div>
 
-                        {{-- Input Text (live search nama – masih frontend) --}}
                         <input type="text" x-model.debounce.150ms="searchTerm" placeholder="Cari nama pelanggan..."
-                            class="w-full bg-transparent border-none text-sm text-text-main
-                              placeholder:text-text-muted/50 focus:ring-0 py-2 pl-3 pr-2 rounded-l-full
-                              focus:outline-none focus-visible:outline-none"
+                            class="w-full bg-transparent border-none text-sm text-text-main placeholder:text-text-muted/50 focus:ring-0 py-2 pl-3 pr-2 rounded-l-full focus:outline-none focus-visible:outline-none"
                             autocomplete="off" @keydown.enter.prevent>
 
-                        {{-- Divider --}}
                         <div class="h-6 w-px bg-brand-borderSoft mx-1"></div>
 
-                        {{-- Tombol Filter --}}
                         <button type="button" @click="showFilter = !showFilter"
-                            class="flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium
-                               text-text-muted hover:text-text-main mr-2 rounded-full hover:bg-brand-surface-50
-                               transition-colors">
+                            class="flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium text-text-muted hover:text-text-main mr-2 rounded-full hover:bg-brand-surface-50 transition-colors">
                             <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
                             <span class="hidden sm:inline">Filter</span>
                         </button>
@@ -75,24 +67,14 @@
 
                     {{-- DROPDOWN FILTER --}}
                     <div x-show="showFilter" x-cloak @click.outside="showFilter = false"
-                        x-transition:enter="transition ease-out duration-200"
-                        x-transition:enter-start="opacity-0 translate-y-2"
-                        x-transition:enter-end="opacity-100 translate-y-0"
-                        x-transition:leave="transition ease-in duration-150"
-                        x-transition:leave-start="opacity-100 translate-y-0"
-                        x-transition:leave-end="opacity-0 translate-y-2"
-                        class="absolute top-full left-0 right-0 mt-3 bg-brand-card border border-brand-borderSoft
-                        rounded-2xl shadow-xl p-5 z-20">
+                        class="absolute top-full left-0 right-0 mt-3 bg-brand-card border border-brand-borderSoft rounded-2xl shadow-xl p-5 z-20">
                         <div class="space-y-4">
                             <div class="flex justify-between items-center pb-2 border-b border-brand-borderSoft/50">
                                 <h4 class="text-sm font-semibold text-text-main">Filter & Urutan</h4>
                                 <a href="{{ route('admin.latihan_harian.index') }}"
-                                    class="text-xs text-danger hover:underline">
-                                    Reset
-                                </a>
+                                    class="text-xs text-danger hover:underline">Reset</a>
                             </div>
 
-                            {{-- (opsional) filter kategori & metode – tetap frontend --}}
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">
@@ -100,9 +82,7 @@
                                     </label>
                                     <div class="relative">
                                         <select x-model="kategoriFilter"
-                                            class="custom-select w-full rounded-lg border bg-brand-shell text-xs text-text-main
-                                               px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1
-                                               focus:ring-primary-dark">
+                                            class="custom-select w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark">
                                             <option value="">Semua kategori</option>
                                             <option value="umum">Umum</option>
                                             <option value="pelajar">Pelajar</option>
@@ -118,9 +98,7 @@
                                     </label>
                                     <div class="relative">
                                         <select x-model="metodeFilter"
-                                            class="custom-select w-full rounded-lg border bg-brand-shell text-xs text-text-main
-                                               px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1
-                                               focus:ring-primary-dark">
+                                            class="custom-select w-full rounded-lg border bg-brand-shell text-xs text-text-main px-3 py-2 border-brand-borderSoft focus:outline-none focus:ring-1 focus:ring-primary-dark">
                                             <option value="">Semua metode</option>
                                             <option value="cash">Cash</option>
                                             <option value="transfer">Transfer</option>
@@ -132,7 +110,6 @@
                                 </div>
                             </div>
 
-                            {{-- URUTKAN BERDASARKAN (SERVER-SIDE) --}}
                             <div>
                                 <label class="block text-[10px] font-bold uppercase text-text-muted mb-1">
                                     Urutkan berdasarkan
@@ -150,8 +127,7 @@
                             </div>
 
                             <button type="submit"
-                                class="w-full bg-primary-dark hover:bg-primary-dark/90 text-white text-sm font-medium
-                                   py-2 rounded-lg transition shadow-md"
+                                class="w-full bg-primary-dark hover:bg-primary-dark/90 text-white text-sm font-medium py-2 rounded-lg transition shadow-md"
                                 @click="showFilter = false">
                                 Terapkan
                             </button>
@@ -169,7 +145,6 @@
 
         {{-- CARD TABEL LATIHAN HARIAN --}}
         <x-ui.card class="border-brand-borderSoft">
-            {{-- HEADER CARD --}}
             <div class="px-6 py-4 border-b border-brand-borderSoft flex items-center justify-between">
                 <div>
                     <h3 class="text-lg font-bold text-text-main">Daftar Latihan Harian</h3>
@@ -184,37 +159,37 @@
                 </div>
             </div>
 
-            {{-- TABEL (TANPA SCROLLBAR VERTIKAL DI DALAM CARD) --}}
-            <div class="w-full">
-                <table class="table-fixed w-full border-collapse text-sm md:min-w-[900px]">
+            {{-- TABEL --}}
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full border-collapse min-w-[800px] text-sm">
                     <thead>
                         <tr class="border-b border-brand-borderSoft bg-brand-surface-50">
                             <th
-                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[6%]">
+                                class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[5%]">
                                 No
                             </th>
                             <th
-                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[16%]">
+                                class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[14%]">
                                 Tanggal
                             </th>
                             <th
-                                class="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[18%]">
+                                class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[30%]">
                                 Nama
                             </th>
                             <th
-                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[14%]">
+                                class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%]">
                                 Kategori
                             </th>
                             <th
-                                class="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[16%]">
-                                Harga
+                                class="p-3 text-left text-[10px] font-bold uppercase tracking-wide text-text-muted w-[13%]">
+                                Total
                             </th>
                             <th
-                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[16%]">
+                                class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%]">
                                 Metode
                             </th>
                             <th
-                                class="p-3 text-center text-[11px] font-semibold uppercase tracking-wide text-text-muted w-[14%]">
+                                class="p-3 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted w-[10%]">
                                 Aksi
                             </th>
                         </tr>
@@ -222,6 +197,11 @@
 
                     <tbody class="divide-y divide-brand-borderSoft/80">
                         @forelse ($data as $item)
+                            @php
+                                // Defensive cast: total harus integer (sesuai migration baru yang disarankan)
+                                $rowTotal = (int) ($item->total ?? 0);
+                            @endphp
+
                             <tr x-data="{
                                 nama: @js($item->nama),
                                 kategori: '{{ $item->kategori }}',
@@ -232,99 +212,87 @@
 && (!kategoriFilter || kategoriFilter === kategori)
                                     && (!metodeFilter || metodeFilter === metode)
                                 "
-                                class="hover:bg-brand-surface-50 transition-colors duration-150 h-16">
+                                class="hover:bg-brand-surface-50 transition-colors duration-150">
+
                                 {{-- NO --}}
-                                <td class="p-3 text-center align-middle text-sm font-semibold text-text-muted">
+                                <td class="p-3 text-center align-middle text-text-muted">
                                     {{ $loop->iteration + $startNumber }}
                                 </td>
 
-                                {{-- TANGGAL (mepet kiri, satu baris) --}}
+                                {{-- TANGGAL --}}
                                 <td class="p-3 align-middle">
-                                    <span class="text-sm text-text-main font-medium whitespace-nowrap">
-                                        {{ $item->tanggal->translatedFormat('d M Y') }}
+                                    <span class="text-sm text-text-main whitespace-nowrap">
+                                        {{ $item->tanggal?->translatedFormat('d M Y') ?? '—' }}
                                     </span>
                                 </td>
 
-                                {{-- NAMA (mepet, satu baris) --}}
+                                {{-- NAMA --}}
                                 <td class="p-3 align-middle">
-                                    <div class="text-sm font-semibold text-text-main max-w-[190px] truncate">
+                                    <div class="text-sm font-semibold text-text-main truncate max-w-[180px] md:max-w-[250px]"
+                                        title="{{ $item->nama }}">
                                         {{ $item->nama }}
                                     </div>
                                 </td>
 
-                                {{-- KATEGORI (BADGE) --}}
-                                <td class="p-3 text-center align-middle">
+                                {{-- KATEGORI --}}
+                                <td class="p-3 align-middle text-center">
                                     @if ($item->kategori === 'umum')
-                                        <x-ui.badge variant="neutral">Umum</x-ui.badge>
+                                        <x-ui.badge variant="neutral"
+                                            class="px-2.5 py-0.5 text-[10px]">Umum</x-ui.badge>
                                     @else
-                                        <x-ui.badge variant="info">Pelajar</x-ui.badge>
+                                        <x-ui.badge variant="info"
+                                            class="px-2.5 py-0.5 text-[10px]">Pelajar</x-ui.badge>
                                     @endif
                                 </td>
 
-                                {{-- HARGA --}}
-                                <td class="p-3 text-right align-middle">
+                                {{-- TOTAL --}}
+                                <td class="p-3 align-middle text-left">
                                     <span class="text-sm font-semibold text-text-main whitespace-nowrap">
-                                        Rp {{ number_format($item->harga, 0, ',', '.') }}
+                                        Rp {{ number_format($rowTotal, 0, ',', '.') }}
                                     </span>
                                 </td>
 
-                                {{-- METODE PEMBAYARAN (BADGE) --}}
-                                <td class="p-3 text-center align-middle">
+                                {{-- METODE (wajib ada) --}}
+                                <td class="p-3 align-middle text-center">
                                     @if ($item->metode_pembayaran === 'cash')
-                                        <x-ui.badge variant="neutral">Cash</x-ui.badge>
+                                        <x-ui.badge variant="neutral"
+                                            class="px-2 py-0.5 text-[10px]">Cash</x-ui.badge>
                                     @elseif ($item->metode_pembayaran === 'transfer')
-                                        <x-ui.badge variant="info">Transfer</x-ui.badge>
+                                        <x-ui.badge variant="info"
+                                            class="px-2 py-0.5 text-[10px]">Transfer</x-ui.badge>
                                     @elseif ($item->metode_pembayaran === 'qris')
-                                        <x-ui.badge variant="primary">QRIS</x-ui.badge>
+                                        <x-ui.badge variant="primary"
+                                            class="px-2 py-0.5 text-[10px]">QRIS</x-ui.badge>
                                     @else
-                                        <span class="text-xs text-text-muted">-</span>
+                                        {{-- Defensive: tidak seharusnya terjadi kalau DB sudah NOT NULL + enum --}}
+                                        <x-ui.badge variant="neutral"
+                                            class="px-2 py-0.5 text-[10px]">Unknown</x-ui.badge>
                                     @endif
                                 </td>
 
                                 {{-- AKSI --}}
-                                <td class="px-3 py-4 align-middle">
-                                    <div class="flex items-center justify-center gap-3 h-full"
-                                        x-data="{ openEdit: false }">
+                                <td class="p-3 align-middle text-center">
+                                    <div class="flex items-center justify-center gap-1.5">
                                         {{-- DETAIL --}}
                                         <button type="button" title="Detail Transaksi"
-                                            class="relative group p-2 rounded-full text-info hover:bg-info-soft/60 transition-colors duration-150"
+                                            class="p-1.5 rounded-full text-info hover:bg-info-soft/60 transition-colors"
                                             @click="$dispatch('open-latihan-detail', {
-                                                tanggal_label: '{{ $item->tanggal->translatedFormat('d M Y') }}',
+                                                tanggal_label: '{{ $item->tanggal?->translatedFormat('d M Y') ?? '—' }}',
                                                 nama: @js($item->nama),
                                                 kategori: '{{ ucfirst($item->kategori) }}',
-                                                harga_label: 'Rp {{ number_format($item->harga, 0, ',', '.') }}',
-                                                metode_label:
-                                                    @if ($item->metode_pembayaran === 'cash') 'Cash'
-                                                    @elseif ($item->metode_pembayaran === 'transfer')
-                                                        'Transfer'
-                                                    @elseif ($item->metode_pembayaran === 'qris')
-                                                        'QRIS'
-                                                    @else
-                                                        '-' @endif,
+                                                // supaya modal detail lama tetap jalan: pakai key 'harga_label'
+                                                harga_label: 'Rp {{ number_format($rowTotal, 0, ',', '.') }}',
+                                                metode_label: '{{ ucfirst($item->metode_pembayaran) }}',
                                                 keterangan: @js($item->keterangan ?: '-'),
                                             })">
                                             <i data-lucide="eye" class="w-5 h-5"></i>
-                                            <span
-                                                class="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2
-                                                        text-[10px] font-medium text-info
-                                                        opacity-0 group-hover:opacity-100
-                                                        transition-opacity duration-150">
-                                                Detail
-                                            </span>
                                         </button>
 
                                         {{-- EDIT --}}
                                         <button type="button" title="Edit Transaksi"
-                                            class="relative group p-2 rounded-full text-yellow-600 hover:bg-yellow-100/60 transition-colors duration-150"
-                                            @click="openEdit = true">
+                                            class="p-1.5 rounded-full text-yellow-600 hover:bg-yellow-100/60 transition-colors"
+                                            @click="openEditId = {{ $item->id }}">
                                             <i data-lucide="square-pen" class="w-5 h-5"></i>
-                                            <span
-                                                class="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2
-                                                        text-[10px] font-medium text-yellow-600
-                                                        opacity-0 group-hover:opacity-100
-                                                        transition-opacity duration-150">
-                                                Edit
-                                            </span>
                                         </button>
 
                                         {{-- HAPUS --}}
@@ -334,24 +302,11 @@
                                             @csrf
                                             @method('DELETE')
                                             <button type="button" title="Hapus Transaksi"
-                                                class="relative group p-2 rounded-full text-danger hover:bg-danger-soft/60 transition-colors duration-150"
+                                                class="p-1.5 rounded-full text-danger hover:bg-danger-soft/60 transition-colors"
                                                 onclick="confirmDeleteLatihan({{ $item->id }}, '{{ $item->nama }}')">
                                                 <i data-lucide="trash-2" class="w-5 h-5"></i>
-                                                <span
-                                                    class="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2
-                                                            text-[10px] font-medium text-danger
-                                                            opacity-0 group-hover:opacity-100
-                                                            transition-opacity duration-150">
-                                                    Hapus
-                                                </span>
                                             </button>
                                         </form>
-
-                                        {{-- MODAL EDIT --}}
-                                        @include('admin.latihan_harian.modals.edit', [
-                                            'item' => $item,
-                                            'defaultHarga' => $defaultHarga,
-                                        ])
                                     </div>
                                 </td>
                             </tr>
@@ -366,7 +321,7 @@
                 </table>
             </div>
 
-            {{-- PAGINATION (kalau menggunakan paginator) --}}
+            {{-- PAGINATION --}}
             @if (method_exists($data, 'links'))
                 <div class="mt-6">
                     {{ $data->onEachSide(1)->links() }}
@@ -377,8 +332,16 @@
         {{-- MODAL CREATE (global) --}}
         @include('admin.latihan_harian.modals.create', ['defaultHarga' => $defaultHarga])
 
-        {{-- MODAL DETAIL (global, pakai detailItem + openDetail) --}}
+        {{-- MODAL DETAIL (global) --}}
         @include('admin.latihan_harian.modals.detail')
+
+        {{-- MODAL EDIT (DI-LOOPING DI LUAR TABEL) --}}
+        @foreach ($data as $item)
+            @include('admin.latihan_harian.modals.edit', [
+                'item' => $item,
+                'defaultHarga' => $defaultHarga,
+            ])
+        @endforeach
 
         {{-- CUSTOM SCROLLBAR + X-CLOAK --}}
         <style>
@@ -417,7 +380,6 @@
 
     {{-- SCRIPT KONFIRMASI HAPUS + AUTO HARGA --}}
     <script>
-        // Format angka menjadi "15.000" dsb (tanpa "Rp")
         function formatRupiahPlain(value) {
             if (!value) return '';
             let number = value.toString().replace(/\D/g, '');
@@ -425,7 +387,6 @@
             return number.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
         }
 
-        // Sinkronisasi input tampilan (text) dengan input hidden (angka murni)
         function syncRupiahInput(displayInput) {
             const targetId = displayInput.dataset.target;
             if (!targetId) return;
@@ -437,7 +398,6 @@
             displayInput.value = formatRupiahPlain(numeric);
         }
 
-        // Inisialisasi semua input rupiah ketika DOM siap
         document.addEventListener('DOMContentLoaded', function() {
             const rupiahDisplays = document.querySelectorAll('[data-rupiah-display]');
             rupiahDisplays.forEach(function(input) {
@@ -452,34 +412,24 @@
                 input.addEventListener('input', function() {
                     syncRupiahInput(input);
                 });
-
                 input.addEventListener('blur', function() {
                     syncRupiahInput(input);
                 });
             });
         });
 
-        // Dipanggil dari select kategori (create & edit)
         function setDefaultHargaLatihan(kategori, hargaUmum, hargaPelajar, hiddenId) {
             let value = '';
-            if (kategori === 'umum') {
-                value = hargaUmum || '';
-            } else if (kategori === 'pelajar') {
-                value = hargaPelajar || '';
-            }
+            if (kategori === 'umum') value = hargaUmum || '';
+            else if (kategori === 'pelajar') value = hargaPelajar || '';
 
             const hidden = document.getElementById(hiddenId);
-            if (hidden) {
-                hidden.value = value;
-            }
+            if (hidden) hidden.value = value;
 
             const display = document.querySelector('[data-rupiah-display][data-target="' + hiddenId + '"]');
-            if (display) {
-                display.value = formatRupiahPlain(value);
-            }
+            if (display) display.value = formatRupiahPlain(value);
         }
 
-        // KONFIRMASI HAPUS (tetap)
         function confirmDeleteLatihan(id, name) {
             if (typeof Swal === 'undefined') {
                 if (confirm(`Yakin ingin menghapus transaksi latihan harian atas nama ${name}?`)) {
@@ -506,5 +456,4 @@
             });
         }
     </script>
-
 </x-layouts.admin>

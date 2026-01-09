@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TransaksiProduk extends Model
 {
@@ -21,31 +22,34 @@ class TransaksiProduk extends Model
         'metode_pembayaran',
         'total',
         'keterangan',
+        'canceled_at', // NEW
     ];
 
     protected $casts = [
         'tanggal_transaksi' => 'datetime',
-        'total' => 'integer',
+        'canceled_at'       => 'datetime', // NEW
+        'total'             => 'integer',
     ];
 
     /**
-     * Pembeli (member). Jika Member memakai SoftDeletes dan ingin tetap tampil,
-     * tambahkan ->withTrashed() di relasi ini.
+     * Pembeli (member).
+     * Jika Member memakai SoftDeletes, kita keep record-nya tetap bisa terbaca.
      */
     public function buyer(): BelongsTo
     {
-        return $this->belongsTo(Member::class, 'buyer_member_id')
-            ->withTrashed(); // aktifkan jika Member pakai SoftDeletes
+        $rel = $this->belongsTo(Member::class, 'buyer_member_id');
+
+        return self::modelUsesSoftDeletes(Member::class) ? $rel->withTrashed() : $rel;
     }
 
     /**
      * Petugas yang membuat transaksi (admin/kasir).
-     * Jika User pakai SoftDeletes dan ingin tetap tampil, gunakan ->withTrashed().
      */
     public function creator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by')
-            ->withTrashed(); // aktifkan jika User pakai SoftDeletes
+        $rel = $this->belongsTo(User::class, 'created_by');
+
+        return self::modelUsesSoftDeletes(User::class) ? $rel->withTrashed() : $rel;
     }
 
     /**
@@ -54,5 +58,28 @@ class TransaksiProduk extends Model
     public function items(): HasMany
     {
         return $this->hasMany(TransaksiProdukItem::class, 'transaksi_produk_id');
+    }
+
+    /**
+     * Scopes untuk laporan.
+     */
+    public function scopeActive($q)
+    {
+        return $q->whereNull('canceled_at');
+    }
+
+    public function scopeCanceled($q)
+    {
+        return $q->whereNotNull('canceled_at');
+    }
+
+    public function getIsCanceledAttribute(): bool
+    {
+        return !is_null($this->canceled_at);
+    }
+
+    private static function modelUsesSoftDeletes(string $modelClass): bool
+    {
+        return in_array(SoftDeletes::class, class_uses_recursive($modelClass), true);
     }
 }
