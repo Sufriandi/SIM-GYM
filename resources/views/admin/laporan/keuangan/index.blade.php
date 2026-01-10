@@ -1,341 +1,501 @@
-{{-- resources/views/laporan/keuangan/index.blade.php --}}
+{{-- resources/views/admin/laporan/keuangan/index.blade.php --}}
+@php
+    use Carbon\Carbon;
 
-<x-layouts.admin title="Laporan Keuangan">
+    $pageTitle = $pageTitle ?? 'Laporan Keuangan';
+
+    // =========================================================================
+    // LOGIC FROM CONTROLLER (UNCHANGED)
+    // =========================================================================
+    $from = $from ?? now()->subDays(29)->startOfDay();
+    $to = $to ?? now()->endOfDay();
+
+    $fromDate = $from instanceof \Carbon\CarbonInterface ? $from->format('Y-m-d') : (string) $from;
+    $toDate = $to instanceof \Carbon\CarbonInterface ? $to->format('Y-m-d') : (string) $to;
+
+    $totalProduk = (int) ($totalProduk ?? 0);
+    $totalMembership = (int) ($totalMembership ?? 0);
+    $totalHarian = (int) ($totalHarian ?? 0);
+    $grandTotal = (int) ($grandTotal ?? 0);
+
+    // Tren dari controller
+    $daily = $daily ?? [];
+
+    // Metode dari controller
+    $grandMetode = $grandMetode ?? ['cash' => 0, 'transfer' => 0, 'qris' => 0];
+
+    $rupiah = function ($n) {
+        $n = (int) $n;
+        return 'Rp ' . number_format($n, 0, ',', '.');
+    };
+
+    $fmtDate = function ($ymd) {
+        try {
+            return Carbon::parse($ymd)->translatedFormat('d M Y');
+        } catch (\Throwable $e) {
+            return (string) $ymd;
+        }
+    };
+
+    // Komposisi sumber pendapatan
+    $komposisiSumber = [
+        ['label' => 'Latihan Harian', 'total' => $totalHarian, 'color' => '#f59e0b'], // Amber
+        ['label' => 'Membership', 'total' => $totalMembership, 'color' => '#3b82f6'], // Blue
+        ['label' => 'Produk', 'total' => $totalProduk, 'color' => '#10b981'], // Emerald
+    ];
+
+    // Untuk tabel metode pembayaran
+    $metodeRows = [
+        ['metode' => 'cash', 'total' => (int) ($grandMetode['cash'] ?? 0)],
+        ['metode' => 'transfer', 'total' => (int) ($grandMetode['transfer'] ?? 0)],
+        ['metode' => 'qris', 'total' => (int) ($grandMetode['qris'] ?? 0)],
+    ];
+    usort($metodeRows, fn($a, $b) => $b['total'] <=> $a['total']);
+
+    // Helper query string
+    $qs = http_build_query(request()->query());
+@endphp
+
+<x-layouts.admin :title="$pageTitle . ' – BETA GYM'" :page-title="$pageTitle"
+    page-subtitle="Ringkasan pendapatan dari Latihan Harian, Membership, dan Penjualan Produk.">
+
+    @once
+        <style>
+            .stat-number {
+                font-variant-numeric: tabular-nums;
+                letter-spacing: -0.02em;
+            }
+
+            .custom-scrollbar::-webkit-scrollbar {
+                height: 6px;
+                width: 6px;
+            }
+
+            .custom-scrollbar::-webkit-scrollbar-track {
+                background: rgba(0, 0, 0, 0.02);
+            }
+
+            .custom-scrollbar::-webkit-scrollbar-thumb {
+                background: rgba(0, 0, 0, 0.12);
+                border-radius: 10px;
+            }
+
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                background: rgba(0, 0, 0, 0.22);
+            }
+        </style>
+    @endonce
+
     <div class="space-y-6">
-        @include('admin.laporan.keuangan.partials.tabs')
 
-        {{-- Filter Range --}}
-        <form method="GET" class="rounded-3xl border bg-white p-5 shadow-sm">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                        <label class="text-sm font-medium text-gray-700">Dari</label>
-                        <input type="date" name="from" value="{{ optional($from)->toDateString() }}"
-                            class="mt-1 w-full rounded-xl border-gray-200 focus:border-gray-400 focus:ring-0">
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-gray-700">Sampai</label>
-                        <input type="date" name="to" value="{{ optional($to)->toDateString() }}"
-                            class="mt-1 w-full rounded-xl border-gray-200 focus:border-gray-400 focus:ring-0">
-                    </div>
-                </div>
+        {{-- 1. NAVIGATION & FILTER --}}
+        <div class="flex flex-col lg:flex-row lg:items-start gap-4 justify-between">
 
-                <div class="flex flex-wrap gap-2">
-                    <button type="submit"
-                        class="rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800">
-                        Terapkan
-                    </button>
+            {{-- Navigation Tabs --}}
+            <div
+                class="inline-flex bg-white border border-brand-borderSoft rounded-lg p-1 shadow-sm overflow-x-auto custom-scrollbar">
+                <div class="flex items-center gap-1">
+                    {{-- Active State --}}
+                    <span
+                        class="px-4 py-2 text-xs font-bold rounded-md bg-gold-50 text-gold-700 border border-gold-200 cursor-default">
+                        Ringkasan
+                    </span>
 
-                    {{-- Preset --}}
-                    <a href="{{ route('admin.laporan.keuangan.index', ['from' => now()->subDays(6)->toDateString(), 'to' => now()->toDateString()]) }}"
-                        class="rounded-xl border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                        7 Hari
-                    </a>
-                    <a href="{{ route('admin.laporan.keuangan.index', ['from' => now()->subDays(29)->toDateString(), 'to' => now()->toDateString()]) }}"
-                        class="rounded-xl border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                        30 Hari
-                    </a>
-                    <a href="{{ route('admin.laporan.keuangan.index', ['from' => now()->subDays(89)->toDateString(), 'to' => now()->toDateString()]) }}"
-                        class="rounded-xl border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                        90 Hari
-                    </a>
-                </div>
-            </div>
-        </form>
-
-        {{-- KPI Cards (count-up animasi) --}}
-        @php
-            $rp = fn($n) => 'Rp ' . number_format((int) $n, 0, ',', '.');
-            $produkTotal = (int) $totalProduk;
-            $memberTotal = (int) $totalMembership;
-            $grand = (int) $grandTotal;
-        @endphp
-
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div class="rounded-3xl border bg-white p-6 shadow-sm" x-data="kpiCard({ value: {{ $produkTotal }} })">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-500">Pendapatan Produk</p>
-                        <p class="mt-2 text-2xl font-semibold" x-text="rupiah(display)"></p>
-                    </div>
-                    <span class="rounded-2xl bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
+                    {{-- Inactive Links --}}
+                    <a href="{{ url()->current() }}/produk?{{ $qs }}"
+                        class="px-4 py-2 text-xs font-medium rounded-md text-text-muted hover:text-text-main hover:bg-gray-50 transition-all whitespace-nowrap">
                         Produk
-                    </span>
-                </div>
-                <div class="mt-4 h-2 w-full rounded-full bg-gray-100">
-                    <div class="h-2 rounded-full bg-gray-900" :style="`width:${progress}%`"></div>
-                </div>
-            </div>
-
-            <div class="rounded-3xl border bg-white p-6 shadow-sm" x-data="kpiCard({ value: {{ $memberTotal }} })">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-500">Pendapatan Membership</p>
-                        <p class="mt-2 text-2xl font-semibold" x-text="rupiah(display)"></p>
-                    </div>
-                    <span class="rounded-2xl bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
+                    </a>
+                    <a href="{{ url()->current() }}/membership?{{ $qs }}"
+                        class="px-4 py-2 text-xs font-medium rounded-md text-text-muted hover:text-text-main hover:bg-gray-50 transition-all whitespace-nowrap">
                         Membership
-                    </span>
-                </div>
-                <div class="mt-4 h-2 w-full rounded-full bg-gray-100">
-                    <div class="h-2 rounded-full bg-gray-900" :style="`width:${progress}%`"></div>
+                    </a>
+                    <a href="{{ url()->current() }}/harian?{{ $qs }}"
+                        class="px-4 py-2 text-xs font-medium rounded-md text-text-muted hover:text-text-main hover:bg-gray-50 transition-all whitespace-nowrap">
+                        Harian
+                    </a>
+                    <a href="{{ url()->current() }}/gabungan?{{ $qs }}"
+                        class="px-4 py-2 text-xs font-medium rounded-md text-text-muted hover:text-text-main hover:bg-gray-50 transition-all whitespace-nowrap">
+                        Audit Data
+                    </a>
                 </div>
             </div>
 
-            <div class="rounded-3xl border bg-white p-6 shadow-sm" x-data="kpiCard({ value: {{ $grand }} })">
+            {{-- Date Filter Form --}}
+            <form method="GET" action="{{ url()->current() }}" class="flex-shrink-0">
+                <div class="flex items-center gap-2 bg-white border border-brand-borderSoft rounded-lg p-1.5 shadow-sm">
+                    <div class="flex items-center gap-2 px-2 border-r border-gray-100">
+                        <i data-lucide="calendar" class="w-4 h-4 text-gold-500"></i>
+                    </div>
+                    <input type="date" name="from" value="{{ $fromDate }}"
+                        class="border-none text-xs font-medium text-text-main focus:ring-0 p-1 bg-transparent w-32 cursor-pointer">
+                    <span class="text-text-muted text-xs">➜</span>
+                    <input type="date" name="to" value="{{ $toDate }}"
+                        class="border-none text-xs font-medium text-text-main focus:ring-0 p-1 bg-transparent w-32 cursor-pointer">
+
+                    <button type="submit"
+                        class="ml-2 px-3 py-1.5 bg-black text-white text-xs font-bold rounded hover:bg-gray-800 transition shadow-sm">
+                        Filter
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {{-- 2. KPI CARDS --}}
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+            {{-- Total Pendapatan (Dark Card Style) --}}
+            <div class="relative overflow-hidden rounded-2xl bg-[#1A1A1A] p-5 shadow-lg lg:col-span-1">
+                <div class="relative z-10 flex h-full flex-col justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-widest text-gray-400">Total Pendapatan Bersih
+                        </p>
+                        <h3 class="mt-2 text-3xl font-bold text-white stat-number">{{ $rupiah($grandTotal) }}</h3>
+                    </div>
+                    <div class="mt-4 flex items-center gap-2">
+                        <div class="h-1.5 w-full rounded-full bg-gray-700">
+                            <div class="h-1.5 rounded-full bg-gold-500 w-full"></div>
+                        </div>
+                    </div>
+                    <p class="mt-2 text-[10px] text-gray-400">Gabungan Produk, Membership & Harian</p>
+                </div>
+                {{-- Decorative Blob --}}
+                <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-gold-500/10 blur-3xl"></div>
+            </div>
+
+            {{-- Membership --}}
+            <x-ui.card class="p-5 border-brand-borderSoft hover:border-blue-200 transition-colors">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-sm font-medium text-gray-500">Total Gabungan</p>
-                        <p class="mt-2 text-2xl font-semibold" x-text="rupiah(display)"></p>
+                        <p class="text-[11px] font-bold uppercase tracking-widest text-text-muted">Membership</p>
+                        <p class="mt-1 text-2xl font-bold text-text-main stat-number">{{ $rupiah($totalMembership) }}
+                        </p>
                     </div>
-                    <span class="rounded-2xl bg-gray-900 px-3 py-1 text-xs font-semibold text-white">
-                        Total
+                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600">
+                        <i data-lucide="users" class="w-4 h-4"></i>
                     </span>
                 </div>
-                <div class="mt-4 h-2 w-full rounded-full bg-gray-100">
-                    <div class="h-2 rounded-full bg-gray-900" :style="`width:${progress}%`"></div>
+                <div class="mt-4 h-1.5 w-full rounded-full bg-gray-100">
+                    <div class="h-1.5 rounded-full bg-blue-500"
+                        style="width: {{ $grandTotal > 0 ? ($totalMembership / $grandTotal) * 100 : 0 }}%"></div>
                 </div>
-            </div>
-        </div>
+                <p class="mt-2 text-[10px] text-text-muted text-right">
+                    {{ $grandTotal > 0 ? round(($totalMembership / $grandTotal) * 100, 1) : 0 }}%</p>
+            </x-ui.card>
 
-        {{-- Charts --}}
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div class="rounded-3xl border bg-white p-6 shadow-sm lg:col-span-2">
-                <div class="flex items-center justify-between">
+            {{-- Produk --}}
+            <x-ui.card class="p-5 border-brand-borderSoft hover:border-emerald-200 transition-colors">
+                <div class="flex items-start justify-between">
                     <div>
-                        <h2 class="text-base font-semibold">Tren Pendapatan Harian</h2>
-                        <p class="text-sm text-gray-500">Gabungan Produk + Membership dalam periode terpilih.</p>
+                        <p class="text-[11px] font-bold uppercase tracking-widest text-text-muted">Produk Retail</p>
+                        <p class="mt-1 text-2xl font-bold text-text-main stat-number">{{ $rupiah($totalProduk) }}</p>
                     </div>
+                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 text-emerald-600">
+                        <i data-lucide="shopping-bag" class="w-4 h-4"></i>
+                    </span>
                 </div>
+                <div class="mt-4 h-1.5 w-full rounded-full bg-gray-100">
+                    <div class="h-1.5 rounded-full bg-emerald-500"
+                        style="width: {{ $grandTotal > 0 ? ($totalProduk / $grandTotal) * 100 : 0 }}%"></div>
+                </div>
+                <p class="mt-2 text-[10px] text-text-muted text-right">
+                    {{ $grandTotal > 0 ? round(($totalProduk / $grandTotal) * 100, 1) : 0 }}%</p>
+            </x-ui.card>
 
-                <div class="mt-4">
-                    <canvas id="chartDaily" height="120"></canvas>
+            {{-- Harian --}}
+            <x-ui.card class="p-5 border-brand-borderSoft hover:border-amber-200 transition-colors">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-widest text-text-muted">Visit Harian</p>
+                        <p class="mt-1 text-2xl font-bold text-text-main stat-number">{{ $rupiah($totalHarian) }}</p>
+                    </div>
+                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-amber-50 text-amber-600">
+                        <i data-lucide="ticket" class="w-4 h-4"></i>
+                    </span>
                 </div>
+                <div class="mt-4 h-1.5 w-full rounded-full bg-gray-100">
+                    <div class="h-1.5 rounded-full bg-amber-500"
+                        style="width: {{ $grandTotal > 0 ? ($totalHarian / $grandTotal) * 100 : 0 }}%"></div>
+                </div>
+                <p class="mt-2 text-[10px] text-text-muted text-right">
+                    {{ $grandTotal > 0 ? round(($totalHarian / $grandTotal) * 100, 1) : 0 }}%</p>
+            </x-ui.card>
+        </div>
+
+        {{-- 3. CHARTS AREA --}}
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            {{-- Main Trend Chart --}}
+            <div class="lg:col-span-2">
+                <x-ui.card class="p-6 border-brand-borderSoft h-full">
+                    <div class="mb-6 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-bold text-text-main">Tren Pendapatan & Komposisi</h3>
+                            <p class="text-xs text-text-muted mt-0.5">Grafik akumulasi harian berdasarkan sumber.</p>
+                        </div>
+                        {{-- Legend Custom --}}
+                        <div class="flex gap-3 text-[10px] font-medium uppercase tracking-wide">
+                            <div class="flex items-center gap-1.5"><span
+                                    class="h-2 w-2 rounded-full bg-blue-500"></span> Member</div>
+                            <div class="flex items-center gap-1.5"><span
+                                    class="h-2 w-2 rounded-full bg-emerald-500"></span> Produk</div>
+                            <div class="flex items-center gap-1.5"><span
+                                    class="h-2 w-2 rounded-full bg-amber-500"></span> Harian</div>
+                        </div>
+                    </div>
+
+                    <div class="relative h-[320px] w-full">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+
+                    {{-- Fallback Table --}}
+                    <div id="trendFallback" class="mt-6 hidden">
+                        <div class="overflow-x-auto custom-scrollbar rounded-lg border border-gray-100">
+                            <table class="min-w-full text-xs">
+                                <thead class="bg-gray-50 text-text-muted font-bold">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left">Tanggal</th>
+                                        <th class="px-4 py-2 text-right">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-50">
+                                    @foreach ($daily as $t)
+                                        <tr>
+                                            <td class="px-4 py-2 text-text-main">{{ $fmtDate($t['tanggal'] ?? '') }}
+                                            </td>
+                                            <td class="px-4 py-2 text-right font-mono">{{ $rupiah($t['total'] ?? 0) }}
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </x-ui.card>
             </div>
 
-            <div class="rounded-3xl border bg-white p-6 shadow-sm">
-                <h2 class="text-base font-semibold">Komposisi Pendapatan</h2>
-                <p class="text-sm text-gray-500">Produk vs Membership.</p>
-                <div class="mt-4">
-                    <canvas id="chartComposition" height="220"></canvas>
-                </div>
+            {{-- Right Column: Donut & Payment Methods --}}
+            <div class="flex flex-col gap-6">
+                {{-- Payment Methods --}}
+                <x-ui.card class="p-6 border-brand-borderSoft flex-1">
+                    <h3 class="text-sm font-bold text-text-main mb-4">Metode Pembayaran</h3>
 
-                <div class="mt-4 space-y-2 text-sm">
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-600">Produk</span>
-                        <span class="font-semibold">{{ $rp($produkTotal) }}</span>
+                    <div class="space-y-4">
+                        @foreach ($metodeRows as $r)
+                            <div class="flex items-center justify-between group">
+                                <div class="flex items-center gap-3">
+                                    <div
+                                        class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center border border-gray-100 group-hover:border-gold-200 transition-colors">
+                                        @if ($r['metode'] == 'cash')
+                                            <i data-lucide="banknote" class="w-4 h-4 text-emerald-600"></i>
+                                        @elseif($r['metode'] == 'transfer')
+                                            <i data-lucide="arrow-left-right" class="w-4 h-4 text-blue-600"></i>
+                                        @else
+                                            <i data-lucide="qr-code" class="w-4 h-4 text-purple-600"></i>
+                                        @endif
+                                    </div>
+                                    <span
+                                        class="text-xs font-semibold text-text-muted uppercase tracking-wide">{{ $r['metode'] }}</span>
+                                </div>
+                                <span
+                                    class="text-sm font-bold text-text-main stat-number">{{ $rupiah($r['total']) }}</span>
+                            </div>
+                        @endforeach
                     </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-600">Membership</span>
-                        <span class="font-semibold">{{ $rp($memberTotal) }}</span>
+
+                    <div class="mt-8 pt-6 border-t border-dashed border-gray-100">
+                        <h4 class="text-[10px] font-bold text-text-muted uppercase mb-3">Proporsi Sumber</h4>
+                        <div class="relative h-[160px] w-full">
+                            <canvas id="sourceChart"></canvas>
+                        </div>
                     </div>
-                    <div class="border-t pt-2 flex items-center justify-between">
-                        <span class="text-gray-900 font-semibold">Total</span>
-                        <span class="text-gray-900 font-semibold">{{ $rp($grand) }}</span>
-                    </div>
-                </div>
+                </x-ui.card>
             </div>
         </div>
 
-        {{-- Metode Pembayaran Breakdown --}}
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div class="rounded-3xl border bg-white p-6 shadow-sm">
-                <h2 class="text-base font-semibold">Metode Pembayaran (Produk)</h2>
-                <p class="text-sm text-gray-500">Distribusi pendapatan berdasarkan metode pembayaran.</p>
-                <div class="mt-4">
-                    <canvas id="chartProdukMetode" height="200"></canvas>
-                </div>
-            </div>
-
-            <div class="rounded-3xl border bg-white p-6 shadow-sm">
-                <h2 class="text-base font-semibold">Metode Pembayaran (Membership)</h2>
-                <p class="text-sm text-gray-500">Distribusi pendapatan berdasarkan metode pembayaran.</p>
-                <div class="mt-4">
-                    <canvas id="chartMemberMetode" height="200"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    @push('scripts')
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+        {{-- SCRIPT AREA --}}
         <script>
-            // ---------- Helpers ----------
-            function rupiah(n) {
-                n = Number(n || 0);
-                return 'Rp ' + n.toLocaleString('id-ID');
-            }
+            (function() {
+                const daily = @json($daily);
+                const komposisi = @json($komposisiSumber);
 
-            function kpiCard({
-                value
-            }) {
-                return {
-                    value: Number(value || 0),
-                    display: 0,
-                    progress: 0,
-                    init() {
-                        const duration = 900;
-                        const start = performance.now();
-                        const from = 0;
-                        const to = this.value;
-
-                        const step = (now) => {
-                            const t = Math.min(1, (now - start) / duration);
-                            // easing
-                            const eased = 1 - Math.pow(1 - t, 3);
-                            this.display = Math.floor(from + (to - from) * eased);
-
-                            // progress bar: relatif terhadap total halaman (sekadar visual)
-                            this.progress = Math.min(100, Math.round(eased * 100));
-                            if (t < 1) requestAnimationFrame(step);
-                        };
-                        requestAnimationFrame(step);
-                    },
-                    rupiah
+                function loadScript(src) {
+                    return new Promise((resolve, reject) => {
+                        const s = document.createElement('script');
+                        s.src = src;
+                        s.onload = resolve;
+                        s.onerror = reject;
+                        document.head.appendChild(s);
+                    });
                 }
-            }
 
-            // expose for Alpine
-            window.kpiCard = kpiCard;
-
-            // ---------- Data from backend ----------
-            const daily = @json($daily);
-            const labels = daily.map(d => d.tanggal);
-            const dataProduk = daily.map(d => Number(d.produk || 0));
-            const dataMember = daily.map(d => Number(d.membership || 0));
-            const dataTotal = daily.map(d => Number(d.total || 0));
-
-            const produkByMetode = @json($produkByMetode);
-            const membershipByMetode = @json($membershipByMetode);
-
-            const metodeLabels = ['cash', 'transfer', 'qris'];
-
-            const produkMetodeData = metodeLabels.map(k => Number(produkByMetode[k] || 0));
-            const memberMetodeData = metodeLabels.map(k => Number(membershipByMetode[k] || 0));
-
-            // ---------- Charts ----------
-            // Daily line chart (Total + optional breakdown)
-            new Chart(document.getElementById('chartDaily'), {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [{
-                            label: 'Total',
-                            data: dataTotal,
-                            tension: 0.35
-                        },
-                        {
-                            label: 'Produk',
-                            data: dataProduk,
-                            tension: 0.35
-                        },
-                        {
-                            label: 'Membership',
-                            data: dataMember,
-                            tension: 0.35
-                        },
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    },
-                    plugins: {
-                        legend: {
-                            position: 'top'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => `${ctx.dataset.label}: ${rupiah(ctx.raw)}`
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            ticks: {
-                                callback: (v) => rupiah(v)
-                            }
-                        }
+                async function ensureChart() {
+                    if (typeof window.Chart !== 'undefined') return true;
+                    try {
+                        await loadScript('https://cdn.jsdelivr.net/npm/chart.js');
+                        return typeof window.Chart !== 'undefined';
+                    } catch (e) {
+                        return false;
                     }
                 }
-            });
 
-            // Composition donut (produk vs membership)
-            new Chart(document.getElementById('chartComposition'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Produk', 'Membership'],
-                    datasets: [{
-                        data: [{{ (int) $produkTotal }}, {{ (int) $memberTotal }}],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => `${ctx.label}: ${rupiah(ctx.raw)}`
+                function rupiahTick(v) {
+                    if (v >= 1000000) return (v / 1000000).toFixed(1) + 'jt';
+                    if (v >= 1000) return (v / 1000).toFixed(0) + 'rb';
+                    return v;
+                }
+
+                async function init() {
+                    const ok = await ensureChart();
+                    if (!ok) {
+                        const fb = document.getElementById('trendFallback');
+                        if (fb) fb.classList.remove('hidden');
+                        return;
+                    }
+
+                    Chart.defaults.font.family = "'Inter', sans-serif";
+                    Chart.defaults.color = '#94a3b8'; // text-slate-400
+
+                    // Trend chart (stacked bar)
+                    const labels = daily.map(r => r.tanggal);
+                    const dsHarian = daily.map(r => Number(r.harian || 0));
+                    const dsMember = daily.map(r => Number(r.membership || 0));
+                    const dsProduk = daily.map(r => Number(r.produk || 0));
+
+                    const trendEl = document.getElementById('trendChart');
+                    if (trendEl) {
+                        new Chart(trendEl, {
+                            type: 'bar',
+                            data: {
+                                labels,
+                                datasets: [{
+                                        label: 'Harian',
+                                        data: dsHarian,
+                                        backgroundColor: '#f59e0b', // Amber 500
+                                        borderRadius: 2,
+                                        stack: 'income'
+                                    },
+                                    {
+                                        label: 'Membership',
+                                        data: dsMember,
+                                        backgroundColor: '#3b82f6', // Blue 500
+                                        borderRadius: 2,
+                                        stack: 'income'
+                                    },
+                                    {
+                                        label: 'Produk',
+                                        data: dsProduk,
+                                        backgroundColor: '#10b981', // Emerald 500
+                                        borderRadius: 2,
+                                        stack: 'income'
+                                    },
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                interaction: {
+                                    mode: 'index',
+                                    intersect: false
+                                },
+                                plugins: {
+                                    legend: {
+                                        display: false
+                                    },
+                                    tooltip: {
+                                        backgroundColor: '#1e1e1e',
+                                        titleColor: '#fbbf24', // Gold
+                                        padding: 12,
+                                        cornerRadius: 8,
+                                        callbacks: {
+                                            label: function(ctx) {
+                                                return ` ${ctx.dataset.label}: Rp ${Number(ctx.parsed.y).toLocaleString('id-ID')}`;
+                                            }
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    x: {
+                                        stacked: true,
+                                        grid: {
+                                            display: false
+                                        },
+                                        ticks: {
+                                            font: {
+                                                size: 10
+                                            },
+                                            maxRotation: 45,
+                                            minRotation: 0
+                                        }
+                                    },
+                                    y: {
+                                        stacked: true,
+                                        border: {
+                                            display: false
+                                        },
+                                        grid: {
+                                            color: '#f1f5f9',
+                                            borderDash: [4, 4]
+                                        },
+                                        ticks: {
+                                            callback: (v) => rupiahTick(v),
+                                            font: {
+                                                size: 10
+                                            }
+                                        }
+                                    }
+                                }
                             }
-                        }
+                        });
+                    }
+
+                    // Komposisi sumber (donut)
+                    const srcLabels = komposisi.map(x => x.label);
+                    const srcValues = komposisi.map(x => Number(x.total || 0));
+                    const srcColors = ['#f59e0b', '#3b82f6', '#10b981'];
+
+                    const sourceEl = document.getElementById('sourceChart');
+                    if (sourceEl) {
+                        new Chart(sourceEl, {
+                            type: 'doughnut',
+                            data: {
+                                labels: srcLabels,
+                                datasets: [{
+                                    data: srcValues,
+                                    backgroundColor: srcColors,
+                                    borderWidth: 0,
+                                    hoverOffset: 4
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                cutout: '70%',
+                                plugins: {
+                                    legend: {
+                                        display: true,
+                                        position: 'right',
+                                        labels: {
+                                            boxWidth: 10,
+                                            font: {
+                                                size: 10
+                                            }
+                                        }
+                                    },
+                                    tooltip: {
+                                        backgroundColor: '#1e1e1e',
+                                        callbacks: {
+                                            label: function(ctx) {
+                                                return ` ${ctx.label}: Rp ${Number(ctx.parsed).toLocaleString('id-ID')}`;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
                     }
                 }
-            });
 
-            // Produk metode
-            new Chart(document.getElementById('chartProdukMetode'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Cash', 'Transfer', 'QRIS'],
-                    datasets: [{
-                        data: produkMetodeData,
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => `${ctx.label}: ${rupiah(ctx.raw)}`
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Membership metode
-            new Chart(document.getElementById('chartMemberMetode'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Cash', 'Transfer', 'QRIS'],
-                    datasets: [{
-                        data: memberMetodeData,
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => `${ctx.label}: ${rupiah(ctx.raw)}`
-                            }
-                        }
-                    }
-                }
-            });
+                init();
+            })();
         </script>
-    @endpush
+    </div>
 </x-layouts.admin>
