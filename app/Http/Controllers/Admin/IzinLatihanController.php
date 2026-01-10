@@ -22,83 +22,82 @@ class IzinLatihanController extends Controller
     }
 
     public function index(Request $request)
-{
-    $pageTitle = 'Permintaan Izin Baru';
+    {
+        $pageTitle = 'Permintaan Izin Baru';
 
-    $query = IzinLatihan::with(['member.user'])
-        ->where('status', 'pending');
+        $query = IzinLatihan::with(['member.user'])
+            ->where('status', 'pending');
 
-    if ($request->filled('q')) {
-        $search = trim($request->q);
+        if ($request->filled('q')) {
+            $search = trim((string) $request->q);
 
-        $query->where(function ($q) use ($search) {
-            $q->whereHas('member.user', function ($u) use ($search) {
-                $u->where('name', 'like', $search . '%')
-                  ->orWhere('username', 'like', $search . '%');
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('member.user', function ($u) use ($search) {
+                    $u->where('name', 'like', $search . '%')
+                      ->orWhere('username', 'like', $search . '%');
+                });
             });
-        });
+        }
+
+        // SORTING harus sebelum paginate
+        $sort = $request->input('sort', 'newest');
+        switch ($sort) {
+            case 'oldest':
+                $query->orderBy('created_at', 'asc');
+                break;
+
+            case 'days_max':
+                $query->orderBy('jumlah_hari', 'desc')
+                      ->orderBy('created_at', 'desc');
+                break;
+
+            case 'days_min':
+                $query->orderBy('jumlah_hari', 'asc')
+                      ->orderBy('created_at', 'desc');
+                break;
+
+            case 'newest':
+            default:
+                $query->orderBy('created_at', 'desc');
+                break;
+        }
+
+        $daftar_izin = $query->paginate(20)->withQueryString();
+
+        // inject akhir membership (tanpa N+1)
+        $memberIds = $daftar_izin->getCollection()->pluck('member_id')->unique()->values()->all();
+        $akhirMap  = $this->mapAkhirMembership($memberIds);
+
+        $daftar_izin->setCollection(
+            $daftar_izin->getCollection()->map(function ($izin) use ($akhirMap) {
+                $izin->akhir_membership = $akhirMap[(int) $izin->member_id] ?? null;
+                return $izin;
+            })
+        );
+
+        $membersForSelect = Member::query()
+            ->with(['user:id,name,username,role'])
+            ->whereHas('user', fn($q) => $q->where('role', 'member'))
+            ->orderBy(
+                User::select('name')
+                    ->whereColumn('users.id', 'members.user_id')
+                    ->limit(1)
+            )
+            ->get(['id', 'user_id']);
+
+        return view('admin.izin_latihan.index', compact(
+            'daftar_izin',
+            'pageTitle',
+            'membersForSelect',
+            'sort'
+        ));
     }
-
-    // SORTING harus sebelum paginate
-    $sort = $request->input('sort', 'newest');
-    switch ($sort) {
-        case 'oldest':
-            $query->orderBy('created_at', 'asc');
-            break;
-
-        case 'days_max':
-            $query->orderBy('jumlah_hari', 'desc')
-                  ->orderBy('created_at', 'desc');
-            break;
-
-        case 'days_min':
-            $query->orderBy('jumlah_hari', 'asc')
-                  ->orderBy('created_at', 'desc');
-            break;
-
-        case 'newest':
-        default:
-            $query->orderBy('created_at', 'desc');
-            break;
-    }
-
-    // paginate cukup sekali
-    $daftar_izin = $query->paginate(20)->withQueryString();
-
-    // inject akhir membership (tanpa N+1)
-    $memberIds = $daftar_izin->getCollection()->pluck('member_id')->unique()->values()->all();
-    $akhirMap  = $this->mapAkhirMembership($memberIds);
-
-    $daftar_izin->setCollection(
-        $daftar_izin->getCollection()->map(function ($izin) use ($akhirMap) {
-            $izin->akhir_membership = $akhirMap[(int) $izin->member_id] ?? null;
-            return $izin;
-        })
-    );
-
-    $membersForSelect = Member::query()
-        ->with(['user:id,name,username,role'])
-        ->whereHas('user', fn($q) => $q->where('role', 'member'))
-        ->orderBy(
-            User::select('name')
-                ->whereColumn('users.id', 'members.user_id')
-                ->limit(1)
-        )
-        ->get(['id', 'user_id']);
-
-    return view('admin.izin_latihan.index', compact(
-        'daftar_izin',
-        'pageTitle',
-        'membersForSelect',
-    ));
-}
-
 
     /**
      * Admin menambahkan izin manual (langsung disetujui) + membuat transaksi kompensasi.
      * Aturan bisnis (opsi A):
      * - Member harus punya transaksi PEMBAYARAN sebelumnya
-     * - Member harus sedang AKTIF pada tanggal_mulai izin (atau minimal aktif pada tanggal itu)
+     * - Member harus sedang AKTIF pada tanggal_mulai izin
      */
     public function storeManual(Request $request)
     {
@@ -130,26 +129,26 @@ class IzinLatihanController extends Controller
 
         $tanggalMulaiIzin = Carbon::parse($validated['tanggal_mulai'])->startOfDay();
 
-        // 1) Wajib punya transaksi pembayaran (untuk paket_id kompensasi + aturan bisnis)
+        // 1) Wajib punya transaksi pembayaran
         $lastPaidTx = $this->getLastPaidTransactionForMember($memberId);
         if (! $lastPaidTx) {
-    return back()
-        ->withErrors(
-            ['member_id' => 'Member ini belum pernah melakukan transaksi membership (pembayaran). Tidak bisa membuat izin/kompensasi.'],
-            'izin_manual'
-        )
-        ->withInput();
-}
+            return back()
+                ->withErrors(
+                    ['member_id' => 'Member ini belum pernah melakukan transaksi membership (pembayaran). Tidak bisa membuat izin/kompensasi.'],
+                    'izin_manual'
+                )
+                ->withInput();
+        }
 
-if (! $this->isMembershipActiveAtDate($memberId, $tanggalMulaiIzin)) {
-    return back()
-        ->withErrors(
-            ['tanggal_mulai' => 'Member tidak memiliki membership aktif pada tanggal mulai izin. Izin tidak bisa dibuat.'],
-            'izin_manual'
-        )
-        ->withInput();
-}
-
+        // 2) Wajib aktif pada tanggal mulai izin (opsi A)
+        if (! $this->isMembershipActiveAtDate($memberId, $tanggalMulaiIzin)) {
+            return back()
+                ->withErrors(
+                    ['tanggal_mulai' => 'Member tidak memiliki membership aktif pada tanggal mulai izin. Izin tidak bisa dibuat.'],
+                    'izin_manual'
+                )
+                ->withInput();
+        }
 
         $tanggalSelesaiIzin = $tanggalMulaiIzin->copy()->addDays($jumlahHari - 1);
 
@@ -158,7 +157,7 @@ if (! $this->isMembershipActiveAtDate($memberId, $tanggalMulaiIzin)) {
             $buktiPath = $request->file('bukti_alasan')->store('uploads/bukti_izin', 'public');
         }
 
-        $alasanText = isset($validated['alasan']) ? trim($validated['alasan']) : '';
+        $alasanText = isset($validated['alasan']) ? trim((string) $validated['alasan']) : '';
 
         DB::transaction(function () use (
             $memberId,
@@ -199,11 +198,13 @@ if (! $this->isMembershipActiveAtDate($memberId, $tanggalMulaiIzin)) {
                 'canceled_at'       => null,
             ]);
 
-            // konsisten: selalu buat primary participant
+            // IMPORTANT: pivot wajib isi tanggal_mulai/tanggal_akhir supaya konsisten pivot-based
             TransaksiMembershipMember::create([
                 'transaksi_membership_id' => $trx->id,
                 'member_id'               => $memberId,
                 'role'                    => 'primary',
+                'tanggal_mulai'           => $mulaiKomp,
+                'tanggal_akhir'           => $akhirKomp,
             ]);
         });
 
@@ -213,73 +214,71 @@ if (! $this->isMembershipActiveAtDate($memberId, $tanggalMulaiIzin)) {
     }
 
     public function history(Request $request)
-{
-    $pageTitle = 'Riwayat Persetujuan Izin';
+    {
+        $pageTitle = 'Riwayat Persetujuan Izin';
 
-    $query = IzinLatihan::with(['member.user'])
-        ->whereIn('status', ['disetujui', 'ditolak']);
+        $query = IzinLatihan::with(['member.user'])
+            ->whereIn('status', ['disetujui', 'ditolak']);
 
-    // SORTING harus sebelum paginate
-    $sort = $request->input('sort', 'processed_newest');
+        // SORTING harus sebelum paginate
+        $sort = $request->input('sort', 'processed_newest');
 
-    $processedAtExpr  = "COALESCE(tanggal_persetujuan, updated_at, created_at)";
-    $approvedDaysExpr = "CASE
-        WHEN status = 'disetujui' THEN COALESCE(durasi_izin_disetujui, 0)
-        ELSE 0
-    END";
+        $processedAtExpr  = "COALESCE(tanggal_persetujuan, updated_at, created_at)";
+        $approvedDaysExpr = "CASE
+            WHEN status = 'disetujui' THEN COALESCE(durasi_izin_disetujui, 0)
+            ELSE 0
+        END";
 
-    switch ($sort) {
-        case 'processed_oldest':
-            $query->orderByRaw("$processedAtExpr ASC")->orderBy('id', 'ASC');
-            break;
+        switch ($sort) {
+            case 'processed_oldest':
+                $query->orderByRaw("$processedAtExpr ASC")->orderBy('id', 'ASC');
+                break;
 
-        case 'approved_max':
-            $query->orderByRaw("$approvedDaysExpr DESC")
-                  ->orderByRaw("$processedAtExpr DESC")
-                  ->orderBy('id', 'DESC');
-            break;
+            case 'approved_max':
+                $query->orderByRaw("$approvedDaysExpr DESC")
+                      ->orderByRaw("$processedAtExpr DESC")
+                      ->orderBy('id', 'DESC');
+                break;
 
-        case 'approved_min':
-            $query->orderByRaw("$approvedDaysExpr ASC")
-                  ->orderByRaw("$processedAtExpr DESC")
-                  ->orderBy('id', 'DESC');
-            break;
+            case 'approved_min':
+                $query->orderByRaw("$approvedDaysExpr ASC")
+                      ->orderByRaw("$processedAtExpr DESC")
+                      ->orderBy('id', 'DESC');
+                break;
 
-        case 'requested_max':
-            $query->orderBy('jumlah_hari', 'DESC')
-                  ->orderByRaw("$processedAtExpr DESC")
-                  ->orderBy('id', 'DESC');
-            break;
+            case 'requested_max':
+                $query->orderBy('jumlah_hari', 'DESC')
+                      ->orderByRaw("$processedAtExpr DESC")
+                      ->orderBy('id', 'DESC');
+                break;
 
-        case 'requested_min':
-            $query->orderBy('jumlah_hari', 'ASC')
-                  ->orderByRaw("$processedAtExpr DESC")
-                  ->orderBy('id', 'DESC');
-            break;
+            case 'requested_min':
+                $query->orderBy('jumlah_hari', 'ASC')
+                      ->orderByRaw("$processedAtExpr DESC")
+                      ->orderBy('id', 'DESC');
+                break;
 
-        case 'processed_newest':
-        default:
-            $query->orderByRaw("$processedAtExpr DESC")->orderBy('id', 'DESC');
-            break;
+            case 'processed_newest':
+            default:
+                $query->orderByRaw("$processedAtExpr DESC")->orderBy('id', 'DESC');
+                break;
+        }
+
+        $riwayat_izin = $query->paginate(15)->withQueryString();
+
+        // inject akhir membership (tanpa N+1)
+        $memberIds = $riwayat_izin->getCollection()->pluck('member_id')->unique()->values()->all();
+        $akhirMap  = $this->mapAkhirMembership($memberIds);
+
+        $riwayat_izin->setCollection(
+            $riwayat_izin->getCollection()->map(function ($izin) use ($akhirMap) {
+                $izin->akhir_membership = $akhirMap[(int) $izin->member_id] ?? null;
+                return $izin;
+            })
+        );
+
+        return view('admin.izin_latihan.history', compact('riwayat_izin', 'pageTitle', 'sort'));
     }
-
-    // paginate cukup sekali
-    $riwayat_izin = $query->paginate(15)->withQueryString();
-
-    // inject akhir membership (tanpa N+1)
-    $memberIds = $riwayat_izin->getCollection()->pluck('member_id')->unique()->values()->all();
-    $akhirMap  = $this->mapAkhirMembership($memberIds);
-
-    $riwayat_izin->setCollection(
-        $riwayat_izin->getCollection()->map(function ($izin) use ($akhirMap) {
-            $izin->akhir_membership = $akhirMap[(int) $izin->member_id] ?? null;
-            return $izin;
-        })
-    );
-
-    return view('admin.izin_latihan.history', compact('riwayat_izin', 'pageTitle'));
-}
-
 
     public function show($id)
     {
@@ -307,15 +306,11 @@ if (! $this->isMembershipActiveAtDate($memberId, $tanggalMulaiIzin)) {
      * Approve izin:
      * - Update izin -> disetujui + durasi_izin_disetujui
      * - Jika approved_days > 0 -> buat transaksi kompensasi (INDIVIDU)
-     *
-     * Aturan bisnis (opsi A):
-     * - Member wajib punya transaksi pembayaran (pembayaran terakhir dipakai untuk paket_id)
-     * - Member wajib aktif pada tanggal_mulai izin (atau minimal aktif pada tanggal itu)
      */
     public function approveIzin(Request $request, IzinLatihan $izinLatihan)
     {
         $request->validate([
-            'approved_days'    => 'required|integer|min:0|max:' . $izinLatihan->jumlah_hari,
+            'approved_days'    => 'required|integer|min:0|max:' . (int) $izinLatihan->jumlah_hari,
             'keterangan_admin' => 'nullable|string|max:1000',
         ], [
             'approved_days.max' => 'Hari yang disetujui tidak boleh melebihi durasi permintaan member (' . $izinLatihan->jumlah_hari . ' hari).',
@@ -343,13 +338,13 @@ if (! $this->isMembershipActiveAtDate($memberId, $tanggalMulaiIzin)) {
                     throw new \RuntimeException('Izin sudah diproses.');
                 }
 
-                // aturan opsi A: aktif pada tanggal_mulai izin
+                // Gate: aktif pada tanggal_mulai izin (opsi A)
                 $izinStart = Carbon::parse($izin->tanggal_mulai)->startOfDay();
                 if (! $this->isMembershipActiveAtDate($memberId, $izinStart)) {
                     throw new \RuntimeException('Membership member tidak aktif pada tanggal mulai izin. Izin tidak dapat disetujui.');
                 }
 
-                // Jika disetujui > 0, wajib ada transaksi pembayaran (untuk paket_id kompensasi)
+                // jika approvedDays > 0 -> wajib ada transaksi pembayaran (untuk paket_id kompensasi)
                 $lastPaidTx = null;
                 if ($approvedDays > 0) {
                     $lastPaidTx = $this->getLastPaidTransactionForMember($memberId, true);
@@ -365,29 +360,43 @@ if (! $this->isMembershipActiveAtDate($memberId, $tanggalMulaiIzin)) {
                     'tanggal_persetujuan'   => now(),
                 ]);
 
+                // buat kompensasi jika approvedDays > 0
                 if ($approvedDays > 0) {
-                    [$mulaiKomp, $akhirKomp] = $this->buildKompensasiPeriodIndividu($memberId, $approvedDays);
 
-                    $trx = TransaksiMembership::create([
-                        'buyer_member_id'   => $memberId,
-                        'created_by'        => auth()->id(),
-                        'paket_id'          => $lastPaidTx->paket_id,
-                        'tanggal_transaksi' => now(),
-                        'tanggal_mulai'     => $mulaiKomp,
-                        'tanggal_akhir'     => $akhirKomp,
-                        'jenis_transaksi'   => TransaksiMembership::JENIS_KOMPENSASI,
-                        'metode_pembayaran' => null,
-                        'keterangan'        => $request->keterangan_admin
-                            ? "Kompensasi izin (izin_id={$izin->id}). {$request->keterangan_admin}"
-                            : "Kompensasi izin (izin_id={$izin->id}) {$approvedDays} hari.",
-                        'canceled_at'       => null,
-                    ]);
+                    // idempotent: jangan buat dobel kalau sudah ada kompensasi utk izin ini
+                    $exists = TransaksiMembership::query()
+                        ->where('buyer_member_id', $memberId)
+                        ->where('jenis_transaksi', TransaksiMembership::JENIS_KOMPENSASI)
+                        ->where('keterangan', 'like', "%izin_id={$izin->id}%")
+                        ->exists();
 
-                    TransaksiMembershipMember::create([
-                        'transaksi_membership_id' => $trx->id,
-                        'member_id'               => $memberId,
-                        'role'                    => 'primary',
-                    ]);
+                    if (! $exists) {
+                        [$mulaiKomp, $akhirKomp] = $this->buildKompensasiPeriodIndividu($memberId, $approvedDays);
+
+                        $trx = TransaksiMembership::create([
+                            'buyer_member_id'   => $memberId,
+                            'created_by'        => auth()->id(),
+                            'paket_id'          => $lastPaidTx->paket_id,
+                            'tanggal_transaksi' => now(),
+                            'tanggal_mulai'     => $mulaiKomp,
+                            'tanggal_akhir'     => $akhirKomp,
+                            'jenis_transaksi'   => TransaksiMembership::JENIS_KOMPENSASI,
+                            'metode_pembayaran' => null,
+                            'keterangan'        => $request->keterangan_admin
+                                ? "Kompensasi izin (izin_id={$izin->id}). {$request->keterangan_admin}"
+                                : "Kompensasi izin (izin_id={$izin->id}) {$approvedDays} hari.",
+                            'canceled_at'       => null,
+                        ]);
+
+                        // IMPORTANT: pivot wajib isi tanggal (supaya history & per-member canonical aman)
+                        TransaksiMembershipMember::create([
+                            'transaksi_membership_id' => $trx->id,
+                            'member_id'               => $memberId,
+                            'role'                    => 'primary',
+                            'tanggal_mulai'           => $mulaiKomp,
+                            'tanggal_akhir'           => $akhirKomp,
+                        ]);
+                    }
                 }
             });
 
@@ -398,6 +407,7 @@ if (! $this->isMembershipActiveAtDate($memberId, $tanggalMulaiIzin)) {
             return redirect()
                 ->route('admin.izin_latihan.index')
                 ->with('success', $msg);
+
         } catch (\RuntimeException $e) {
             return redirect()
                 ->route('admin.izin_latihan.index')
@@ -436,7 +446,7 @@ if (! $this->isMembershipActiveAtDate($memberId, $tanggalMulaiIzin)) {
     /**
      * TRANSAKSI PEMBAYARAN terakhir yang relevan untuk individu:
      * - melibatkan member sebagai buyer ATAU participant
-     * - diurutkan berdasarkan tanggal_akhir terjauh (lebih aman untuk kasus backdate)
+     * - diurutkan berdasarkan tanggal_akhir terjauh
      */
     private function getLastPaidTransactionForMember(int $memberId, bool $lock = false): ?TransaksiMembership
     {
@@ -458,9 +468,7 @@ if (! $this->isMembershipActiveAtDate($memberId, $tanggalMulaiIzin)) {
     }
 
     /**
-     * Cek membership aktif pada tanggal tertentu (opsi A).
-     * Aktif = ada transaksi valid (pembayaran/kompensasi) yang periodenya mencakup tanggal tsb
-     * dan member terlibat sebagai buyer atau participant.
+     * Cek membership aktif pada tanggal tertentu.
      */
     private function isMembershipActiveAtDate(int $memberId, Carbon $date): bool
     {
@@ -481,9 +489,6 @@ if (! $this->isMembershipActiveAtDate($memberId, $tanggalMulaiIzin)) {
      * Periode kompensasi untuk INDIVIDU (inklusif):
      * start = (end_terakhir >= today) ? end_terakhir + 1 : today
      * end   = start + (days - 1)
-     *
-     * end_terakhir dihitung dari transaksi valid yang melibatkan member (buyer/participant),
-     * sehingga paket double/triple tetap "masa aktif per individu".
      */
     private function buildKompensasiPeriodIndividu(int $memberId, int $days): array
     {
@@ -508,40 +513,41 @@ if (! $this->isMembershipActiveAtDate($memberId, $tanggalMulaiIzin)) {
 
         return [$start->toDateString(), $finish->toDateString()];
     }
+
     private function mapAkhirMembership(array $memberIds): array
-{
-    $memberIds = array_values(array_unique(array_map('intval', array_filter($memberIds))));
-    if (count($memberIds) === 0) return [];
+    {
+        $memberIds = array_values(array_unique(array_map('intval', array_filter($memberIds))));
+        if (count($memberIds) === 0) return [];
 
-    // MAX tanggal_akhir sebagai buyer
-    $maxBuyer = TransaksiMembership::query()
-        ->valid()
-        ->whereIn('buyer_member_id', $memberIds)
-        ->select('buyer_member_id', DB::raw('MAX(tanggal_akhir) as max_akhir'))
-        ->groupBy('buyer_member_id')
-        ->pluck('max_akhir', 'buyer_member_id')
-        ->toArray();
+        // MAX tanggal_akhir sebagai buyer
+        $maxBuyer = TransaksiMembership::query()
+            ->valid()
+            ->whereIn('buyer_member_id', $memberIds)
+            ->select('buyer_member_id', DB::raw('MAX(tanggal_akhir) as max_akhir'))
+            ->groupBy('buyer_member_id')
+            ->pluck('max_akhir', 'buyer_member_id')
+            ->toArray();
 
-    // MAX tanggal_akhir sebagai participant
-    $maxParticipant = TransaksiMembership::query()
-        ->valid()
-        ->join('transaksi_membership_members as tmm', 'tmm.transaksi_membership_id', '=', 'transaksi_memberships.id')
-        ->whereIn('tmm.member_id', $memberIds)
-        ->select('tmm.member_id', DB::raw('MAX(transaksi_memberships.tanggal_akhir) as max_akhir'))
-        ->groupBy('tmm.member_id')
-        ->pluck('max_akhir', 'tmm.member_id')
-        ->toArray();
+        // MAX tanggal_akhir sebagai participant
+        $maxParticipant = TransaksiMembership::query()
+            ->valid()
+            ->join('transaksi_membership_members as tmm', 'tmm.transaksi_membership_id', '=', 'transaksi_memberships.id')
+            ->whereIn('tmm.member_id', $memberIds)
+            ->select('tmm.member_id', DB::raw('MAX(transaksi_memberships.tanggal_akhir) as max_akhir'))
+            ->groupBy('tmm.member_id')
+            ->pluck('max_akhir', 'tmm.member_id')
+            ->toArray();
 
-    // Merge: ambil yang paling besar
-    $out = [];
-    foreach ($memberIds as $id) {
-        $a = $maxBuyer[$id] ?? null;
-        $b = $maxParticipant[$id] ?? null;
+        // Merge: ambil yang paling besar
+        $out = [];
+        foreach ($memberIds as $id) {
+            $a = $maxBuyer[$id] ?? null;
+            $b = $maxParticipant[$id] ?? null;
 
-        if ($a && $b) $out[$id] = max($a, $b);
-        else $out[$id] = $a ?: $b;
+            if ($a && $b) $out[$id] = max($a, $b);
+            else $out[$id] = $a ?: $b;
+        }
+
+        return $out;
     }
-
-    return $out;
-}
 }

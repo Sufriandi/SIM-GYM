@@ -4,6 +4,7 @@
     'pageSubtitle' => null,   // tetap di-abaikan di navbar
     'notificationCount' => 0,
 ])
+
 @php
     use Illuminate\Support\Facades\Storage;
     use Illuminate\Support\Str;
@@ -11,27 +12,112 @@
     $authUser = auth()->user();
     $avatarUrl = ($authUser && !empty($authUser->foto)) ? Storage::url($authUser->foto) : null;
 
-    $initials = Str::of($authUser?->name ?: 'AD')
+    $initials = Str::of($authUser?->name ?: 'MB')
         ->trim()
         ->explode(' ')
         ->map(fn($p) => Str::upper(Str::substr($p, 0, 1)))
         ->take(2)
         ->join('');
 @endphp
+
 <header
     class="fixed top-0 left-0 md:left-64 right-0 h-16 flex items-center z-[80]
            bg-brand-shell/95 backdrop-blur-sm border-b border-brand-borderSoft shadow-header"
     x-data="{
         showNotifications: false,
         showProfile: false,
-        searchQuery: ''
+        searchQuery: '',
+
+        // ===== NOTIF REALTIME (POLLING) =====
+        notifPollUrl: '{{ route('member.notifikasi.poll') }}',
+        unreadCount: {{ (int) $notificationCount }},
+        notifItems: [],
+        lastMaxId: 0,
+
+        pollMs: 5000,
+        pollTimer: null,
+
+        initNotifications() {
+            // initial load dropdown list
+            this.fetchNotif(true);
+
+            // polling tetap jalan
+            this.pollTimer = setInterval(() => {
+                this.fetchNotif(false);
+            }, this.pollMs);
+
+            // saat balik tab -> refresh list
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) this.fetchNotif(true);
+            });
+        },
+
+        async fetchNotif(fullRefresh) {
+            try {
+                const since = fullRefresh ? 0 : this.lastMaxId;
+
+                const url = new URL(this.notifPollUrl, window.location.origin);
+                url.searchParams.set('since_id', String(since));
+
+                const res = await fetch(url.toString(), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) return;
+
+                const data = await res.json();
+                if (!data || data.success !== true) return;
+
+                this.unreadCount = Number(data.unreadCount ?? 0);
+
+                const incoming = Array.isArray(data.items) ? data.items : [];
+                const maxId = Number(data.maxId ?? 0);
+
+                if (fullRefresh) {
+                    this.notifItems = incoming.slice(0, 10);
+                    this.lastMaxId = maxId;
+                    return;
+                }
+
+                // incremental: prepend new items
+                if (incoming.length > 0) {
+                    const existingIds = new Set(this.notifItems.map(n => n.id));
+                    const newOnes = [];
+
+                    for (const n of incoming) {
+                        if (!existingIds.has(n.id)) newOnes.push(n);
+                    }
+
+                    if (newOnes.length > 0) {
+                        this.notifItems = [...newOnes, ...this.notifItems].slice(0, 10);
+                    }
+
+                    this.lastMaxId = Math.max(this.lastMaxId, maxId);
+                }
+
+            } catch (e) {
+                // silent
+            }
+        },
+
+        openNotifications() {
+            this.showNotifications = !this.showNotifications;
+            this.showProfile = false;
+
+            if (this.showNotifications) this.fetchNotif(true);
+        },
+
+        formatTime(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return iso;
+            return d.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+        },
     }"
+    x-init="initNotifications()"
     @click.away="showNotifications = false; showProfile = false"
     role="banner"
 >
-    <div
-        class="w-full px-4 lg:px-8 flex items-center justify-between gap-3 md:gap-4 flex-wrap"
-    >
+    <div class="w-full px-4 lg:px-8 flex items-center justify-between gap-3 md:gap-4 flex-wrap">
         {{-- KIRI: tombol mobile + breadcrumb --}}
         <div class="flex items-center gap-3 min-w-0 flex-1">
             {{-- Toggle sidebar mobile --}}
@@ -47,10 +133,7 @@
 
             {{-- Breadcrumb --}}
             <div class="min-w-0">
-                <nav
-                    class="flex items-center text-xs sm:text-sm font-bold text-text-muted"
-                    aria-label="Breadcrumb"
-                >
+                <nav class="flex items-center text-xs sm:text-sm font-bold text-text-muted" aria-label="Breadcrumb">
                     <a
                         href="{{ route('member.dashboard') }}"
                         class="inline-flex items-center gap-1 hover:text-gold-400 transition-colors min-w-0"
@@ -60,16 +143,12 @@
                     </a>
 
                     @if($pageTitle)
-                        <i
-                            data-lucide="chevron-right"
-                            class="w-4 h-4 mx-1.5 text-text-muted flex-shrink-0"
-                            stroke-width="3"
-                        ></i>
+                        <i data-lucide="chevron-right"
+                           class="w-4 h-4 mx-1.5 text-text-muted flex-shrink-0"
+                           stroke-width="3"></i>
 
-                        <span
-                            class="text-text-main font-bold truncate
-                                   max-w-[140px] sm:max-w-[200px] md:max-w-[260px]"
-                        >
+                        <span class="text-text-main font-bold truncate
+                                   max-w-[140px] sm:max-w-[200px] md:max-w-[260px]">
                             {{ $pageTitle }}
                         </span>
                     @endif
@@ -77,8 +156,9 @@
             </div>
         </div>
 
-        {{-- KANAN: (optional) search + notif + profile --}}
+        {{-- KANAN: search + notif + profile --}}
         <div class="flex items-center gap-2 lg:gap-3 flex-shrink-0">
+
             {{-- Search desktop --}}
             <div
                 class="hidden lg:flex items-center bg-brand-card rounded-full px-4 py-2
@@ -87,10 +167,9 @@
                        hover:border-gold-500/40 hover:shadow-gold-glow/60
                        transition-all duration-200 group"
             >
-                <i
-                    data-lucide="search"
-                    class="w-4 h-4 text-text-muted mr-2 group-hover:text-gold-400 transition-colors"
-                ></i>
+                <i data-lucide="search"
+                   class="w-4 h-4 text-text-muted mr-2 group-hover:text-gold-400 transition-colors"></i>
+
                 <input
                     type="text"
                     x-model="searchQuery"
@@ -111,10 +190,10 @@
                 <i data-lucide="search" class="w-4 h-4 text-text-main"></i>
             </button>
 
-            {{-- Notifikasi (opsional, default 0) --}}
+            {{-- Notifikasi (REALTIME via polling) --}}
             <div class="relative">
                 <button
-                    @click.stop="showNotifications = !showNotifications; showProfile = false"
+                    @click.stop="openNotifications()"
                     class="relative inline-flex items-center justify-center w-9 h-9 rounded-full
                            bg-brand-card border border-brand-borderSoft shadow-light
                            hover:bg-brand-gunmetal/40 transition-all duration-200"
@@ -123,18 +202,17 @@
                     :aria-expanded="showNotifications"
                 >
                     <i data-lucide="bell" class="w-4 h-4 text-text-main"></i>
-                    @if($notificationCount > 0)
-                        <span
-                            class="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full
-                                   bg-accent-500 text-[10px] text-white font-semibold
-                                   min-w-[18px] h-[18px] px-1 animate-pulse"
-                        >
-                            {{ $notificationCount > 9 ? '9+' : $notificationCount }}
-                        </span>
-                    @endif
+
+                    <span
+                        class="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full
+                               bg-accent-500 text-[10px] text-white font-semibold
+                               min-w-[18px] h-[18px] px-1 animate-pulse"
+                        x-show="unreadCount > 0"
+                        x-text="unreadCount > 9 ? '9+' : String(unreadCount)"
+                    ></span>
                 </button>
 
-                {{-- Dropdown notif --}}
+                {{-- Dropdown notifikasi --}}
                 <div
                     x-show="showNotifications"
                     x-cloak
@@ -149,22 +227,52 @@
                 >
                     <div class="px-4 py-3 border-b border-brand-borderSoft flex items-center justify-between bg-brand-shell/80">
                         <h3 class="text-sm font-semibold text-text-main">Notifikasi</h3>
-                        @if($notificationCount > 0)
-                            <span class="text-xs text-accent-400 font-medium">{{ $notificationCount }} baru</span>
-                        @endif
+                        <span class="text-xs text-accent-400 font-medium"
+                              x-show="unreadCount > 0"
+                              x-text="unreadCount + ' baru'"></span>
                     </div>
 
                     <div class="max-h-[320px] overflow-y-auto custom-scrollbar">
-                        @if($notificationCount > 0)
-                            <div class="px-4 py-3 text-sm text-text-main">
-                                Ada {{ $notificationCount }} update terbaru untuk akun Anda.
+                        <template x-if="notifItems.length > 0">
+                            <div>
+                                <template x-for="n in notifItems" :key="n.id">
+                                    <a
+                                        :href="n.go_url"
+                                        class="block px-4 py-3 hover:bg-brand-gunmetal/15 transition-colors
+                                               border-b border-brand-borderSoft/60"
+                                    >
+                                        <div class="flex gap-3">
+                                            <div class="mt-1.5 flex-shrink-0">
+                                                <span
+                                                    class="inline-flex h-2 w-2 rounded-full"
+                                                    :class="n.is_read ? 'bg-brand-borderSoft' : 'bg-accent-500'"
+                                                ></span>
+                                            </div>
+
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm text-text-main font-medium mb-0.5 truncate" x-text="n.title"></p>
+                                                <p class="text-xs text-text-muted truncate" x-text="n.body"></p>
+                                                <span class="text-[10px] text-text-muted mt-1 inline-block" x-text="formatTime(n.created_at)"></span>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </template>
                             </div>
-                        @else
+                        </template>
+
+                        <template x-if="notifItems.length === 0">
                             <div class="px-4 py-8 text-center">
                                 <i data-lucide="bell-off" class="w-8 h-8 text-text-muted mx-auto mb-2"></i>
                                 <p class="text-sm text-text-muted">Tidak ada notifikasi</p>
                             </div>
-                        @endif
+                        </template>
+                    </div>
+
+                    <div class="px-4 py-2.5 border-t border-brand-borderSoft bg-brand-shell/60">
+                        <a href="{{ route('member.notifikasi.index') }}"
+                           class="text-xs text-gold-400 hover:text-gold-300 font-medium transition-colors">
+                            Lihat semua notifikasi →
+                        </a>
                     </div>
                 </div>
             </div>
@@ -180,20 +288,18 @@
                     :aria-expanded="showProfile"
                 >
                     <div
-    class="w-8 h-8 rounded-full overflow-hidden border border-brand-borderSoft bg-brand-surface-50
-           flex items-center justify-center shadow-md"
->
-    @if($avatarUrl)
-        <img src="{{ $avatarUrl }}" alt="Foto Profil" class="w-full h-full object-cover">
-    @else
-        <div
-            class="w-full h-full bg-gradient-to-br from-gold-400 to-gold-600
-                   flex items-center justify-center text-xs font-bold text-brand-black"
-        >
-            {{ $initials }}
-        </div>
-    @endif
-</div>
+                        class="w-8 h-8 rounded-full overflow-hidden border border-brand-borderSoft bg-brand-surface-50
+                               flex items-center justify-center shadow-md"
+                    >
+                        @if($avatarUrl)
+                            <img src="{{ $avatarUrl }}" alt="Foto Profil" class="w-full h-full object-cover">
+                        @else
+                            <div class="w-full h-full bg-gradient-to-br from-gold-400 to-gold-600
+                                        flex items-center justify-center text-xs font-bold text-brand-black">
+                                {{ $initials }}
+                            </div>
+                        @endif
+                    </div>
 
                     <div class="leading-tight hidden sm:block text-left">
                         <div
@@ -202,15 +308,12 @@
                         >
                             {{ auth()->user()->name ?? 'Member' }}
                         </div>
-                        <div class="text-[10px] text-text-muted">
-                            Member
-                        </div>
+                        <div class="text-[10px] text-text-muted">Member</div>
                     </div>
-                    <i
-                        data-lucide="chevron-down"
-                        class="w-4 h-4 text-text-muted transition-transform duration-200"
-                        :class="{ 'rotate-180': showProfile }"
-                    ></i>
+
+                    <i data-lucide="chevron-down"
+                       class="w-4 h-4 text-text-muted transition-transform duration-200"
+                       :class="{ 'rotate-180': showProfile }"></i>
                 </button>
 
                 {{-- Dropdown profil --}}
@@ -243,6 +346,7 @@
                             <i data-lucide="user" class="w-4 h-4 text-text-muted"></i>
                             <span class="text-sm text-text-main">Profil & Pengaturan</span>
                         </a>
+
                         <a
                             href="#"
                             class="flex items-center gap-3 px-4 py-2.5 hover:bg-brand-gunmetal/20 transition-colors"
@@ -266,6 +370,7 @@
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 </header>

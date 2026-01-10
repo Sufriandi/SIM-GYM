@@ -4,14 +4,13 @@ namespace App\Observers;
 
 use App\Models\IzinLatihan;
 use App\Models\User;
-use App\Services\FcmHttpV1Service;
 use App\Services\NotificationService;
 use Illuminate\Support\Facades\Log;
 
 class IzinLatihanObserver
 {
     /**
-     * 1) ADMIN hanya dapat notifikasi saat MEMBER mengajukan izin (created).
+     * ADMIN: notifikasi saat MEMBER mengajukan izin (created).
      */
     public function created(IzinLatihan $izin): void
     {
@@ -24,7 +23,6 @@ class IzinLatihanObserver
             $memberId = (int) ($izin->member_id ?? 0);
             if ($memberId <= 0) return;
 
-            // Cari semua admin (case-insensitive)
             $adminIds = User::query()
                 ->whereRaw('LOWER(role) = ?', ['admin'])
                 ->pluck('id');
@@ -38,7 +36,7 @@ class IzinLatihanObserver
             }
 
             $title = 'Pengajuan izin latihan baru';
-            $body  = "Ada pengajuan izin latihan baru dari member ID #{$memberId}. Silakan cek dan proses.";
+            $body  = "Member mengajukan izin latihan. Silakan cek dan proses.";
 
             foreach ($adminIds as $adminId) {
                 app(NotificationService::class)->toUser(
@@ -54,14 +52,6 @@ class IzinLatihanObserver
                 );
             }
 
-            // OPTIONAL: push ke admin via FCM topic (kalau Anda mau)
-            // app(FcmHttpV1Service::class)->sendToTopic(
-            //     'admin_users',
-            //     $title,
-            //     $body,
-            //     ['route' => 'admin_izin_latihan', 'izin_latihan_id' => (string)$izin->id]
-            // );
-
         } catch (\Throwable $e) {
             Log::error('[IzinLatihanObserver.created] error: ' . $e->getMessage(), [
                 'izin_id' => $izin->id ?? null,
@@ -70,14 +60,17 @@ class IzinLatihanObserver
     }
 
     /**
-     * 2) MEMBER saja yang dapat notifikasi saat status berubah (approve/reject).
+     * MEMBER: notifikasi saat status berubah (approve/reject).
+     * Dibuat agar gaya tampilannya konsisten seperti notifikasi produk:
+     * - title tegas (bukan "Update ...")
+     * - body jelas + ajakan cek detail
      */
     public function updated(IzinLatihan $izin): void
     {
         try {
             $changes = $izin->getChanges();
 
-            // Deteksi perubahan status
+            // Deteksi perubahan kolom status
             $statusKey = null;
             foreach (['status', 'status_izin', 'status_pengajuan'] as $k) {
                 if (array_key_exists($k, $changes)) {
@@ -85,50 +78,52 @@ class IzinLatihanObserver
                     break;
                 }
             }
-
             if (!$statusKey) return;
 
             $status      = (string) ($izin->{$statusKey} ?? '');
-            $statusLower = strtolower($status);
-
-            $body = match (true) {
-                in_array($statusLower, ['disetujui', 'approved', 'approve'], true)
-                    => 'Izin latihan Anda disetujui.',
-                in_array($statusLower, ['ditolak', 'rejected', 'reject'], true)
-                    => 'Izin latihan Anda ditolak. Silakan cek detail.',
-                default
-                    => "Status izin latihan Anda berubah: {$status}"
-            };
+            $statusLower = strtolower(trim($status));
 
             $memberId = (int) ($izin->member_id ?? 0);
             if ($memberId <= 0) return;
 
-            $title = 'Update izin latihan';
+            // === Buat title/body yang "sekelas produk" ===
+            $isApproved = in_array($statusLower, ['disetujui', 'approved', 'approve'], true);
+            $isRejected = in_array($statusLower, ['ditolak', 'rejected', 'reject'], true);
 
-            // In-app untuk member
-            app(NotificationService::class)->toMemberId(
+            $title = match (true) {
+                $isApproved => 'Izin latihan disetujui',
+                $isRejected => 'Izin latihan ditolak',
+                default     => 'Status izin latihan berubah',
+            };
+
+            $body = match (true) {
+                $isApproved => 'Izin latihan Anda disetujui. Silakan cek riwayat izin.',
+                $isRejected => 'Izin latihan Anda ditolak. Silakan cek detail pengajuan.',
+                default     => "Status izin latihan Anda berubah: {$status}. Silakan cek riwayat.",
+            };
+
+            /**
+             * PENTING:
+             * Pakai toMemberIdWithPush agar:
+             * - DB notifikasi tersimpan
+             * - Push terkirim dengan title/body yang sama
+             * - tidak ada perbedaan format antara in-app & push
+             */
+            app(NotificationService::class)->toMemberIdWithPush(
                 $memberId,
                 $title,
                 $body,
                 'izin_latihan',
                 [
+                    // route untuk web member (dipakai MemberNotifikasiController::go)
+                    'route'           => 'member_izin_latihan_index',
+                    // simpan id untuk kebutuhan future (jika nanti ingin detail)
+                    'izin_id'         => (string) $izin->id,
                     'izin_latihan_id' => (string) $izin->id,
                     'status'          => (string) $status,
-                    'route'           => 'izin_riwayat',
                 ]
             );
 
-            // Push untuk member
-            app(FcmHttpV1Service::class)->sendToMemberId(
-                $memberId,
-                $title,
-                $body,
-                [
-                    'route'           => 'izin_riwayat',
-                    'izin_latihan_id' => (string) $izin->id,
-                    'status'          => (string) $status,
-                ]
-            );
         } catch (\Throwable $e) {
             Log::error('[IzinLatihanObserver.updated] error: ' . $e->getMessage(), [
                 'izin_id' => $izin->id ?? null,

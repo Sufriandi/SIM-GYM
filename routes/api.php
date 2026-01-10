@@ -103,4 +103,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Notifikasi Servies
     Route::post('/device-tokens', [DeviceTokenController::class, 'store']);
+
+    // Ubah kata sandi
+    Route::post('/change-password', [AuthController::class, 'changePassword']);
 });

@@ -4,9 +4,11 @@ namespace App\Services;
 
 use App\Models\DeviceToken;
 use App\Models\Member;
+use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class FcmHttpV1Service
 {
@@ -20,8 +22,6 @@ class FcmHttpV1Service
                     'body'  => $body,
                 ],
                 'data' => $this->stringifyData($data),
-
-                // penting untuk Android background/killed
                 'android' => [
                     'priority' => 'HIGH',
                     'notification' => [
@@ -45,8 +45,6 @@ class FcmHttpV1Service
                     'body'  => $body,
                 ],
                 'data' => $this->stringifyData($data),
-
-                // penting untuk Android background/killed
                 'android' => [
                     'priority' => 'HIGH',
                     'notification' => [
@@ -87,7 +85,7 @@ class FcmHttpV1Service
 
             Log::info('[FCM] sendToUserId tokens', [
                 'user_id' => $userId,
-                'count' => count($tokens),
+                'count'   => count($tokens),
             ]);
 
             if (empty($tokens)) return false;
@@ -96,7 +94,7 @@ class FcmHttpV1Service
 
             Log::info('[FCM] sendToUserId result', [
                 'user_id' => $userId,
-                'result' => $res,
+                'result'  => $res,
             ]);
 
             return ($res['success'] ?? 0) > 0;
@@ -107,17 +105,32 @@ class FcmHttpV1Service
         }
     }
 
+    /**
+     * Aman untuk 2 skema:
+     * - members.user_id
+     * - users.member_id (fallback)
+     */
     public function sendToMemberId(int $memberId, string $title, string $body, array $data = []): bool
     {
         try {
             if ($memberId <= 0) return false;
 
-            $userId = (int) Member::query()
-                ->where('id', $memberId)
-                ->value('user_id');
+            $userId = 0;
+
+            if (Schema::hasColumn('members', 'user_id')) {
+                $userId = (int) Member::query()
+                    ->where('id', $memberId)
+                    ->value('user_id');
+            }
+
+            if ($userId <= 0 && Schema::hasColumn('users', 'member_id')) {
+                $userId = (int) User::query()
+                    ->where('member_id', $memberId)
+                    ->value('id');
+            }
 
             if ($userId <= 0) {
-                Log::warning('[FCM] sendToMemberId: member tidak punya user_id', ['member_id' => $memberId]);
+                Log::warning('[FCM] sendToMemberId: userId tidak ditemukan', ['member_id' => $memberId]);
                 return false;
             }
 
