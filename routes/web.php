@@ -45,8 +45,11 @@ use App\Http\Controllers\Member\CoachController as MemberCoachController;
 use App\Http\Controllers\Member\ProdukGymController;
 use App\Http\Controllers\Member\KehadiranMemberController as MemberKehadiranMemberController;
 
-// Notifikasi
+// Notifikasi (Admin)
 use App\Http\Controllers\Admin\AdminNotifikasiController;
+
+// Notifikasi (Member)
+use App\Http\Controllers\Member\MemberNotifikasiController;
 
 /*
 |--------------------------------------------------------------------------
@@ -193,7 +196,7 @@ Route::middleware(['auth', 'admin'])
 
             Route::get('/riwayat', [TransaksiProdukController::class, 'history'])->name('history');
 
-            // ✅ CETAK STRUK (HTML print)
+            // CETAK STRUK (HTML print)
             Route::get('/{transaksiProduk}/cetak', [TransaksiProdukController::class, 'cetak'])
                 ->name('cetak');
 
@@ -394,6 +397,22 @@ Route::middleware(['auth', 'member'])
             Route::get('/{slug}', [MemberCoachController::class, 'show'])
                 ->where('slug', '^[0-9]+-[A-Za-z0-9\-]+$')
                 ->name('show');
+        });
+
+        // ================== NOTIFIKASI (MEMBER) ==================
+        Route::prefix('notifikasi')->name('notifikasi.')->group(function () {
+            Route::get('/', [MemberNotifikasiController::class, 'index'])->name('index');
+
+            Route::post('/read-all', [MemberNotifikasiController::class, 'readAll'])->name('read_all');
+            Route::post('/{id}/read', [MemberNotifikasiController::class, 'readOne'])->name('read_one');
+
+            Route::post('/{id}/hide', [MemberNotifikasiController::class, 'hideOne'])->name('hide_one');
+            Route::post('/hide-all', [MemberNotifikasiController::class, 'hideAll'])->name('hide_all');
+
+            Route::get('/{id}/go', [MemberNotifikasiController::class, 'go'])->name('go');
+
+            // realtime polling endpoint (opsional, sama seperti admin)
+            Route::get('/poll', [MemberNotifikasiController::class, 'poll'])->name('poll');
         });
     });
 
