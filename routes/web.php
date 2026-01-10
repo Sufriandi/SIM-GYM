@@ -307,6 +307,7 @@ Route::middleware(['auth', 'admin'])
                 Route::get('/', [LaporanKeuanganController::class, 'index'])->name('index');
                 Route::get('/produk', [LaporanKeuanganController::class, 'produk'])->name('produk');
                 Route::get('/membership', [LaporanKeuanganController::class, 'membership'])->name('membership');
+                Route::get('/harian', [LaporanKeuanganController::class, 'harian'])->name('harian');
                 Route::get('/gabungan', [LaporanKeuanganController::class, 'gabungan'])->name('gabungan');
             });
 

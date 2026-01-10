@@ -3,8 +3,9 @@
     $hargaUmum = is_array($defaultHarga) ? $defaultHarga['umum'] ?? 0 : $defaultHarga ?? 0;
     $hargaPelajar = is_array($defaultHarga) ? $defaultHarga['pelajar'] ?? $hargaUmum : $defaultHarga ?? 0;
 
-    $nilaiHarga = (int) old('harga', $item->harga);
-    $displayHarga = $nilaiHarga ? number_format($nilaiHarga, 0, ',', '.') : '';
+    // Setelah migrasi: field yang benar adalah "total"
+    $nilaiTotal = (int) old('total', $item->total);
+    $displayTotal = $nilaiTotal ? number_format($nilaiTotal, 0, ',', '.') : '';
 
     // Logic auto-open jika ada error validasi pada item ini
     $openEditOnLoad = $errors->any() && old('_method') === 'PUT' && (int) old('latihan_id') === (int) $item->id;
@@ -76,7 +77,7 @@
                             <x-ui.label for="tanggal_edit_{{ $item->id }}">Tanggal</x-ui.label>
                             <div class="relative">
                                 <input type="date" id="tanggal_edit_{{ $item->id }}" name="tanggal"
-                                    value="{{ old('tanggal', $item->tanggal->format('Y-m-d')) }}"
+                                    value="{{ old('tanggal', optional($item->tanggal)->format('Y-m-d')) }}"
                                     class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2
                                            border-brand-borderSoft focus:outline-none focus:ring-2
                                            focus:ring-primary-dark focus:border-transparent"
@@ -97,13 +98,15 @@
                                     class="custom-select w-full rounded-xl border bg-brand-shell text-sm text-text-main
                                            px-3 py-2 pr-8 border-brand-borderSoft focus:outline-none focus:ring-2
                                            focus:ring-primary-dark focus:border-transparent"
-                                    @change="setDefaultHargaLatihan($event.target.value, {{ $hargaUmum }}, {{ $hargaPelajar }}, 'harga_edit_{{ $item->id }}')"
+                                    @change="setDefaultHargaLatihan($event.target.value, {{ $hargaUmum }}, {{ $hargaPelajar }}, 'total_edit_{{ $item->id }}')"
                                     required>
                                     <option value="umum"
-                                        {{ old('kategori', $item->kategori) === 'umum' ? 'selected' : '' }}>Umum
+                                        {{ old('kategori', $item->kategori) === 'umum' ? 'selected' : '' }}>
+                                        Umum
                                     </option>
                                     <option value="pelajar"
-                                        {{ old('kategori', $item->kategori) === 'pelajar' ? 'selected' : '' }}>Pelajar
+                                        {{ old('kategori', $item->kategori) === 'pelajar' ? 'selected' : '' }}>
+                                        Pelajar
                                     </option>
                                 </select>
                                 <i data-lucide="chevron-down"
@@ -121,23 +124,25 @@
 
                     {{-- KOLOM KANAN --}}
                     <div class="space-y-4">
-                        {{-- HARGA --}}
+                        {{-- TOTAL --}}
                         <div>
-                            <x-ui.label for="harga_display_edit_{{ $item->id }}">Harga (Rp)</x-ui.label>
-                            <input type="hidden" name="harga" id="harga_edit_{{ $item->id }}"
-                                value="{{ $nilaiHarga }}">
+                            <x-ui.label for="total_display_edit_{{ $item->id }}">Total (Rp)</x-ui.label>
 
-                            <input type="text" id="harga_display_edit_{{ $item->id }}" data-rupiah-display
-                                data-target="harga_edit_{{ $item->id }}" inputmode="numeric" autocomplete="off"
-                                value="{{ $displayHarga }}"
+                            <input type="hidden" name="total" id="total_edit_{{ $item->id }}"
+                                value="{{ $nilaiTotal }}">
+
+                            <input type="text" id="total_display_edit_{{ $item->id }}" data-rupiah-display
+                                data-target="total_edit_{{ $item->id }}" inputmode="numeric" autocomplete="off"
+                                value="{{ $displayTotal }}"
                                 class="w-full rounded-xl border bg-brand-shell text-sm text-text-main px-3 py-2
                                        border-brand-borderSoft focus:outline-none focus:ring-2
                                        focus:ring-primary-dark focus:border-transparent"
                                 required>
+
                             <p class="text-[11px] text-text-muted mt-1">
                                 Sesuaikan jika ada perubahan tarif, promo, atau diskon.
                             </p>
-                            @error('harga')
+                            @error('total')
                                 <p class="text-xs text-danger mt-1">{{ $message }}</p>
                             @enderror
                         </div>
@@ -153,13 +158,16 @@
                                     required>
                                     <option value="cash"
                                         {{ old('metode_pembayaran', $item->metode_pembayaran) === 'cash' ? 'selected' : '' }}>
-                                        Cash</option>
+                                        Cash
+                                    </option>
                                     <option value="transfer"
                                         {{ old('metode_pembayaran', $item->metode_pembayaran) === 'transfer' ? 'selected' : '' }}>
-                                        Transfer</option>
+                                        Transfer
+                                    </option>
                                     <option value="qris"
                                         {{ old('metode_pembayaran', $item->metode_pembayaran) === 'qris' ? 'selected' : '' }}>
-                                        QRIS</option>
+                                        QRIS
+                                    </option>
                                 </select>
                                 <i data-lucide="chevron-down"
                                     class="w-4 h-4 text-text-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>

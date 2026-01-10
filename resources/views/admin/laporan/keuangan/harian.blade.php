@@ -1,8 +1,8 @@
-{{-- resources/views/admin/laporan/keuangan/membership.blade.php --}}
+{{-- resources/views/admin/laporan/keuangan/harian.blade.php --}}
 @php
     use Carbon\Carbon;
 
-    $pageTitle = 'Laporan Membership';
+    $pageTitle = 'Laporan Latihan Harian';
 
     $from = $from ?? now()->subDays(29)->startOfDay();
     $to = $to ?? now()->endOfDay();
@@ -12,6 +12,7 @@
 
     $q = $q ?? '';
     $metode = $metode ?? '';
+    $kategori = $kategori ?? '';
 
     $rows = $rows ?? null;
 
@@ -19,9 +20,9 @@
     $count = (int) ($count ?? (method_exists($rows, 'total') ? $rows->total() : 0));
     $avg = (int) ($avg ?? ($count > 0 ? round($total / $count) : 0));
 
-    $byMetode = $byMetode ?? [];
     $daily = $daily ?? [];
-    $topPaket = $topPaket ?? collect();
+    $byKategori = $byKategori ?? [];
+    $byMetode = $byMetode ?? [];
 
     $rupiah = function ($n) {
         $n = (int) $n;
@@ -36,6 +37,14 @@
         }
     };
 
+    $kategoriLabel = function ($k) {
+        $k = (string) $k;
+        if ($k === '' || $k === 'unknown') {
+            return 'Tidak diketahui';
+        }
+        return strtoupper($k);
+    };
+
     $metodeLabel = function ($m) {
         $m = (string) $m;
         if ($m === '' || $m === 'unknown') {
@@ -48,7 +57,7 @@
 @endphp
 
 <x-layouts.admin :title="$pageTitle . ' – BETA GYM'" :page-title="$pageTitle"
-    page-subtitle="Analisis pendapatan membership, tren harian, metode pembayaran, dan paket terlaris.">
+    page-subtitle="Analisis pendapatan latihan harian (umum/pelajar), tren harian, serta metode pembayaran.">
 
     @once
         <style>
@@ -74,10 +83,6 @@
             .custom-scrollbar::-webkit-scrollbar-thumb:hover {
                 background: rgba(0, 0, 0, .22);
             }
-
-            [x-cloak] {
-                display: none !important;
-            }
         </style>
     @endonce
 
@@ -100,15 +105,15 @@
                         Produk
                     </a>
 
+                    <a href="{{ route('admin.laporan.keuangan.membership') }}?{{ $qs }}"
+                        class="px-4 py-2 text-xs font-medium rounded-md text-text-muted hover:text-text-main hover:bg-gray-50 transition-all whitespace-nowrap">
+                        Membership
+                    </a>
+
                     <span
                         class="px-4 py-2 text-xs font-bold rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-default whitespace-nowrap">
-                        Membership
-                    </span>
-
-                    <a href="{{ route('admin.laporan.keuangan.harian') }}?{{ $qs }}"
-                        class="px-4 py-2 text-xs font-medium rounded-md text-text-muted hover:text-text-main hover:bg-gray-50 transition-all whitespace-nowrap">
                         Harian
-                    </a>
+                    </span>
 
                     <a href="{{ route('admin.laporan.keuangan.gabungan') }}?{{ $qs }}"
                         class="px-4 py-2 text-xs font-medium rounded-md text-text-muted hover:text-text-main hover:bg-gray-50 transition-all whitespace-nowrap">
@@ -144,6 +149,18 @@
                             <i data-lucide="chevron-down"
                                 class="w-3 h-3 text-text-muted absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"></i>
                         </div>
+
+                        {{-- Kategori --}}
+                        <div class="relative">
+                            <select name="kategori"
+                                class="appearance-none border-none bg-gray-50 text-xs font-medium text-text-main rounded-md py-1.5 pl-3 pr-8 focus:ring-0 cursor-pointer border border-gray-100">
+                                <option value="">Semua Kategori</option>
+                                <option value="umum" @selected($kategori === 'umum')>Umum</option>
+                                <option value="pelajar" @selected($kategori === 'pelajar')>Pelajar</option>
+                            </select>
+                            <i data-lucide="chevron-down"
+                                class="w-3 h-3 text-text-muted absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                        </div>
                     </div>
 
                     <div class="flex items-center gap-2">
@@ -152,7 +169,7 @@
                             <i data-lucide="search"
                                 class="w-3.5 h-3.5 text-text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
                             <input type="text" name="q" value="{{ $q }}"
-                                placeholder="Cari nota / member / paket..."
+                                placeholder="Cari nama pengunjung..."
                                 class="w-full border-none bg-gray-50 text-xs text-text-main rounded-md py-1.5 pl-9 pr-3 focus:ring-1 focus:ring-emerald-500 placeholder:text-text-muted/70">
                         </div>
 
@@ -171,12 +188,11 @@
 
         {{-- 2) KPI --}}
         <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
-            {{-- Total --}}
             <div class="relative overflow-hidden rounded-2xl bg-[#064e3b] p-5 shadow-lg">
                 <div class="relative z-10 flex h-full flex-col justify-between">
                     <div>
-                        <p class="text-[11px] font-bold uppercase tracking-widest text-emerald-200/80">Omzet Membership
-                        </p>
+                        <p class="text-[11px] font-bold uppercase tracking-widest text-emerald-200/80">Omzet Latihan
+                            Harian</p>
                         <h3 class="mt-2 text-3xl font-bold text-white stat-number">{{ $rupiah($total) }}</h3>
                     </div>
                     <div class="mt-4 flex items-center gap-2">
@@ -184,12 +200,11 @@
                             <div class="h-1.5 rounded-full bg-emerald-400 w-full"></div>
                         </div>
                     </div>
-                    <p class="mt-2 text-[10px] text-emerald-200/70">Revenue dari transaksi membership (pembayaran).</p>
+                    <p class="mt-2 text-[10px] text-emerald-200/70">Pendapatan dari kunjungan harian (umum/pelajar).</p>
                 </div>
                 <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-emerald-400/10 blur-3xl"></div>
             </div>
 
-            {{-- Volume --}}
             <x-ui.card class="p-5 border-brand-borderSoft hover:border-emerald-200 transition-colors">
                 <div class="flex items-start justify-between">
                     <div>
@@ -198,13 +213,12 @@
                             {{ number_format($count, 0, ',', '.') }}</p>
                     </div>
                     <span class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 text-emerald-600">
-                        <i data-lucide="id-card" class="w-4 h-4"></i>
+                        <i data-lucide="users" class="w-4 h-4"></i>
                     </span>
                 </div>
-                <p class="mt-4 text-[11px] text-text-muted">Jumlah transaksi membership dalam periode.</p>
+                <p class="mt-4 text-[11px] text-text-muted">Jumlah entri kunjungan/struk harian.</p>
             </x-ui.card>
 
-            {{-- AOV --}}
             <x-ui.card class="p-5 border-brand-borderSoft hover:border-emerald-200 transition-colors">
                 <div class="flex items-start justify-between">
                     <div>
@@ -216,28 +230,24 @@
                         <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
                     </span>
                 </div>
-                <p class="mt-4 text-[11px] text-text-muted">Rata-rata nilai per transaksi membership.</p>
+                <p class="mt-4 text-[11px] text-text-muted">Rata-rata tarif per kunjungan.</p>
             </x-ui.card>
         </div>
 
-        {{-- 3) CHART + SIDE --}}
+        {{-- 3) CHART + BREAKDOWN --}}
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
-
-            {{-- Trend --}}
             <div class="lg:col-span-8">
                 <x-ui.card class="p-6 border-brand-borderSoft h-full">
-                    <div class="mb-6 flex items-center justify-between">
-                        <div>
-                            <h3 class="text-sm font-bold text-text-main">Tren Pendapatan Membership</h3>
-                            <p class="text-xs text-text-muted mt-0.5">Grafik omzet harian membership.</p>
-                        </div>
+                    <div class="mb-6">
+                        <h3 class="text-sm font-bold text-text-main">Tren Pendapatan Latihan Harian</h3>
+                        <p class="text-xs text-text-muted mt-0.5">Grafik omzet harian dalam periode.</p>
                     </div>
 
                     <div class="relative h-[320px] w-full">
-                        <canvas id="memberDailyChart"></canvas>
+                        <canvas id="harianDailyChart"></canvas>
                     </div>
 
-                    <div id="memberDailyFallback" class="mt-6 hidden">
+                    <div id="harianDailyFallback" class="mt-6 hidden">
                         <div class="p-4 text-center text-sm text-text-muted bg-gray-50 rounded-lg">
                             Grafik tidak dapat dimuat. Periksa pemuatan Chart.js.
                         </div>
@@ -246,90 +256,60 @@
             </div>
 
             <div class="lg:col-span-4 flex flex-col gap-6">
-
-                {{-- Metode --}}
+                {{-- Breakdown kategori --}}
                 <x-ui.card class="p-6 border-brand-borderSoft">
+                    <h3 class="text-sm font-bold text-text-main mb-4">Komposisi Kategori</h3>
+
+                    @php $sumKat = array_sum(array_map('intval', $byKategori)); @endphp
+                    <div class="space-y-3">
+                        @forelse($byKategori as $k => $v)
+                            @php
+                                $v = (int) $v;
+                                $pct = $sumKat > 0 ? round(($v / max($sumKat, 1)) * 100, 1) : 0;
+                            @endphp
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="text-xs font-semibold text-text-muted uppercase tracking-wide">
+                                        {{ $kategoriLabel($k) }}</div>
+                                    <div class="h-1 w-20 bg-gray-100 rounded-full mt-1 overflow-hidden">
+                                        <div class="h-full bg-emerald-500 rounded-full"
+                                            style="width: {{ $pct }}%"></div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-bold text-text-main stat-number">{{ $rupiah($v) }}
+                                    </div>
+                                    <div class="text-[10px] text-text-muted">{{ $pct }}%</div>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="text-sm text-text-muted italic text-center py-4">Tidak ada data kategori.</div>
+                        @endforelse
+                    </div>
+                </x-ui.card>
+
+                {{-- Breakdown metode --}}
+                <x-ui.card class="p-6 border-brand-borderSoft flex-1">
                     <h3 class="text-sm font-bold text-text-main mb-4">Metode Pembayaran</h3>
 
+                    @php $sumMetode = array_sum(array_map('intval', $byMetode)); @endphp
                     <div class="space-y-3">
-                        @php $sumMetode = array_sum(array_map('intval', $byMetode)); @endphp
-
                         @forelse($byMetode as $m => $v)
                             @php
                                 $v = (int) $v;
                                 $pct = $sumMetode > 0 ? round(($v / max($sumMetode, 1)) * 100, 1) : 0;
                             @endphp
-
-                            <div class="flex items-center justify-between group">
-                                <div class="flex items-center gap-3">
-                                    <div
-                                        class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center border border-gray-100 group-hover:border-emerald-200 transition-colors">
-                                        @if ($m == 'cash')
-                                            <i data-lucide="banknote" class="w-4 h-4 text-emerald-600"></i>
-                                        @elseif($m == 'transfer')
-                                            <i data-lucide="arrow-left-right" class="w-4 h-4 text-blue-600"></i>
-                                        @else
-                                            <i data-lucide="qr-code" class="w-4 h-4 text-purple-600"></i>
-                                        @endif
-                                    </div>
-                                    <div>
-                                        <span
-                                            class="block text-xs font-semibold text-text-muted uppercase tracking-wide">{{ $metodeLabel($m) }}</span>
-                                        <div class="h-1 w-16 bg-gray-100 rounded-full mt-1 overflow-hidden">
-                                            <div class="h-full bg-emerald-500 rounded-full"
-                                                style="width: {{ $pct }}%"></div>
-                                        </div>
-                                    </div>
-                                </div>
-
+                            <div class="flex items-center justify-between">
+                                <div class="text-xs font-semibold text-text-muted uppercase tracking-wide">
+                                    {{ $metodeLabel($m) }}</div>
                                 <div class="text-right">
-                                    <span
-                                        class="block text-sm font-bold text-text-main stat-number">{{ $rupiah($v) }}</span>
-                                    <span class="block text-[10px] text-text-muted">{{ $pct }}%</span>
+                                    <div class="text-sm font-bold text-text-main stat-number">{{ $rupiah($v) }}
+                                    </div>
+                                    <div class="text-[10px] text-text-muted">{{ $pct }}%</div>
                                 </div>
                             </div>
                         @empty
-                            <div class="text-sm text-text-muted italic text-center py-4">Tidak ada data pembayaran.
-                            </div>
-                        @endforelse
-                    </div>
-                </x-ui.card>
-
-                {{-- Top Paket --}}
-                <x-ui.card class="p-6 border-brand-borderSoft flex-1">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-sm font-bold text-text-main">Paket Terlaris</h3>
-                        <span
-                            class="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-100 font-medium">
-                            Top 5 Omzet
-                        </span>
-                    </div>
-
-                    <div class="space-y-4">
-                        @forelse($topPaket as $index => $p)
-                            <div class="flex items-start gap-3">
-                                <div
-                                    class="flex-shrink-0 w-6 h-6 rounded bg-gray-100 text-gray-500 text-[10px] font-bold flex items-center justify-center">
-                                    #{{ $index + 1 }}
-                                </div>
-
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-xs font-semibold text-text-main truncate"
-                                        title="{{ $p->paket }}">
-                                        {{ $p->paket }}
-                                    </p>
-                                    <p class="text-[10px] text-text-muted mt-0.5">
-                                        {{ number_format((int) $p->trx, 0, ',', '.') }} transaksi
-                                    </p>
-                                </div>
-
-                                <div class="text-right">
-                                    <span
-                                        class="text-sm font-bold text-emerald-600 stat-number">{{ $rupiah((int) $p->total) }}</span>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="text-sm text-text-muted italic text-center py-4">Belum ada data paket.</div>
+                            <div class="text-sm text-text-muted italic text-center py-4">Tidak ada data metode.</div>
                         @endforelse
                     </div>
                 </x-ui.card>
@@ -341,7 +321,7 @@
             <div
                 class="px-6 py-4 border-b border-brand-borderSoft flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h3 class="text-sm font-bold text-text-main">Riwayat Transaksi Membership</h3>
+                    <h3 class="text-sm font-bold text-text-main">Riwayat Latihan Harian</h3>
                     <p class="text-xs text-text-muted mt-0.5">Menampilkan data sesuai filter yang aktif.</p>
                 </div>
                 <div
@@ -356,11 +336,10 @@
                         class="bg-gray-50 text-text-muted font-semibold uppercase tracking-wider border-b border-brand-borderSoft">
                         <tr>
                             <th class="px-6 py-3">Tanggal</th>
-                            <th class="px-6 py-3">No Nota</th>
-                            <th class="px-6 py-3">Member</th>
-                            <th class="px-6 py-3">Paket</th>
-                            <th class="px-6 py-3">Kasir</th>
+                            <th class="px-6 py-3">Nama</th>
+                            <th class="px-6 py-3">Kategori</th>
                             <th class="px-6 py-3 text-center">Metode</th>
+                            <th class="px-6 py-3">Petugas</th>
                             <th class="px-6 py-3 text-right">Total</th>
                         </tr>
                     </thead>
@@ -368,18 +347,13 @@
                     <tbody class="divide-y divide-gray-50">
                         @forelse ($rows as $r)
                             @php
-                                $buyerName = $r->buyer?->user?->name ?? '-';
-                                $cashier = $r->creator?->name ?? '-';
-                                $paketName = $r->paket?->nama ?? '-';
+                                $petugas = $r->creator?->name ?? '-';
                             @endphp
-
                             <tr class="hover:bg-gray-50/50 transition-colors">
-                                <td class="px-6 py-3 text-text-main whitespace-nowrap">
-                                    {{ $fmtDateTime($r->tanggal_transaksi) }}</td>
-                                <td class="px-6 py-3 font-mono text-text-muted">{{ $r->no_nota }}</td>
-                                <td class="px-6 py-3 font-medium text-text-main">{{ $buyerName }}</td>
-                                <td class="px-6 py-3 text-text-muted">{{ $paketName }}</td>
-                                <td class="px-6 py-3 text-text-muted">{{ $cashier }}</td>
+                                <td class="px-6 py-3 text-text-main whitespace-nowrap">{{ $fmtDateTime($r->tanggal) }}
+                                </td>
+                                <td class="px-6 py-3 font-medium text-text-main">{{ $r->nama }}</td>
+                                <td class="px-6 py-3 text-text-muted">{{ $kategoriLabel($r->kategori) }}</td>
 
                                 <td class="px-6 py-3 text-center">
                                     <span
@@ -393,13 +367,14 @@
                                     </span>
                                 </td>
 
+                                <td class="px-6 py-3 text-text-muted">{{ $petugas }}</td>
                                 <td class="px-6 py-3 text-right font-bold text-text-main stat-number">
                                     {{ $rupiah((int) $r->total) }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-8 text-center text-text-muted italic bg-gray-50/30">
-                                    Tidak ada data transaksi yang ditemukan.
+                                <td colspan="6" class="px-6 py-8 text-center text-text-muted italic bg-gray-50/30">
+                                    Tidak ada data latihan harian.
                                 </td>
                             </tr>
                         @endforelse
@@ -448,7 +423,7 @@
                 async function init() {
                     const ok = await ensureChart();
                     if (!ok) {
-                        const fb = document.getElementById('memberDailyFallback');
+                        const fb = document.getElementById('harianDailyFallback');
                         if (fb) fb.classList.remove('hidden');
                         return;
                     }
@@ -459,7 +434,7 @@
                     const labels = daily.map(r => r.tanggal);
                     const values = daily.map(r => Number(r.total || 0));
 
-                    const el = document.getElementById('memberDailyChart');
+                    const el = document.getElementById('harianDailyChart');
                     if (!el) return;
 
                     new Chart(el, {
@@ -467,7 +442,7 @@
                         data: {
                             labels,
                             datasets: [{
-                                label: 'Omzet Membership',
+                                label: 'Omzet Harian',
                                 data: values,
                                 borderColor: '#10b981',
                                 backgroundColor: 'rgba(16, 185, 129, 0.1)',
