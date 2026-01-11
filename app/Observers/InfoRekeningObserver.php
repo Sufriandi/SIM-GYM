@@ -13,18 +13,26 @@ class InfoRekeningObserver
         $title = 'Metode pembayaran diperbarui';
         $body  = 'Admin menambahkan info rekening baru untuk pembayaran.';
 
+        $data = [
+            'type'             => 'payment',
+            'route'            => 'payment_info',          // tujuan di app
+            'id'               => (string) $r->id,         // id generik (konsisten)
+            'info_rekening_id' => (string) $r->id,         // id spesifik (opsional)
+            'deeplink'         => 'betagym://payment',     // opsional jika app support
+        ];
+
         app(NotificationService::class)->toAll(
             $title,
             $body,
             'payment',
-            ['info_rekening_id' => $r->id, 'route' => 'payment_info']
+            $data
         );
 
         app(FcmHttpV1Service::class)->sendToTopic(
             'all_users',
             $title,
             $body,
-            ['route' => 'payment_info', 'info_rekening_id' => (string)$r->id]
+            $data
         );
     }
 
@@ -33,18 +41,26 @@ class InfoRekeningObserver
         $title = 'Metode pembayaran diperbarui';
         $body  = 'Admin memperbarui info rekening pembayaran.';
 
+        $data = [
+            'type'             => 'payment',
+            'route'            => 'payment_info',
+            'id'               => (string) $r->id,
+            'info_rekening_id' => (string) $r->id,
+            'deeplink'         => 'betagym://payment',
+        ];
+
         app(NotificationService::class)->toAll(
             $title,
             $body,
             'payment',
-            ['info_rekening_id' => $r->id, 'route' => 'payment_info']
+            $data
         );
 
         app(FcmHttpV1Service::class)->sendToTopic(
             'all_users',
             $title,
             $body,
-            ['route' => 'payment_info', 'info_rekening_id' => (string)$r->id]
+            $data
         );
     }
 }

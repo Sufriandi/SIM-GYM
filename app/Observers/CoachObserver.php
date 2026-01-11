@@ -10,21 +10,31 @@ class CoachObserver
 {
     public function created(Coach $coach): void
     {
-        // sesuaikan field nama coach Anda jika berbeda
         $nama = $coach->nama ?? $coach->name ?? 'Coach baru';
 
+        // Payload standar untuk navigasi dari notifikasi (dipakai Android)
+        $data = [
+            'type'       => 'coach',
+            'route'      => 'coach_detail',             // nama tujuan di app
+            'id'         => (string) $coach->id,        // id generik (konsisten untuk semua)
+            'coach_id'   => (string) $coach->id,        // id spesifik (opsional, kalau mau)
+            'deeplink'   => 'betagym://coach/' . $coach->id, // opsional (kalau app support)
+        ];
+
+        // Simpan notifikasi ke database (kalau NotificationService Anda menyimpan)
         app(NotificationService::class)->toAll(
             'Coach baru tersedia',
             "Coach baru: {$nama}. Cek sekarang!",
             'coach',
-            ['coach_id' => $coach->id, 'route' => 'coach_detail']
+            $data
         );
 
+        // Kirim push FCM (sertakan data yang sama)
         app(FcmHttpV1Service::class)->sendToTopic(
             'all_users',
             'Coach baru tersedia',
-            "Coach baru: {$coach->nama}. Cek sekarang!",
-            ['route' => 'coach_detail', 'id' => (string)$coach->id]
+            "Coach baru: {$nama}. Cek sekarang!",
+            $data
         );
     }
 }

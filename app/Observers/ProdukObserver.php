@@ -18,21 +18,28 @@ class ProdukObserver
                 'nama'      => $produk->nama ?? null,
             ]);
 
-            $title = 'Produk baru masuk';
-            $body  = "Produk baru: {$produk->nama}. Buruan pesan sekarang!";
+            $nama = $produk->nama ?? 'Produk baru';
 
-            // 1) In-app (DB) tetap broadcast
+            $title = 'Produk baru masuk';
+            $body  = "Produk baru: {$nama}. Buruan pesan sekarang!";
+
+            $data = [
+                'type'     => 'produk',
+                'route'    => 'produk_detail',
+                'id'       => (string) $produk->id,
+                'produk_id'=> (string) $produk->id,
+                'deeplink' => 'betagym://produk/' . $produk->id,
+            ];
+
+            // 1) In-app (DB)
             app(NotificationService::class)->toAll(
                 $title,
                 $body,
                 'produk',
-                [
-                    'route'     => 'produk_detail',
-                    'produk_id' => (string) $produk->id,
-                ]
+                $data
             );
 
-            // 2) Push Android: kirim ke SEMUA token (token-based), bukan topic
+            // 2) Push Android: kirim ke semua token
             $tokens = DeviceToken::query()
                 ->pluck('token')
                 ->filter()
@@ -49,10 +56,7 @@ class ProdukObserver
                 $tokens,
                 $title,
                 $body,
-                [
-                    'route'     => 'produk_detail',
-                    'produk_id' => (string) $produk->id, // samakan key dengan in-app
-                ]
+                $data
             );
 
             Log::info('[ProdukObserver.created] push results', $res);
