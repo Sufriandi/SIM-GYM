@@ -192,6 +192,24 @@
                 <div class="px-4 text-[11px] font-bold tracking-wider uppercase text-brand-silver/70 mb-2">
                     Layanan
                 </div>
+                {{-- Paket Membership --}}
+                <a
+                    href="{{ route('member.paket_membership.index') }}"
+                    @click="mobileOpen = false"
+                    class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium
+                           transition-all duration-300
+                           {{ str($current)->startsWith('member.paket_membership')
+                                ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20'
+                                : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
+                    aria-current="{{ str($current)->startsWith('member.paket_membership') ? 'page' : 'false' }}"
+                >
+                    <i
+                        data-lucide="credit-card"
+                        class="w-5 h-5 transition-transform duration-300
+                               {{ str($current)->startsWith('member.paket_membership') ? 'text-gold-300' : 'group-hover:scale-110' }}"
+                    ></i>
+                    <span>Paket Membership</span>
+                </a>
 
                 {{-- Produk Gym --}}
                 <a

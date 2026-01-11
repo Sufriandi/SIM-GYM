@@ -16,24 +16,10 @@ class TransaksiMembership extends Model
 
     protected $table = 'transaksi_memberships';
 
-    // =========================
-    // Constants
-    // =========================
     public const JENIS_PEMBAYARAN = 'pembayaran';
     public const JENIS_KOMPENSASI = 'kompensasi';
 
-    // Payment verification status (hindari nama "status" karena sudah ada accessor getStatusAttribute)
-    public const PAY_PENDING   = 'pending';    // transaksi dibuat, belum upload bukti
-    public const PAY_SUBMITTED = 'submitted';  // bukti diupload, menunggu verifikasi admin
-    public const PAY_CONFIRMED = 'confirmed';  // admin setuju
-    public const PAY_REJECTED  = 'rejected';   // admin tolak
-    public const PAY_EXPIRED   = 'expired';    // lewat batas waktu bayar (opsional)
-
-    // =========================
-    // Mass assignment
-    // =========================
     protected $fillable = [
-        // existing
         'no_nota',
         'total',
         'buyer_member_id',
@@ -46,44 +32,19 @@ class TransaksiMembership extends Model
         'metode_pembayaran',
         'keterangan',
         'canceled_at',
-
-        // payment verification (baru)
-        'payment_status',
-        'expires_at',
-        'paid_at',
-        'confirmed_at',
-        'rejected_at',
-        'verified_by',
-        'payment_proof_path',
-        'payment_proof_original',
-        'payment_proof_mime',
-        'payment_proof_size',
-        'verification_note',
     ];
 
-    // =========================
-    // Casting
-    // =========================
     protected $casts = [
-        // existing
         'tanggal_transaksi' => 'datetime',
         'tanggal_mulai'     => 'date',
         'tanggal_akhir'     => 'date',
         'canceled_at'       => 'datetime',
         'total'             => 'integer',
-
-        // payment verification
-        'expires_at'        => 'datetime',
-        'paid_at'           => 'datetime',
-        'confirmed_at'      => 'datetime',
-        'rejected_at'       => 'datetime',
-        'verified_by'       => 'integer',
-        'payment_proof_size'=> 'integer',
     ];
 
-    // =========================
-    // Relationships
-    // =========================
+    /**
+     * Relationships
+     */
     public function buyer(): BelongsTo
     {
         return $this->belongsTo(Member::class, 'buyer_member_id');
@@ -92,11 +53,6 @@ class TransaksiMembership extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
-    }
-
-    public function verifier(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'verified_by');
     }
 
     public function paket(): BelongsTo
@@ -109,9 +65,9 @@ class TransaksiMembership extends Model
         return $this->hasMany(TransaksiMembershipMember::class, 'transaksi_membership_id');
     }
 
-    // =========================
-    // Scopes
-    // =========================
+    /**
+     * Scopes
+     */
     public function scopeNotCanceled(Builder $q): Builder
     {
         return $q->whereNull('canceled_at');
@@ -132,9 +88,6 @@ class TransaksiMembership extends Model
         return $q->where('jenis_transaksi', self::JENIS_KOMPENSASI);
     }
 
-    /**
-     * Revenue = transaksi pembayaran (bukan kompensasi), tidak dibatalkan, dan memiliki metode pembayaran.
-     */
     public function scopeRevenue(Builder $q): Builder
     {
         return $q->notCanceled()
@@ -143,36 +96,8 @@ class TransaksiMembership extends Model
     }
 
     /**
-     * Scopes untuk status pembayaran/verifikasi.
+     * Helpers canonical
      */
-    public function scopePaymentPending(Builder $q): Builder
-    {
-        return $q->where('payment_status', self::PAY_PENDING);
-    }
-
-    public function scopePaymentSubmitted(Builder $q): Builder
-    {
-        return $q->where('payment_status', self::PAY_SUBMITTED);
-    }
-
-    public function scopePaymentConfirmed(Builder $q): Builder
-    {
-        return $q->where('payment_status', self::PAY_CONFIRMED);
-    }
-
-    public function scopePaymentRejected(Builder $q): Builder
-    {
-        return $q->where('payment_status', self::PAY_REJECTED);
-    }
-
-    public function scopePaymentExpired(Builder $q): Builder
-    {
-        return $q->where('payment_status', self::PAY_EXPIRED);
-    }
-
-    // =========================
-    // Helpers canonical
-    // =========================
     public static function endDateTerakhirUntukMember(int $memberId): ?Carbon
     {
         $end = TransaksiMembershipMember::query()
@@ -184,10 +109,6 @@ class TransaksiMembership extends Model
         return $end ? Carbon::parse($end)->startOfDay() : null;
     }
 
-    /**
-     * Status membership (aktif/expired/belum_aktif) dihitung dari tanggal mulai/akhir
-     * (primary participant jika ada; fallback ke kolom transaksi).
-     */
     public function getStatusAttribute(): string
     {
         if ($this->canceled_at) {
@@ -201,14 +122,14 @@ class TransaksiMembership extends Model
             $primary = $this->participants->firstWhere('role', 'primary');
         }
 
-        if (! $primary) {
+        if (!$primary) {
             $primary = $this->participants()->where('role', 'primary')->first();
         }
 
         $mulai = $primary?->tanggal_mulai ?? $this->tanggal_mulai;
         $akhir = $primary?->tanggal_akhir ?? $this->tanggal_akhir;
 
-        if (! $mulai || ! $akhir) {
+        if (!$mulai || !$akhir) {
             return 'unknown';
         }
 
@@ -231,33 +152,15 @@ class TransaksiMembership extends Model
         return 'unknown';
     }
 
-    /**
-     * Helper: apakah transaksi pembayaran ini sudah melewati batas waktu bayar.
-     */
-    public function isPaymentExpired(): bool
-    {
-        if (! $this->expires_at) return false;
-        return Carbon::parse($this->expires_at)->isPast();
-    }
 
-    // =========================
-    // Booted: Auto-generate no_nota + default total + default payment_status
-    // =========================
+    /**
+     * Auto-generate no_nota + default total
+     */
     protected static function booted(): void
     {
         static::creating(function (self $trx) {
             if (empty($trx->tanggal_transaksi)) {
                 $trx->tanggal_transaksi = now();
-            }
-
-            // Default jenis transaksi bila belum diisi
-            if (empty($trx->jenis_transaksi)) {
-                $trx->jenis_transaksi = self::JENIS_PEMBAYARAN;
-            }
-
-            // Default payment_status bila belum diisi
-            if (empty($trx->payment_status)) {
-                $trx->payment_status = self::PAY_PENDING;
             }
 
             // no_nota: TM-YYMMDD-XXXXXX

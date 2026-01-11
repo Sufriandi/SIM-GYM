@@ -44,6 +44,9 @@ use App\Http\Controllers\Member\IzinLatihanController as MemberIzinLatihanContro
 use App\Http\Controllers\Member\CoachController as MemberCoachController;
 use App\Http\Controllers\Member\ProdukGymController;
 use App\Http\Controllers\Member\KehadiranMemberController as MemberKehadiranMemberController;
+use App\Http\Controllers\Member\PaketMembershipController as MemberPaketMembershipController;
+use App\Http\Controllers\Member\TransaksiMembershipController as MemberTransaksiMembershipController;
+
 
 // Notifikasi
 use App\Http\Controllers\Admin\AdminNotifikasiController;
@@ -193,7 +196,7 @@ Route::middleware(['auth', 'admin'])
 
             Route::get('/riwayat', [TransaksiProdukController::class, 'history'])->name('history');
 
-            // ✅ CETAK STRUK (HTML print)
+            //  CETAK STRUK (HTML print)
             Route::get('/{transaksiProduk}/cetak', [TransaksiProdukController::class, 'cetak'])
                 ->name('cetak');
 
@@ -395,7 +398,30 @@ Route::middleware(['auth', 'member'])
                 ->where('slug', '^[0-9]+-[A-Za-z0-9\-]+$')
                 ->name('show');
         });
+        Route::get('/paket-membership', [\App\Http\Controllers\Member\PaketMembershipController::class, 'index'])
+        ->name('paket_membership.index');
     });
+    
+    Route::middleware(['auth'])->prefix('member')->name('member.')->group(function () {
+
+    Route::get('/paket-membership', [MemberPaketMembershipController::class, 'index'])
+        ->name('paket_membership.index');
+
+    Route::get('/paket-membership/{paketMembership}', [MemberPaketMembershipController::class, 'show'])
+        ->name('paket_membership.show');
+
+    Route::get('/paket-membership/{paketMembership}/checkout', [MemberPaketMembershipController::class, 'checkout'])
+        ->name('paket_membership.checkout');
+
+    Route::post('/paket-membership/{paketMembership}/checkout', [MemberTransaksiMembershipController::class, 'store'])
+        ->name('paket_membership.checkout.store');
+
+    Route::get('/membership/transaksi/{trx}', [MemberTransaksiMembershipController::class, 'show'])
+        ->name('membership.transaksi.show');
+
+    Route::post('/membership/transaksi/{trx}/upload-bukti', [MemberTransaksiMembershipController::class, 'uploadBukti'])
+        ->name('membership.transaksi.upload_bukti');
+});
 
 /*
 |--------------------------------------------------------------------------
