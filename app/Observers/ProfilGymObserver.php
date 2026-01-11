@@ -13,18 +13,28 @@ class ProfilGymObserver
         $title = 'Informasi gym diperbarui';
         $body  = 'Ada pembaruan informasi gym. Silakan cek di menu Bantuan & Dukungan.';
 
+        $data = [
+            'type'         => 'profil_gym',
+            'route'        => 'bantuan_dukung',           // tujuan di app
+            'id'           => (string) $p->id,            // id generik (konsisten)
+            'profil_gym_id'=> (string) $p->id,            // id spesifik (opsional)
+            'deeplink'     => 'betagym://bantuan',        // opsional jika app support
+        ];
+
+        // Simpan notifikasi ke DB (in-app)
         app(NotificationService::class)->toAll(
             $title,
             $body,
             'profil_gym',
-            ['profil_gym_id' => $p->id, 'route' => 'bantuan_dukung']
+            $data
         );
 
+        // Kirim push (DATA-ONLY sesuai FcmHttpV1Service terbaru)
         app(FcmHttpV1Service::class)->sendToTopic(
             'all_users',
             $title,
             $body,
-            ['route' => 'bantuan_dukung', 'profil_gym_id' => (string)$p->id]
+            $data
         );
     }
 }

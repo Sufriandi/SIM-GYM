@@ -12,22 +12,24 @@ use Illuminate\Support\Facades\Schema;
 
 class FcmHttpV1Service
 {
+    /**
+     * Kirim ke TOPIC (DATA-ONLY).
+     * Title/Body dimasukkan ke data agar Android service bisa membuat notifikasi manual
+     * dan membawa route/id ke Intent.
+     */
     public function sendToTopic(string $topic, string $title, string $body, array $data = []): bool
     {
+        $dataPayload = $this->stringifyData(array_merge([
+            'title' => $title,
+            'body'  => $body,
+        ], $data));
+
         $message = [
             'message' => [
-                'topic' => $topic,
-                'notification' => [
-                    'title' => $title,
-                    'body'  => $body,
-                ],
-                'data' => $this->stringifyData($data),
+                'topic'   => $topic,
+                'data'    => $dataPayload,
                 'android' => [
                     'priority' => 'HIGH',
-                    'notification' => [
-                        'channel_id' => config('fcm.android_channel_id', 'betagym_general'),
-                        'sound' => 'default',
-                    ],
                 ],
             ],
         ];
@@ -35,22 +37,22 @@ class FcmHttpV1Service
         return $this->send($message);
     }
 
+    /**
+     * Kirim ke 1 token (DATA-ONLY).
+     */
     public function sendToToken(string $token, string $title, string $body, array $data = []): bool
     {
+        $dataPayload = $this->stringifyData(array_merge([
+            'title' => $title,
+            'body'  => $body,
+        ], $data));
+
         $message = [
             'message' => [
-                'token' => $token,
-                'notification' => [
-                    'title' => $title,
-                    'body'  => $body,
-                ],
-                'data' => $this->stringifyData($data),
+                'token'   => $token,
+                'data'    => $dataPayload,
                 'android' => [
                     'priority' => 'HIGH',
-                    'notification' => [
-                        'channel_id' => config('fcm.android_channel_id', 'betagym_general'),
-                        'sound' => 'default',
-                    ],
                 ],
             ],
         ];

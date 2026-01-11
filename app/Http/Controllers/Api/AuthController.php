@@ -32,15 +32,13 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Disarankan hash di controller agar pasti aman,
-        // walau di User model ada mutator juga tidak masalah (double hash tidak terjadi jika mutator benar).
         $user = User::create([
             'name'     => $request->name,
             'username' => $request->username,
             'email'    => $request->email,
             'no_hp'    => $request->no_hp,
             'password' => Hash::make((string) $request->password),
-            'role'     => 'member',
+            'role'     => 'member', // dipaksa member
         ]);
 
         return response()->json([
@@ -94,6 +92,23 @@ class AuthController extends Controller
             ], 401);
         }
 
+        /**
+         * PEMBATASAN ROLE (PENTING)
+         * Aplikasi mobile ini hanya untuk member.
+         * Admin / role lain wajib ditolak.
+         */
+        $role = $user->role;
+
+        // Kalau ada data lama role = null, kita anggap legacy dan bisa di-upgrade ke member setelah login sukses
+        $isLegacyNullRole = is_null($role);
+
+        if (! $isLegacyNullRole && $role !== 'member') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akun ini tidak diizinkan login di aplikasi member.',
+            ], 403);
+        }
+
         // ===============================
         // 1) Cek normal (password hash)
         // ===============================
@@ -112,8 +127,13 @@ class AuthController extends Controller
             if ($looksPlain && hash_equals($stored, $password)) {
                 // Upgrade password => hash
                 $user->password = Hash::make($password);
-                $user->save();
 
+                // Opsional: upgrade role legacy null => member supaya konsisten ke depan
+                if ($isLegacyNullRole) {
+                    $user->role = 'member';
+                }
+
+                $user->save();
                 $ok = true;
             }
         }
@@ -123,6 +143,12 @@ class AuthController extends Controller
                 'success' => false,
                 'message' => 'Password salah',
             ], 401);
+        }
+
+        // Jika role legacy null dan password sudah benar (hash), upgrade role juga agar tidak mengambang
+        if ($isLegacyNullRole) {
+            $user->role = 'member';
+            $user->save();
         }
 
         // optional (tidak wajib untuk sanctum token)
@@ -150,13 +176,6 @@ class AuthController extends Controller
     /**
      * POST /api/change-password
      * Wajib auth:sanctum
-     *
-     * Body JSON:
-     * {
-     *   "old_password": "xxx",
-     *   "new_password": "yyy",
-     *   "new_password_confirmation": "yyy"
-     * }
      */
     public function changePassword(Request $request)
     {
@@ -167,6 +186,14 @@ class AuthController extends Controller
                 'success' => false,
                 'message' => 'Unauthorized',
             ], 401);
+        }
+
+        // Pastikan yang pakai endpoint mobile ini hanya member
+        if ($user->role !== 'member') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akun ini tidak diizinkan menggunakan fitur aplikasi member.',
+            ], 403);
         }
 
         $validator = Validator::make($request->all(), [
@@ -186,7 +213,6 @@ class AuthController extends Controller
         $old = (string) $request->old_password;
         $new = (string) $request->new_password;
 
-        // Cek password lama
         if (! Hash::check($old, (string) $user->password)) {
             return response()->json([
                 'success' => false,
@@ -194,7 +220,6 @@ class AuthController extends Controller
             ], 400);
         }
 
-        // Tidak boleh sama
         if (hash_equals($old, $new)) {
             return response()->json([
                 'success' => false,
@@ -202,12 +227,8 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Update password (hash)
         $user->password = Hash::make($new);
         $user->save();
-
-        // Opsional: paksa logout semua device (hapus semua token)
-        // $user->tokens()->delete();
 
         return response()->json([
             'success' => true,

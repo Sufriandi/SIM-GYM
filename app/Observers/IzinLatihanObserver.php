@@ -11,6 +11,9 @@ class IzinLatihanObserver
 {
     /**
      * ADMIN: notifikasi saat MEMBER mengajukan izin (created).
+     * Catatan:
+     * - Ini bukan untuk aplikasi member.
+     * - Jangan broadcast ke all_users.
      */
     public function created(IzinLatihan $izin): void
     {
@@ -36,7 +39,7 @@ class IzinLatihanObserver
             }
 
             $title = 'Pengajuan izin latihan baru';
-            $body  = "Member mengajukan izin latihan. Silakan cek dan proses.";
+            $body  = 'Member mengajukan izin latihan. Silakan cek dan proses.';
 
             foreach ($adminIds as $adminId) {
                 app(NotificationService::class)->toUser(
@@ -45,7 +48,10 @@ class IzinLatihanObserver
                     $body,
                     'admin_izin_latihan',
                     [
+                        // Standarisasi payload (walau ini admin)
+                        'type'            => 'admin_izin_latihan',
                         'route'           => 'admin_izin_latihan',
+                        'id'              => (string) $izin->id,
                         'izin_latihan_id' => (string) $izin->id,
                         'member_id'       => (string) $memberId,
                     ]
@@ -61,9 +67,7 @@ class IzinLatihanObserver
 
     /**
      * MEMBER: notifikasi saat status berubah (approve/reject).
-     * Dibuat agar gaya tampilannya konsisten seperti notifikasi produk:
-     * - title tegas (bukan "Update ...")
-     * - body jelas + ajakan cek detail
+     * Ini untuk aplikasi member, jadi payload harus kompatibel dengan routing mobile.
      */
     public function updated(IzinLatihan $izin): void
     {
@@ -86,7 +90,6 @@ class IzinLatihanObserver
             $memberId = (int) ($izin->member_id ?? 0);
             if ($memberId <= 0) return;
 
-            // === Buat title/body yang "sekelas produk" ===
             $isApproved = in_array($statusLower, ['disetujui', 'approved', 'approve'], true);
             $isRejected = in_array($statusLower, ['ditolak', 'rejected', 'reject'], true);
 
@@ -103,25 +106,32 @@ class IzinLatihanObserver
             };
 
             /**
-             * PENTING:
-             * Pakai toMemberIdWithPush agar:
-             * - DB notifikasi tersimpan
-             * - Push terkirim dengan title/body yang sama
-             * - tidak ada perbedaan format antara in-app & push
+             * ROUTE MOBILE:
+             * - Gunakan route yang dipahami MainActivity (mapping tab).
+             * - Umumnya riwayat izin ada di Akun -> set 'akun'
+             *   Jika di app Anda ada tab khusus izin, silakan ganti route ini.
+             */
+            $payload = [
+                'type'            => 'izin_latihan',
+                'route'           => 'akun',                 // << ini yang dipakai mobile untuk buka tab
+                'id'              => (string) $izin->id,
+                'izin_id'         => (string) $izin->id,
+                'izin_latihan_id' => (string) $izin->id,
+                'status'          => (string) $status,
+                'deeplink'        => 'betagym://akun',       // opsional
+            ];
+
+            /**
+             * toMemberIdWithPush:
+             * Pastikan di NotificationService method ini mengirim push via FcmHttpV1Service
+             * dan mengikutsertakan payload 'route/type/id' dalam data push.
              */
             app(NotificationService::class)->toMemberIdWithPush(
                 $memberId,
                 $title,
                 $body,
                 'izin_latihan',
-                [
-                    // route untuk web member (dipakai MemberNotifikasiController::go)
-                    'route'           => 'member_izin_latihan_index',
-                    // simpan id untuk kebutuhan future (jika nanti ingin detail)
-                    'izin_id'         => (string) $izin->id,
-                    'izin_latihan_id' => (string) $izin->id,
-                    'status'          => (string) $status,
-                ]
+                $payload
             );
 
         } catch (\Throwable $e) {

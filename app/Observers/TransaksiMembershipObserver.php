@@ -22,7 +22,7 @@ class TransaksiMembershipObserver
 
     public function updated(TransaksiMembership $trx): void
     {
-        // Trigger ketika admin mengubah periode / batalin / aktifin lagi
+        // Trigger ketika admin mengubah periode / paket (aktivasi ulang)
         if ($this->shouldNotifyOnUpdate($trx)) {
             $this->notifyMembersFromTransaction($trx, 'updated');
         }
@@ -30,8 +30,8 @@ class TransaksiMembershipObserver
 
     private function shouldNotifyOnCreate(TransaksiMembership $trx): bool
     {
-        // Notif “membership aktif” biasanya dimaksudkan ketika admin sudah set periode
-        if ($trx->canceled_at) return false;
+        // Notif “membership aktif” hanya jika tidak dibatalkan dan periode lengkap
+        if (!empty($trx->canceled_at)) return false;
         if (empty($trx->tanggal_mulai) || empty($trx->tanggal_akhir)) return false;
 
         return true;
@@ -39,10 +39,10 @@ class TransaksiMembershipObserver
 
     private function shouldNotifyOnUpdate(TransaksiMembership $trx): bool
     {
-        // Kalau dibatalkan -> biasanya tidak perlu notif "diaktifkan"
-        if ($trx->canceled_at) return false;
+        // Kalau dibatalkan -> tidak kirim notif "diaktifkan"
+        if (!empty($trx->canceled_at)) return false;
 
-        // Hanya saat ada perubahan pada hal-hal yang relevan dengan aktivasi
+        // Hanya saat ada perubahan relevan
         $fields = ['tanggal_mulai', 'tanggal_akhir', 'canceled_at', 'paket_id'];
 
         foreach ($fields as $f) {
@@ -58,14 +58,18 @@ class TransaksiMembershipObserver
     private function notifyMembersFromTransaction(TransaksiMembership $trx, string $source): void
     {
         try {
-            $title = 'Membership Diaktifkan';
-            $body  = 'Membership anda sudah diaktifkan. Selamat berlatih!';
+            $title = 'Membership diaktifkan';
+            $body  = 'Membership Anda sudah diaktifkan. Selamat berlatih!';
 
+            // Payload standar untuk mobile routing
             $data = [
-                'route' => 'membership',
-                'transaksi_membership_id' => (string) $trx->id,
-                'tanggal_mulai' => (string) optional($trx->tanggal_mulai)->toDateString(),
-                'tanggal_akhir' => (string) optional($trx->tanggal_akhir)->toDateString(),
+                'type'                   => 'membership',
+                'route'                  => 'membership',
+                'id'                     => (string) $trx->id,
+                'transaksi_membership_id'=> (string) $trx->id,
+                'tanggal_mulai'          => (string) optional($trx->tanggal_mulai)->toDateString(),
+                'tanggal_akhir'          => (string) optional($trx->tanggal_akhir)->toDateString(),
+                'deeplink'               => 'betagym://membership', // opsional
             ];
 
             // kumpulkan semua member: buyer + participants
@@ -94,13 +98,18 @@ class TransaksiMembershipObserver
             /** @var NotificationService $svc */
             $svc = app(NotificationService::class);
 
+            $sentTo = [];
+            $skipped = [];
+
             foreach ($memberIds as $memberId) {
                 // Anti-spam: kalau notif untuk transaksi ini sudah pernah dibuat untuk user yang sama, skip
                 if ($this->alreadyNotifiedMember($memberId, (int) $trx->id)) {
+                    $skipped[] = $memberId;
                     continue;
                 }
 
-                $svc->toMemberIdWithPush(
+                // FIX: simpan return value ke $notif
+                $notif = $svc->toMemberIdWithPush(
                     $memberId,
                     $title,
                     $body,
@@ -110,19 +119,23 @@ class TransaksiMembershipObserver
                 );
 
                 if (!$notif) {
-                    Log::warning('[TransaksiMembershipObserver] Gagal membuat notif (toMemberId null)', [
-                        'trx_id' => $trx->id,
+                    Log::warning('[TransaksiMembershipObserver] Gagal membuat notif (toMemberIdWithPush null/false)', [
+                        'trx_id'    => $trx->id,
                         'member_id' => $memberId,
-                        'source' => $source,
+                        'source'    => $source,
                     ]);
+                } else {
+                    $sentTo[] = $memberId;
                 }
             }
 
             Log::info('[TransaksiMembershipObserver] Notifikasi membership diproses', [
-                'trx_id' => $trx->id,
-                'member_ids' => $memberIds,
-                'source' => $source,
+                'trx_id'      => $trx->id,
+                'sent_to'     => $sentTo,
+                'skipped'     => $skipped,
+                'source'      => $source,
             ]);
+
         } catch (\Throwable $e) {
             Log::warning('[TransaksiMembershipObserver] notifyMembersFromTransaction failed: ' . $e->getMessage(), [
                 'trx_id' => $trx->id ?? null,
@@ -133,8 +146,8 @@ class TransaksiMembershipObserver
 
     /**
      * Cegah notif dobel saat transaksi di-update berkali-kali.
-     * Kita cek apakah sudah ada Notification type=membership data->transaksi_membership_id = trx_id untuk user terkait.
-     * Kalau mapping user_id dari member tidak ketemu, fallback: tidak dicek (anggap belum notif).
+     * Cek apakah sudah ada Notification type=membership data->transaksi_membership_id = trx_id untuk user terkait.
+     * Kalau mapping user_id dari member tidak ketemu, fallback: anggap belum notif.
      */
     private function alreadyNotifiedMember(int $memberId, int $trxId): bool
     {
@@ -150,7 +163,6 @@ class TransaksiMembershipObserver
             }
 
             if (!$userId) {
-                // tidak bisa cek -> biarkan kirim (agar tidak gagal total)
                 return false;
             }
 
@@ -160,6 +172,7 @@ class TransaksiMembershipObserver
                 ->where('type', 'membership')
                 ->where('data->transaksi_membership_id', (string) $trxId)
                 ->exists();
+
         } catch (\Throwable $e) {
             return false;
         }

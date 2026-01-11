@@ -12,17 +12,42 @@ class NotificationObserver
     public function created(Notification $notification): void
     {
         try {
-            // Hanya notif personal (target=user)
-            if (($notification->target ?? null) !== 'user') return;
+            // Hanya notifikasi personal (target=user)
+            $target = strtolower((string) ($notification->target ?? ''));
+            if ($target !== 'user') {
+                return;
+            }
 
             $adminId = (int) ($notification->target_user_id ?? 0);
-            if ($adminId <= 0) return;
+            if ($adminId <= 0) {
+                Log::warning('[NotificationObserver.created] target_user_id invalid', [
+                    'notif_id' => $notification->id ?? null,
+                    'target_user_id' => $notification->target_user_id ?? null,
+                ]);
+                return;
+            }
 
-            // Pastikan targetnya admin (case-insensitive)
-            $u = User::select('id', 'role')->find($adminId);
-            if (!$u || strtolower((string)$u->role) !== 'admin') return;
+            // Pastikan target user benar-benar admin (case-insensitive)
+            $u = User::query()
+                ->select('id', 'role')
+                ->find($adminId);
 
+            if (! $u) {
+                Log::warning('[NotificationObserver.created] target user not found', [
+                    'notif_id' => $notification->id ?? null,
+                    'admin_id' => $adminId,
+                ]);
+                return;
+            }
+
+            $role = strtolower((string) ($u->role ?? ''));
+            if ($role !== 'admin') {
+                return;
+            }
+
+            // Broadcast ke admin panel (realtime)
             broadcast(new AdminNotificationCreated($notification, $adminId))->toOthers();
+
         } catch (\Throwable $e) {
             Log::error('[NotificationObserver.created] error: ' . $e->getMessage(), [
                 'notif_id' => $notification->id ?? null,
