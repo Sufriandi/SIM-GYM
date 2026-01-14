@@ -10,7 +10,9 @@
 
     $qrisImg = !empty($qris?->path_gambar) ? Storage::url($qris->path_gambar) : '';
 
-    $waAdmin = $waAdmin ?? '6281234567890';
+    $waAdmin = $waAdmin ?? null;
+    $merchantName = $merchantName ?? 'BETA GYM';
+    $merchantLogo = $merchantLogo ?? asset('images/logo.png');
 @endphp
 
 <x-layouts.member :pageTitle="'Keranjang & Checkout – BETA GYM'" :pageSubtitle="''">
@@ -188,7 +190,7 @@
 
         </div>
 
-        {{-- PAYMENT MODAL (SAMA PERSIS) --}}
+        {{-- PAYMENT MODAL --}}
         <template x-teleport="body">
             <div x-show="gatewayOpen" x-cloak class="fixed inset-0 z-[2147483647] flex items-center justify-center p-4 sm:p-6">
                 <div class="absolute inset-0 bg-black/75 backdrop-blur-sm" x-transition.opacity @click="closeAll()"></div>
@@ -204,25 +206,41 @@
                      x-transition:leave-end="opacity-0 scale-95 translate-y-2">
 
                     <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-b from-white to-gray-50">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="flex items-center gap-3 min-w-0">
-                                <div class="w-10 h-10 bg-black rounded-xl flex items-center justify-center text-gold-500 font-bold">B</div>
-                                <div class="min-w-0">
-                                    <p class="text-xs font-bold text-gray-900 truncate">BETA GYM</p>
-                                    <p class="text-[11px] text-gray-500 truncate">
-                                        <span x-text="step === 'menu' ? 'Payment Gateway' : 'Payment Instructions'"></span>
-                                        • Order <span class="font-mono">{{ $orderId }}</span>
-                                    </p>
-                                </div>
-                            </div>
+    <div class="flex items-start justify-between gap-3">
 
-                            <button type="button" @click="closeAll()" class="text-gray-400 hover:text-red-500" aria-label="Tutup">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
-                                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                                </svg>
-                            </button>
-                        </div>
+        {{-- Brand --}}
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-xl overflow-hidden bg-black flex items-center justify-center flex-shrink-0">
+                @if (!empty($merchantLogo))
+                    <img src="{{ $merchantLogo }}" alt="{{ $merchantName }}" class="w-full h-full object-cover">
+                @else
+                    <span class="text-gold-500 font-bold">
+                        {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($merchantName, 0, 1)) }}
+                    </span>
+                @endif
+            </div>
+
+            <div class="min-w-0">
+                <p class="text-xs font-bold text-gray-900 truncate">
+                    {{ $merchantName }}
+                </p>
+
+                <p class="text-[11px] text-gray-500 truncate">
+                    <span x-text="step === 'menu' ? 'Payment Gateway' : 'Payment Instructions'"></span>
+                    • Order <span class="font-mono">{{ $orderId }}</span>
+                </p>
+            </div>
+        </div>
+
+        {{-- Close --}}
+        <button type="button" @click="closeAll()" class="text-gray-400 hover:text-red-500" aria-label="Tutup">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+
+    </div>
 
                         <div class="mt-4 bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between">
                             <div>
@@ -367,9 +385,8 @@
                                 <div class="bg-white border border-gray-200 rounded-xl p-4">
                                     <p class="text-sm font-bold text-gray-900 mb-2">Petunjuk Transfer</p>
                                     <ol class="text-xs text-gray-600 leading-relaxed list-decimal pl-5 space-y-1">
-                                        <li>Buka ATM / M-Banking.</li>
-                                        <li>Pilih menu transfer.</li>
-                                        <li>Masukkan nomor rekening tujuan di atas.</li>
+                                        
+                                        <li>Masukkan nomor rekening tujuan.</li>
                                         <li>Masukkan nominal sesuai total tagihan.</li>
                                         <li>Simpan bukti transfer untuk konfirmasi.</li>
                                     </ol>
@@ -432,7 +449,7 @@
 
         <script>
             function cartPage() {
-                const qtyUrlTpl = @js(route('member.produk_gym.cart.quantity', ['id' => '__ID__']));
+                const qtyUrlTpl = @js(route('member.produk_gym.cart.qty', ['id' => '__ID__']));
                 const rmUrlTpl  = @js(route('member.produk_gym.cart.remove', ['id' => '__ID__']));
 
                 return {

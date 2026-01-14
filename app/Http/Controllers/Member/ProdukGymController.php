@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Produk;
 use App\Models\InfoRekening;
 use App\Models\InfoQris;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
@@ -166,10 +167,21 @@ class ProdukGymController extends Controller
 
         [$subtotal, $adminFee, $total, $itemsCount] = $this->computeCartTotals($cart);
 
-        $orderId = 'ORD-' . strtoupper(Str::random(9));
+        $orderId = 'TP-' . now()->format('ymd') . '-' . strtoupper(Str::of(Str::random(12))->replaceMatches('/[^A-Za-z]/', '')->substr(0, 6));
+
 
         $rekenings = InfoRekening::query()->orderBy('nama_bank')->get();
         $qris = InfoQris::query()->first();
+
+        $waAdminRaw = User::query()
+    ->where('role', 'admin')
+    ->whereNotNull('no_hp')
+    ->orderBy('id', 'asc')
+    ->value('no_hp');
+
+    $merchantName = 'BETA GYM';
+    $merchantLogo = asset('images/logo.png');
+
 
         return view('member.produk_gym.cart', [
             'pageTitle'  => 'Checkout',
@@ -181,6 +193,9 @@ class ProdukGymController extends Controller
             'orderId'    => $orderId,
             'rekenings'  => $rekenings,
             'qris'       => $qris,
+            'waAdmin'    => $waAdminRaw ? preg_replace('/^0/', '62', preg_replace('/\D/', '', $waAdminRaw)) : null,
+            'merchantName',
+        'merchantLogo',
         ]);
     }
 

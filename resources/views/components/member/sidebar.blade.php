@@ -7,7 +7,7 @@
     $isKehadiran  = str($current)->startsWith('member.kehadiran');
     $isProduk     = str($current)->startsWith('member.produk_gym');
     $isCoach      = str($current)->startsWith('member.coach');
-
+    $isMembership = str($current)->startsWith('member.membership');
     // optional badge (kirim dari layout / view composer)
     $izinPending  = (int)($izinPending ?? 0);
 
@@ -192,6 +192,18 @@
                 <div class="px-4 text-[11px] font-bold tracking-wider uppercase text-brand-silver/70 mb-2">
                     Layanan
                 </div>
+                {{-- MEMBERSHIP --}}
+                <a
+                    href="{{ route('membership.index') }}"
+                    @click="mobileOpen = false"
+                    class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium
+                    {{ $isMembership
+                        ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300'
+                        : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white' }}"
+                >
+                    <i data-lucide="id-card" class="w-5 h-5"></i>
+                    <span>Membership</span>
+                </a>
 
                 {{-- Produk Gym --}}
                 <a
@@ -211,6 +223,7 @@
                     ></i>
                     <span>Produk Gym</span>
                 </a>
+                
 
                 {{-- Coach --}}
                 <a

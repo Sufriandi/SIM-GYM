@@ -45,6 +45,7 @@ use App\Http\Controllers\Member\CoachController as MemberCoachController;
 use App\Http\Controllers\Member\ProdukGymController;
 use App\Http\Controllers\Member\KehadiranMemberController as MemberKehadiranMemberController;
 
+
 // Notifikasi (Admin)
 use App\Http\Controllers\Admin\AdminNotifikasiController;
 
@@ -415,7 +416,26 @@ Route::middleware(['auth', 'member'])
             // realtime polling endpoint (opsional, sama seperti admin)
             Route::get('/poll', [MemberNotifikasiController::class, 'poll'])->name('poll');
         });
+    
+
     });
+    Route::prefix('membership')->name('membership.')->group(function () {
+
+    // INDEX
+    Route::get('/', [\App\Http\Controllers\Member\PaketMembershipController::class, 'index'])
+        ->name('index');
+
+    Route::get('/{paketMembership}/checkout', [\App\Http\Controllers\Member\PaketMembershipController::class, 'checkout'])
+        ->whereNumber('paketMembership')
+        ->name('checkout');
+
+    // DETAIL PAKET MEMBERSHIP
+    Route::get('/{paketMembership}', [\App\Http\Controllers\Member\PaketMembershipController::class, 'show'])
+        ->whereNumber('paketMembership')
+        ->name('show');
+});
+
+
 
 /*
 |--------------------------------------------------------------------------
