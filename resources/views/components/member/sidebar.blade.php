@@ -194,7 +194,7 @@
                 </div>
                 {{-- MEMBERSHIP --}}
                 <a
-                    href="{{ route('membership.index') }}"
+                    href="{{ route('member.membership.index') }}"
                     @click="mobileOpen = false"
                     class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium
                     {{ $isMembership

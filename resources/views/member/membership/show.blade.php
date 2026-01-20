@@ -24,8 +24,8 @@
     $akses = 'Full Gym';
 
     // URL checkout aman (tidak error kalau route belum ada)
-    $checkoutUrl = Route::has('membership.checkout')
-        ? route('membership.checkout', $paket->id)
+    $checkoutUrl = Route::has('member.membership.checkout')
+        ? route('member.membership.checkout', $paket->id)
         : '#';
 
     // Olah deskripsi: jika bentuknya bullet/multi-line, tampilkan sebagai list
@@ -48,7 +48,7 @@
     <div class="max-w-5xl mx-auto pt-2 space-y-5">
 
         {{-- BACK --}}
-        <a href="{{ route('membership.index') }}"
+        <a href="{{ route('member.membership.index') }}"
            class="inline-flex items-center gap-2 text-sm font-semibold
                   text-text-muted hover:text-text-main transition">
             <i data-lucide="arrow-left" class="w-4 h-4"></i>
@@ -147,7 +147,7 @@
                     </div>
 
                     <div class="mt-4">
-                        <a href="{{ route('membership.checkout', $paketMembership->id) }}"
+                        <a href="{{ route('member.membership.checkout', $paketMembership->id) }}"
    class="w-full inline-flex justify-center items-center gap-2
           rounded-full px-5 py-3 bg-gold-600 text-white text-sm font-semibold
           hover:bg-gold-500 transition">

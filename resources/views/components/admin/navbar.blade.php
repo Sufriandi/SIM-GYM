@@ -438,7 +438,7 @@
                             <span class="text-sm text-text-main">Profil Saya</span>
                         </a>
 
-                        <button type="button"
+                        {{-- <button type="button"
                                 @click="toggleTheme()"
                                 class="w-full flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-brand-gunmetal/20 transition-colors text-left">
                             <div class="flex items-center gap-3 min-w-0">
@@ -457,7 +457,7 @@
                                 <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition"
                                       :class="theme === 'dark' ? 'translate-x-5' : ''"></span>
                             </div>
-                        </button>
+                        </button> --}}
 
                         <a href="#"
                            class="flex items-center gap-3 px-4 py-2.5 hover:bg-brand-gunmetal/20 transition-colors">

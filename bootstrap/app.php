@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin'  => AdminMiddleware::class,
             'member' => MemberMiddleware::class,
+            'sync.member.cart' => \App\Http\Middleware\SyncMemberCartToSession::class,
         ]);
 
     })

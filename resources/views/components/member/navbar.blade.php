@@ -277,7 +277,7 @@
                 </div>
             </div>
 
-            {{-- PROFIL MEMBER --}}
+            {{-- Profil --}}
             <div class="relative">
                 <button
                     @click.stop="showProfile = !showProfile; showNotifications = false"
@@ -287,36 +287,32 @@
                     aria-label="User menu"
                     :aria-expanded="showProfile"
                 >
-                    <div
-                        class="w-8 h-8 rounded-full overflow-hidden border border-brand-borderSoft bg-brand-surface-50
-                               flex items-center justify-center shadow-md"
-                    >
+                    <div class="w-8 h-8 rounded-full overflow-hidden border border-brand-borderSoft bg-brand-surface-50
+                               flex items-center justify-center shadow-md">
                         @if($avatarUrl)
                             <img src="{{ $avatarUrl }}" alt="Foto Profil" class="w-full h-full object-cover">
                         @else
                             <div class="w-full h-full bg-gradient-to-br from-gold-400 to-gold-600
-                                        flex items-center justify-center text-xs font-bold text-brand-black">
+                                       flex items-center justify-center text-xs font-bold text-brand-black">
                                 {{ $initials }}
                             </div>
                         @endif
                     </div>
 
                     <div class="leading-tight hidden sm:block text-left">
-                        <div
-                            class="text-xs font-semibold text-text-main truncate max-w-[120px]
-                                   group-hover:text-gold-400 transition-colors"
-                        >
-                            {{ auth()->user()->name ?? 'Member' }}
+                        <div class="text-xs font-semibold text-text-main truncate max-w-[100px]
+                                   group-hover:text-gold-400 transition-colors">
+                            {{ auth()->user()->name ?? 'Admin' }}
                         </div>
-                        <div class="text-[10px] text-text-muted">Member</div>
+                        <div class="text-[10px] text-text-muted">
+                            Administrator
+                        </div>
                     </div>
-
                     <i data-lucide="chevron-down"
                        class="w-4 h-4 text-text-muted transition-transform duration-200"
                        :class="{ 'rotate-180': showProfile }"></i>
                 </button>
 
-                {{-- Dropdown profil --}}
                 <div
                     x-show="showProfile"
                     x-cloak
@@ -326,31 +322,29 @@
                     x-transition:leave="transition ease-in duration-150"
                     x-transition:leave-start="opacity-100"
                     x-transition:leave-end="opacity-0"
-                    class="absolute right-0 mt-2 w-56 bg-brand-card border border-brand-borderSoft
+                    class="absolute right-0 mt-2 w-64 bg-brand-card border border-brand-borderSoft
                            rounded-2xl shadow-2xl overflow-hidden z-50"
                 >
                     <div class="px-4 py-3 border-b border-brand-borderSoft bg-brand-shell/70">
                         <p class="text-sm font-semibold text-text-main truncate">
-                            {{ auth()->user()->name ?? 'Member' }}
+                            {{ auth()->user()->name ?? 'Admin' }}
                         </p>
                         <p class="text-xs text-text-muted truncate">
-                            {{ auth()->user()->email ?? 'member@betagym.com' }}
+                            {{ auth()->user()->email ?? 'admin@betagym.com' }}
                         </p>
                     </div>
 
                     <div class="py-2">
-                        <a
-                            href="{{ route('profile.edit') }}"
-                            class="flex items-center gap-3 px-4 py-2.5 hover:bg-brand-gunmetal/20 transition-colors"
-                        >
+                        <a href="{{ route('profile.edit') }}"
+                           class="flex items-center gap-3 px-4 py-2.5 hover:bg-brand-gunmetal/20 transition-colors">
                             <i data-lucide="user" class="w-4 h-4 text-text-muted"></i>
-                            <span class="text-sm text-text-main">Profil & Pengaturan</span>
+                            <span class="text-sm text-text-main">Profil Saya</span>
                         </a>
 
-                        <a
-                            href="#"
-                            class="flex items-center gap-3 px-4 py-2.5 hover:bg-brand-gunmetal/20 transition-colors"
-                        >
+                        
+
+                        <a href="#"
+                           class="flex items-center gap-3 px-4 py-2.5 hover:bg-brand-gunmetal/20 transition-colors">
                             <i data-lucide="help-circle" class="w-4 h-4 text-text-muted"></i>
                             <span class="text-sm text-text-main">Bantuan</span>
                         </a>
@@ -359,10 +353,8 @@
                     <div class="border-t border-brand-borderSoft py-2 bg-brand-shell/60">
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
-                            <button
-                                type="submit"
-                                class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-accent-500/10 transition-colors text-left"
-                            >
+                            <button type="submit"
+                                    class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-accent-500/10 transition-colors text-left">
                                 <i data-lucide="log-out" class="w-4 h-4 text-accent-500"></i>
                                 <span class="text-sm text-accent-500 font-medium">Keluar</span>
                             </button>
@@ -374,3 +366,9 @@
         </div>
     </div>
 </header>
+
+@once
+    @push('scripts')
+        <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    @endpush
+@endonce

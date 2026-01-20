@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\CoachController;
 use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\LatihanHarianController;
 use App\Http\Controllers\Admin\LaporanKeuanganController;
+use App\Http\Controllers\Admin\LaporanKehadiranController;
 
 // Controller Membership (Admin)
 use App\Http\Controllers\Admin\PaketMembershipController;
@@ -44,6 +45,8 @@ use App\Http\Controllers\Member\IzinLatihanController as MemberIzinLatihanContro
 use App\Http\Controllers\Member\CoachController as MemberCoachController;
 use App\Http\Controllers\Member\ProdukGymController;
 use App\Http\Controllers\Member\KehadiranMemberController as MemberKehadiranMemberController;
+use App\Http\Controllers\Member\MemberMembershipHistoryController;
+use App\Http\Middleware\SyncMemberCartToSession;
 
 
 // Notifikasi (Admin)
@@ -298,11 +301,17 @@ Route::middleware(['auth', 'admin'])
             // Tidak dibuat redirect. Kalau belum ada halaman index laporan, biarkan tidak ada.
 
             // Laporan Absensi
-            Route::get('/absensi', [AbsensiReportController::class, 'index'])
-                ->name('absensi.index');
-            Route::get('/absensi/pdf', [AbsensiReportController::class, 'exportPdf'])
-                ->name('absensi.pdf');
-
+            // Route::get('/absensi', [AbsensiReportController::class, 'index'])
+            //     ->name('absensi.index');
+            // Route::get('/absensi/pdf', [AbsensiReportController::class, 'exportPdf'])
+            //     ->name('absensi.pdf');
+            Route::prefix('kehadiran')->name('kehadiran.')->group(function () {
+            Route::get('/', [LaporanKehadiranController::class, 'index'])->name('index');
+            Route::get('/absensi', [LaporanKehadiranController::class, 'absensi'])->name('absensi');
+            Route::get('/kompensasi', [LaporanKehadiranController::class, 'kompensasi'])->name('kompensasi');
+            Route::get('/audit', [LaporanKehadiranController::class, 'audit'])->name('audit');
+            });
+            Route::get('/excel', [LaporanKehadiranController::class, 'excel'])->name('excel');
             // ===== Laporan Keuangan (BARU) =====
             Route::prefix('keuangan')->name('keuangan.')->group(function () {
                 Route::get('/', [LaporanKeuanganController::class, 'index'])->name('index');
@@ -325,10 +334,11 @@ Route::middleware(['auth', 'admin'])
 | 5. RUTE KHUSUS MEMBER
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'member'])
+Route::middleware(['auth', 'member', SyncMemberCartToSession::class])
     ->prefix('member')
     ->name('member.')
     ->group(function () {
+
 
         Route::get('dashboard', [MemberDashboardController::class, 'index'])->name('dashboard');
 
@@ -416,24 +426,26 @@ Route::middleware(['auth', 'member'])
             // realtime polling endpoint (opsional, sama seperti admin)
             Route::get('/poll', [MemberNotifikasiController::class, 'poll'])->name('poll');
         });
-    
+        Route::prefix('membership')->name('membership.')->group(function () {
+
+            // INDEX
+            Route::get('/', [\App\Http\Controllers\Member\PaketMembershipController::class, 'index'])
+                ->name('index');
+
+            Route::get('/{paketMembership}/checkout', [\App\Http\Controllers\Member\PaketMembershipController::class, 'checkout'])
+                ->whereNumber('paketMembership')
+                ->name('checkout');
+
+            // DETAIL PAKET MEMBERSHIP
+            Route::get('/{paketMembership}', [\App\Http\Controllers\Member\PaketMembershipController::class, 'show'])
+                ->whereNumber('paketMembership')
+                ->name('show');
+            Route::get('/riwayat', [\App\Http\Controllers\Member\MemberMembershipHistoryController::class, 'index'])
+                ->name('history');
+        });
 
     });
-    Route::prefix('membership')->name('membership.')->group(function () {
-
-    // INDEX
-    Route::get('/', [\App\Http\Controllers\Member\PaketMembershipController::class, 'index'])
-        ->name('index');
-
-    Route::get('/{paketMembership}/checkout', [\App\Http\Controllers\Member\PaketMembershipController::class, 'checkout'])
-        ->whereNumber('paketMembership')
-        ->name('checkout');
-
-    // DETAIL PAKET MEMBERSHIP
-    Route::get('/{paketMembership}', [\App\Http\Controllers\Member\PaketMembershipController::class, 'show'])
-        ->whereNumber('paketMembership')
-        ->name('show');
-});
+    
 
 
 

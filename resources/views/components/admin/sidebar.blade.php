@@ -419,12 +419,12 @@
                 <div x-show="openLaporan" x-cloak x-collapse id="laporan-submenu" class="space-y-1 mt-1"
                     role="menu">
                     @php
-                        $lapAbsensiActive = request()->routeIs('admin.laporan.absensi.*');
+                        $lapAbsensiActive = request()->routeIs('admin.laporan.kehadiran.*');
                         $lapKeuanganActive = request()->routeIs('admin.laporan.keuangan.*');
                     @endphp
 
                     {{-- Laporan Absensi --}}
-                    <a href="{{ route('admin.laporan.absensi.index') }}"
+                    <a href="{{ route('admin.laporan.kehadiran.index') }}"
                         class="group flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
                 {{ $lapAbsensiActive
                     ? 'text-gold-300 font-medium bg-gradient-to-r from-gold-500/10 to-transparent'
@@ -432,7 +432,7 @@
                         role="menuitem" aria-current="{{ $lapAbsensiActive ? 'page' : 'false' }}">
                         <i data-lucide="qr-code"
                             class="w-4 h-4 {{ $lapAbsensiActive ? 'text-gold-300' : 'text-brand-silver/70' }}"></i>
-                        <span>Laporan Absensi</span>
+                        <span>Laporan Kehadiran</span>
                     </a>
 
                     {{-- ✅ Laporan Keuangan (AKTIF / TIDAK TERKUNCI) --}}

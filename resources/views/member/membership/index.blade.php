@@ -60,7 +60,7 @@
 
                         {{-- Tombol selalu di bawah --}}
                         <div class="mt-auto pt-2 pb-1">
-                            <a href="{{ route('membership.show', $paket->id) }}"
+                            <a href="{{ route('member.membership.show', $paket->id) }}"
                                class="w-full inline-flex justify-center items-center gap-2
                                       px-4 py-2.5 rounded-full text-sm font-semibold
                                       bg-gold-600 text-white

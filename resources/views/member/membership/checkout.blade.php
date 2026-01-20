@@ -6,7 +6,7 @@
 <x-layouts.member :pageTitle="$pageTitle" :pageSubtitle="$pageSubtitle">
     <div class="max-w-5xl mx-auto pt-2 space-y-5">
 
-        <a href="{{ route('membership.show', $paketMembership->id) }}"
+        <a href="{{ route('member.membership.show', $paketMembership->id) }}"
            class="inline-flex items-center gap-2 text-sm font-semibold text-text-muted hover:text-text-main transition">
             <i data-lucide="arrow-left" class="w-4 h-4"></i>
             Kembali ke Detail Paket

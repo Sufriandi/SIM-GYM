@@ -104,7 +104,7 @@
                              class="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105 cursor-zoom-in"
                              onclick="window.open(this.src, '_blank')">
 
-                        {{-- overlay biar “coach-like” --}}
+                        {{-- overlay  --}}
                         <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent pointer-events-none"></div>
 
                         <div class="absolute top-4 left-4 z-20">
