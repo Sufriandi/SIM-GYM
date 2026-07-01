@@ -44,7 +44,7 @@
     $coaches = $coaches ?? collect();
 
     // Hero
-    $heroImageUrl = $heroImageUrl ?? asset('images/dashboard-hero.jpg');
+    $heroImageUrl = $heroImageUrl ?? asset('images/dashboard-hero.webp');
     $initialDateText = now()->translatedFormat('l, d F Y');
     $initialTimeText = now()->format('H:i:s') . ' WIB';
 
@@ -421,7 +421,7 @@
                         <span class="text-[11px] text-text-muted">Lihat daftar pengajuan Anda.</span>
                         @if(Route::has('member.izin_latihan.index'))
                             <a href="{{ route('member.izin_latihan.index') }}"
-                               class="text-[11px] font-semibold text-gold-600 hover:text-gold-500 flex items-center gap-1 whitespace-nowrap">
+                               class="text-[11px] font-semibold text-amber-700 hover:text-amber-600 dark:text-gold-500 flex items-center gap-1 whitespace-nowrap">
                                 Buka
                                 <i data-lucide="arrow-right" class="w-3 h-3"></i>
                             </a>
@@ -443,7 +443,7 @@
             <div class="lg:col-span-4 rounded-3xl bg-brand-card border border-brand-borderSoft shadow-2xl p-6">
                 <div class="flex items-start justify-between gap-3">
                     <div>
-                        <h3 class="text-base font-bold text-text-main">Aktivitas Hari Ini</h3>
+                        <h2 class="text-base font-bold text-text-main">Aktivitas Hari Ini</h2>
                         <p class="text-[11px] text-text-muted mt-0.5">Status membership & kehadiran hari ini.</p>
                     </div>
                     <div class="w-11 h-11 rounded-2xl bg-brand-shell/70 border border-brand-borderSoft flex items-center justify-center">
@@ -500,7 +500,7 @@
                 <div class="mt-6 pt-5 border-t border-brand-borderSoft">
                     @if(Route::has('member.kehadiran.index'))
                         <a href="{{ route('member.kehadiran.index') }}"
-                           class="text-[11px] font-semibold text-gold-600 hover:text-gold-500 flex items-center gap-1 whitespace-nowrap">
+                           class="text-[11px] font-semibold text-amber-700 hover:text-amber-600 dark:text-gold-500 flex items-center gap-1 whitespace-nowrap">
                             Lihat riwayat kehadiran
                             <i data-lucide="arrow-right" class="w-3 h-3"></i>
                         </a>
@@ -512,7 +512,7 @@
             <div class="lg:col-span-8 rounded-3xl bg-brand-card border border-brand-borderSoft shadow-2xl p-6 overflow-hidden">
                 <div class="flex items-start justify-between gap-3 mb-4">
                     <div>
-                        <h3 class="text-base font-bold text-text-main">Kehadiran Terakhir</h3>
+                        <h2 class="text-base font-bold text-text-main">Kehadiran Terakhir</h2>
                         <p class="text-[11px] text-text-muted mt-0.5">5 kehadiran terakhir yang tercatat.</p>
                     </div>
                     <div class="w-11 h-11 rounded-2xl bg-brand-shell/70 border border-brand-borderSoft flex items-center justify-center">
@@ -570,13 +570,13 @@
             <div class="lg:col-span-8 rounded-3xl bg-brand-card border border-brand-borderSoft shadow-2xl p-6">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <h3 class="text-base font-bold text-text-main">Rekomendasi Produk Gym</h3>
+                        <h2 class="text-base font-bold text-text-main">Rekomendasi Produk Gym</h2>
                         <p class="text-[11px] text-text-muted mt-0.5">Produk dipilih acak untuk membantu Anda menemukan item yang relevan.</p>
                     </div>
 
                     @if($produkIndexUrl)
                         <a href="{{ $produkIndexUrl }}"
-                           class="text-xs font-semibold text-gold-600 hover:text-gold-500 flex items-center gap-1 whitespace-nowrap">
+                           class="text-xs font-semibold text-amber-700 hover:text-amber-600 dark:text-gold-500 flex items-center gap-1 whitespace-nowrap">
                             Lihat produk gym
                             <i data-lucide="arrow-right" class="w-4 h-4"></i>
                         </a>
@@ -648,13 +648,13 @@
             <div class="lg:col-span-4 rounded-3xl bg-brand-card border border-brand-borderSoft shadow-2xl p-6">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <h3 class="text-base font-bold text-text-main">Tim Coach BETA GYM</h3>
+                        <h2 class="text-base font-bold text-text-main">Tim Coach BETA GYM</h2>
                         <p class="text-[11px] text-text-muted mt-0.5">Konsultasikan program latihan Anda dengan coach kami.</p>
                     </div>
 
                     @if($coachIndexUrl)
                         <a href="{{ $coachIndexUrl }}"
-                           class="text-xs font-semibold text-gold-600 hover:text-gold-500 flex items-center gap-1 whitespace-nowrap">
+                           class="text-xs font-semibold text-amber-700 hover:text-amber-600 dark:text-gold-500 flex items-center gap-1 whitespace-nowrap">
                             Lihat coach
                             <i data-lucide="arrow-right" class="w-4 h-4"></i>
                         </a>
@@ -676,6 +676,7 @@
                                     @if($coach->foto)
                                         <img src="{{ asset('storage/'.$coach->foto) }}"
                                              alt="{{ $coach->nama }}"
+                                             onerror="this.onerror=null;this.src='{{ asset('images/default-avatar.webp') }}';"
                                              class="w-full h-full object-cover">
                                     @else
                                         <div class="w-full h-full flex items-center justify-center text-text-muted">

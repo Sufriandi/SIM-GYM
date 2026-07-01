@@ -46,10 +46,10 @@
                    bg-gradient-to-r from-brand-gunmetal to-brand-black"
         >
             <img
-                src="{{ asset('images/Logo.png') }}"
+                src="{{ asset('images/Logo.webp') }}"
                 alt="BETA GYM Logo"
                 class="h-11 w-11 object-contain rounded-2xl shadow-gold-glow"
-                loading="lazy"
+                loading="lazy" fetchpriority="high" width="150" height="50" alt="Logo"
             >
             <div class="leading-tight">
                 <div class="text-[11px] tracking-[0.25em] uppercase text-gold-300 font-semibold">

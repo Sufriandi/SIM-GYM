@@ -11,8 +11,14 @@
     <meta charset="utf-8">
     <title>{{ $title }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <!-- Penambahan Tag Meta Deskripsi untuk optimasi SEO -->
+    <meta name="description" content="Dashboard member SIM GYM untuk pantau membership, riwayat kehadiran, pengajuan izin latihan, serta beragam informasi program kebugaran.">
 
-    <link rel="icon" type="image/png" href="{{ asset('images/Logo.png') }}">
+    <!-- Preload LCP Image -->
+    <link rel="preload" as="image" href="{{ asset('images/dashboard-hero.webp') }}" fetchpriority="high">
+
+    <link rel="icon" type="image/webp" href="{{ asset('images/Logo.webp') }}"fetchpriority="high" alt="logo">
 
     <script>
     (function () {
@@ -25,7 +31,7 @@
     })();
     </script>
 
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@latest" defer></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 

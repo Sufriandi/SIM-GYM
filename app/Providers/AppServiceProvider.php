@@ -56,6 +56,15 @@ class AppServiceProvider extends ServiceProvider
     {
         /**
          * ==========================================================
+         * FORCE HTTPS
+         * ==========================================================
+         */
+        if (config('app.env') === 'production' || str_contains(config('app.url'), 'https://')) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
+        /**
+         * ==========================================================
          * REGISTER OBSERVERS
          * ==========================================================
          */
