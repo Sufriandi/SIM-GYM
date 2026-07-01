@@ -17,7 +17,7 @@
     <link rel="icon" type="image/png" href="{{ asset('images/Logo.png') }}">
 
     {{-- Lucide Icons --}}
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@latest" defer></script>
     <script>
     (function () {
     const saved = localStorage.getItem('theme');

@@ -1,7 +1,5 @@
 <?php
-
 namespace App\Http\Controllers\Admin;
-
 use App\Http\Controllers\Controller;
 use App\Models\Member;
 use App\Models\User;
@@ -9,6 +7,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Cache;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 
 class MemberController extends Controller
 {
@@ -18,12 +19,12 @@ class MemberController extends Controller
         $status = (string) $request->input('status', ''); // aktif | belum_aktif | expired | ''
         $sort   = (string) $request->input('sort', 'name_asc'); // name_asc|name_desc|daftar_newest|daftar_oldest
 
-        // Base query
+        // Base query (Dioptimalkan urutan select agar ID tidak bentrok)
         $query = Member::query()
             ->with(['user' => fn($q) => $q->withTrashed()])
+            ->select('members.*')
             ->join('users', 'users.id', '=', 'members.user_id')
-            ->whereNull('members.deleted_at')
-            ->select('members.*');
+            ->whereNull('members.deleted_at');
 
         // SEARCH
         if ($search !== '') {
@@ -36,24 +37,22 @@ class MemberController extends Controller
         }
 
         /**
-         * STATUS membership bergantung tabel transaksi.
-         * Auto-detect: transaksi_memberships / transaksi_membership
+         * OPTIMASI PERFORMA: Menggunakan Cache agar tidak mengecek Schema database berkali-kali
          */
-        $periodeTable = null;
-        foreach (['transaksi_memberships', 'transaksi_membership'] as $tbl) {
-            if (Schema::hasTable($tbl)) {
-                $periodeTable = $tbl;
-                break;
+        $periodeTable = Cache::rememberForever('transaksi_memberships_table', function () {
+            foreach (['transaksi_memberships', 'transaksi_membership'] as $tbl) {
+                if (Schema::hasTable($tbl)) {
+                    return $tbl;
+                }
             }
-        }
+            return null;
+        });
 
         if ($periodeTable) {
             $today = now()->toDateString();
 
             /**
              * Subquery: latest transaksi per BUYER (per member)
-             * FIX UTAMA: gunakan buyer_member_id (bukan member_id)
-             * Tambahan: abaikan transaksi yang canceled
              */
             $latest = DB::table($periodeTable)
                 ->select('buyer_member_id', DB::raw('MAX(id) as latest_id'))
@@ -68,7 +67,7 @@ class MemberController extends Controller
                 $join->on('tm.id', '=', 'tm_latest.latest_id');
             });
 
-            // FILTER STATUS (aktif | expired | belum_aktif)
+            // FILTER STATUS
             if ($status === 'aktif') {
                 $query->whereNotNull('tm.id')
                     ->whereDate('tm.tanggal_mulai', '<=', $today)
@@ -77,29 +76,24 @@ class MemberController extends Controller
                 $query->whereNotNull('tm.id')
                     ->whereDate('tm.tanggal_akhir', '<', $today);
             } elseif ($status === 'belum_aktif') {
-                // belum_aktif = belum pernah transaksi (tm null) ATAU transaksi terakhir belum mulai (mulai > today)
                 $query->where(function ($q) use ($today) {
                     $q->whereNull('tm.id')
                         ->orWhereDate('tm.tanggal_mulai', '>', $today);
                 });
             }
         }
-        // Jika tabel transaksi belum ada: filter status diabaikan (tidak crash)
 
         // SORT
         switch ($sort) {
             case 'name_desc':
                 $query->orderBy('users.name', 'desc');
                 break;
-
             case 'daftar_newest':
                 $query->orderBy('members.tanggal_daftar', 'desc');
                 break;
-
             case 'daftar_oldest':
                 $query->orderBy('members.tanggal_daftar', 'asc');
                 break;
-
             case 'name_asc':
             default:
                 $query->orderBy('users.name', 'asc');
@@ -125,15 +119,28 @@ class MemberController extends Controller
             'password'      => ['required', 'string', 'min:8', 'confirmed'],
             'alamat'        => ['nullable', 'string'],
             'jenis_kelamin' => ['nullable', 'in:laki-laki,perempuan'],
-            'foto'          => ['nullable', 'image', 'max:2048'],
+            'foto'          => ['nullable', 'image', 'max:2048'], // Validasi max 2MB sebelum dikompres
         ]);
 
         DB::beginTransaction();
         $fotoPath = null;
 
         try {
+            // OPTIMASI GAMBAR: Resize dan Convert ke WebP
             if ($request->hasFile('foto')) {
-                $fotoPath = $request->file('foto')->store('users', 'public');
+                $file = $request->file('foto');
+                $filename = 'users/' . time() . '_' . uniqid() . '.webp';
+                
+                $manager = new ImageManager(new Driver());
+                $image = $manager->read($file->getRealPath());
+                
+                // Perkecil gambar jika lebarnya lebih dari 300px (proporsional)
+                $image->scaleDown(width: 300);
+                
+                // Simpan dengan kualitas 80% dalam format WebP
+                Storage::disk('public')->put($filename, (string) $image->toWebp(80));
+                
+                $fotoPath = $filename;
             }
 
             $user = User::create([
@@ -144,14 +151,12 @@ class MemberController extends Controller
                 'alamat'        => $request->alamat,
                 'jenis_kelamin' => $request->jenis_kelamin,
                 'foto'          => $fotoPath,
-                'password'      => $request->password, // hashed by cast
+                'password'      => $request->password,
                 'role'          => 'member',
             ]);
 
-            // dibuat otomatis oleh event/booted di User (jika ada)
             $member = $user->member;
 
-            // fallback kalau event tidak jalan
             if (! $member) {
                 $member = Member::create([
                     'user_id'        => $user->id,
@@ -204,11 +209,23 @@ class MemberController extends Controller
                     'jenis_kelamin' => $request->jenis_kelamin,
                 ];
 
+                // OPTIMASI GAMBAR: Update dengan Resize dan Convert ke WebP
                 if ($request->hasFile('foto')) {
+                    // Hapus foto lama
                     if ($user->foto && Storage::disk('public')->exists($user->foto)) {
                         Storage::disk('public')->delete($user->foto);
                     }
-                    $dataUser['foto'] = $request->file('foto')->store('users', 'public');
+                    
+                    $file = $request->file('foto');
+                    $filename = 'users/' . time() . '_' . uniqid() . '.webp';
+                    
+                    $manager = new ImageManager(new Driver());
+                    $image = $manager->read($file->getRealPath());
+                    $image->scaleDown(width: 300);
+                    
+                    Storage::disk('public')->put($filename, (string) $image->toWebp(80));
+                    
+                    $dataUser['foto'] = $filename;
                 }
 
                 $user->update($dataUser);
@@ -234,7 +251,6 @@ class MemberController extends Controller
 
         try {
             $user = $member->user;
-
             $member->delete();
 
             if ($user) {
@@ -248,9 +264,7 @@ class MemberController extends Controller
                 ->with('success', 'Member dan akun pengguna berhasil dinonaktifkan (Soft Delete).');
         } catch (\Throwable $th) {
             DB::rollBack();
-
-            return back()
-                ->with('error', 'Gagal menonaktifkan member: ' . $th->getMessage());
+            return back()->with('error', 'Gagal menonaktifkan member: ' . $th->getMessage());
         }
     }
 
@@ -272,7 +286,6 @@ class MemberController extends Controller
             return back()->with('success', 'Member dan akun berhasil diaktifkan kembali.');
         } catch (\Throwable $th) {
             DB::rollBack();
-
             return back()->with('error', 'Gagal memulihkan member: ' . $th->getMessage());
         }
     }
