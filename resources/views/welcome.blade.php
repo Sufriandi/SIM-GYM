@@ -14,8 +14,6 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <style>
-        /* Import Fonts jika belum ada di app.css */
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
 
         /* ANIMATION UTILITIES */
         @keyframes float {
