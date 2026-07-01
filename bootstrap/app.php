@@ -7,6 +7,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 // Import Middleware Anda
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\MemberMiddleware;
+use App\Http\Middleware\CompressResponse;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -17,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+
+        $middleware->append(CompressResponse::class);
 
         //  DAFTARKAN ALIAS MIDDLEWARE DI SINI
         $middleware->alias([
