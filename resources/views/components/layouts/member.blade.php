@@ -7,25 +7,26 @@
 
 <!DOCTYPE html>
 <html lang="id" class="h-full overflow-x-hidden">
+
 <head>
     <meta charset="utf-8">
     <title>{{ $title }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <link rel="icon" type="image/png" href="{{ asset('images/Logo.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/logo.webp') }}">
 
     <script>
-    (function () {
-        const saved = localStorage.getItem('theme');
-        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const theme = saved || (prefersDark ? 'dark' : 'light');
+        (function() {
+            const saved = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = saved || (prefersDark ? 'dark' : 'light');
 
-        document.documentElement.classList.toggle('dark', theme === 'dark');
-        document.documentElement.dataset.theme = theme;
-    })();
+            document.documentElement.classList.toggle('dark', theme === 'dark');
+            document.documentElement.dataset.theme = theme;
+        })();
     </script>
 
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script defer src="https://unpkg.com/lucide@latest"></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
@@ -48,7 +49,7 @@
     <x-ui.toast />
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             if (window.lucide) window.lucide.createIcons();
         });
     </script>
@@ -56,4 +57,5 @@
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     @stack('scripts')
 </body>
+
 </html>

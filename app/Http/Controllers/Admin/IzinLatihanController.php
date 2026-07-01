@@ -34,7 +34,7 @@ class IzinLatihanController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->whereHas('member.user', function ($u) use ($search) {
                     $u->where('name', 'like', $search . '%')
-                      ->orWhere('username', 'like', $search . '%');
+                        ->orWhere('username', 'like', $search . '%');
                 });
             });
         }
@@ -48,12 +48,12 @@ class IzinLatihanController extends Controller
 
             case 'days_max':
                 $query->orderBy('jumlah_hari', 'desc')
-                      ->orderBy('created_at', 'desc');
+                    ->orderBy('created_at', 'desc');
                 break;
 
             case 'days_min':
                 $query->orderBy('jumlah_hari', 'asc')
-                      ->orderBy('created_at', 'desc');
+                    ->orderBy('created_at', 'desc');
                 break;
 
             case 'newest':
@@ -64,7 +64,7 @@ class IzinLatihanController extends Controller
 
         $daftar_izin = $query->paginate(20)->withQueryString();
 
-        // inject akhir membership (tanpa N+1)
+        // inject akhir membership (tanpa N+1) -> PIVOT-BASED
         $memberIds = $daftar_izin->getCollection()->pluck('member_id')->unique()->values()->all();
         $akhirMap  = $this->mapAkhirMembership($memberIds);
 
@@ -140,7 +140,7 @@ class IzinLatihanController extends Controller
                 ->withInput();
         }
 
-        // 2) Wajib aktif pada tanggal mulai izin (opsi A)
+        // 2) Wajib aktif pada tanggal mulai izin (PIVOT-BASED)
         if (! $this->isMembershipActiveAtDate($memberId, $tanggalMulaiIzin)) {
             return back()
                 ->withErrors(
@@ -182,7 +182,7 @@ class IzinLatihanController extends Controller
                 'tanggal_persetujuan'   => now(),
             ]);
 
-            // B) buat transaksi kompensasi (INDIVIDU)
+            // B) buat transaksi kompensasi (INDIVIDU) - periode PIVOT-BASED
             [$mulaiKomp, $akhirKomp] = $this->buildKompensasiPeriodIndividu($memberId, $jumlahHari);
 
             $trx = TransaksiMembership::create([
@@ -198,7 +198,7 @@ class IzinLatihanController extends Controller
                 'canceled_at'       => null,
             ]);
 
-            // IMPORTANT: pivot wajib isi tanggal_mulai/tanggal_akhir supaya konsisten pivot-based
+            // IMPORTANT: pivot wajib isi tanggal_mulai/tanggal_akhir
             TransaksiMembershipMember::create([
                 'transaksi_membership_id' => $trx->id,
                 'member_id'               => $memberId,
@@ -236,26 +236,26 @@ class IzinLatihanController extends Controller
 
             case 'approved_max':
                 $query->orderByRaw("$approvedDaysExpr DESC")
-                      ->orderByRaw("$processedAtExpr DESC")
-                      ->orderBy('id', 'DESC');
+                    ->orderByRaw("$processedAtExpr DESC")
+                    ->orderBy('id', 'DESC');
                 break;
 
             case 'approved_min':
                 $query->orderByRaw("$approvedDaysExpr ASC")
-                      ->orderByRaw("$processedAtExpr DESC")
-                      ->orderBy('id', 'DESC');
+                    ->orderByRaw("$processedAtExpr DESC")
+                    ->orderBy('id', 'DESC');
                 break;
 
             case 'requested_max':
                 $query->orderBy('jumlah_hari', 'DESC')
-                      ->orderByRaw("$processedAtExpr DESC")
-                      ->orderBy('id', 'DESC');
+                    ->orderByRaw("$processedAtExpr DESC")
+                    ->orderBy('id', 'DESC');
                 break;
 
             case 'requested_min':
                 $query->orderBy('jumlah_hari', 'ASC')
-                      ->orderByRaw("$processedAtExpr DESC")
-                      ->orderBy('id', 'DESC');
+                    ->orderByRaw("$processedAtExpr DESC")
+                    ->orderBy('id', 'DESC');
                 break;
 
             case 'processed_newest':
@@ -266,7 +266,7 @@ class IzinLatihanController extends Controller
 
         $riwayat_izin = $query->paginate(15)->withQueryString();
 
-        // inject akhir membership (tanpa N+1)
+        // inject akhir membership (tanpa N+1) -> PIVOT-BASED
         $memberIds = $riwayat_izin->getCollection()->pluck('member_id')->unique()->values()->all();
         $akhirMap  = $this->mapAkhirMembership($memberIds);
 
@@ -338,7 +338,7 @@ class IzinLatihanController extends Controller
                     throw new \RuntimeException('Izin sudah diproses.');
                 }
 
-                // Gate: aktif pada tanggal_mulai izin (opsi A)
+                // Gate: aktif pada tanggal_mulai izin (PIVOT-BASED)
                 $izinStart = Carbon::parse($izin->tanggal_mulai)->startOfDay();
                 if (! $this->isMembershipActiveAtDate($memberId, $izinStart)) {
                     throw new \RuntimeException('Membership member tidak aktif pada tanggal mulai izin. Izin tidak dapat disetujui.');
@@ -365,6 +365,7 @@ class IzinLatihanController extends Controller
 
                     // idempotent: jangan buat dobel kalau sudah ada kompensasi utk izin ini
                     $exists = TransaksiMembership::query()
+                        ->valid()
                         ->where('buyer_member_id', $memberId)
                         ->where('jenis_transaksi', TransaksiMembership::JENIS_KOMPENSASI)
                         ->where('keterangan', 'like', "%izin_id={$izin->id}%")
@@ -388,7 +389,6 @@ class IzinLatihanController extends Controller
                             'canceled_at'       => null,
                         ]);
 
-                        // IMPORTANT: pivot wajib isi tanggal (supaya history & per-member canonical aman)
                         TransaksiMembershipMember::create([
                             'transaksi_membership_id' => $trx->id,
                             'member_id'               => $memberId,
@@ -407,7 +407,6 @@ class IzinLatihanController extends Controller
             return redirect()
                 ->route('admin.izin_latihan.index')
                 ->with('success', $msg);
-
         } catch (\RuntimeException $e) {
             return redirect()
                 ->route('admin.izin_latihan.index')
@@ -446,19 +445,32 @@ class IzinLatihanController extends Controller
     /**
      * TRANSAKSI PEMBAYARAN terakhir yang relevan untuk individu:
      * - melibatkan member sebagai buyer ATAU participant
-     * - diurutkan berdasarkan tanggal_akhir terjauh
+     * - diurutkan berdasarkan tanggal_akhir PIVOT untuk member tsb (fallback ke header)
      */
     private function getLastPaidTransactionForMember(int $memberId, bool $lock = false): ?TransaksiMembership
     {
         $q = TransaksiMembership::query()
+            ->from('transaksi_memberships as tm')
+            ->select('tm.*')
             ->valid()
             ->pembayaran()
-            ->where(function ($w) use ($memberId) {
-                $w->where('buyer_member_id', $memberId)
-                    ->orWhereHas('participants', fn($p) => $p->where('member_id', $memberId));
+            // join pivot khusus member ini, agar kita bisa order by end-date per member
+            ->leftJoin('transaksi_membership_members as tmm', function ($j) use ($memberId) {
+                $j->on('tmm.transaksi_membership_id', '=', 'tm.id')
+                    ->where('tmm.member_id', '=', $memberId);
             })
-            ->orderByDesc('tanggal_akhir')
-            ->orderByDesc('id');
+            ->where(function ($w) use ($memberId) {
+                $w->where('tm.buyer_member_id', $memberId)
+                    ->orWhereExists(function ($sub) use ($memberId) {
+                        $sub->select(DB::raw(1))
+                            ->from('transaksi_membership_members as x')
+                            ->whereColumn('x.transaksi_membership_id', 'tm.id')
+                            ->where('x.member_id', $memberId);
+                    });
+            })
+            // ORDER BY end-date per member (pivot) -> paling relevan
+            ->orderByRaw('COALESCE(tmm.tanggal_akhir, tm.tanggal_akhir) DESC')
+            ->orderByDesc('tm.id');
 
         if ($lock) {
             $q->lockForUpdate();
@@ -468,25 +480,24 @@ class IzinLatihanController extends Controller
     }
 
     /**
-     * Cek membership aktif pada tanggal tertentu.
+     * Cek membership aktif pada tanggal tertentu (PIVOT-BASED).
      */
     private function isMembershipActiveAtDate(int $memberId, Carbon $date): bool
     {
         $d = $date->toDateString();
 
-        return TransaksiMembership::query()
-            ->valid()
-            ->whereDate('tanggal_mulai', '<=', $d)
-            ->whereDate('tanggal_akhir', '>=', $d)
-            ->where(function ($w) use ($memberId) {
-                $w->where('buyer_member_id', $memberId)
-                    ->orWhereHas('participants', fn($p) => $p->where('member_id', $memberId));
-            })
+        return TransaksiMembershipMember::query()
+            ->from('transaksi_membership_members as tmm')
+            ->join('transaksi_memberships as tm', 'tm.id', '=', 'tmm.transaksi_membership_id')
+            ->whereNull('tm.canceled_at')
+            ->where('tmm.member_id', $memberId)
+            ->whereDate('tmm.tanggal_mulai', '<=', $d)
+            ->whereDate('tmm.tanggal_akhir', '>=', $d)
             ->exists();
     }
 
     /**
-     * Periode kompensasi untuk INDIVIDU (inklusif):
+     * Periode kompensasi untuk INDIVIDU (inklusif) - PIVOT-BASED:
      * start = (end_terakhir >= today) ? end_terakhir + 1 : today
      * end   = start + (days - 1)
      */
@@ -494,19 +505,12 @@ class IzinLatihanController extends Controller
     {
         $today = now()->startOfDay();
 
-        $lastEnd = TransaksiMembership::query()
-            ->valid()
-            ->where(function ($w) use ($memberId) {
-                $w->where('buyer_member_id', $memberId)
-                    ->orWhereHas('participants', fn($p) => $p->where('member_id', $memberId));
-            })
-            ->max('tanggal_akhir'); // string YYYY-MM-DD atau null
+        // Ambil end terakhir PER MEMBER dari pivot
+        $lastEnd = TransaksiMembership::endDateTerakhirUntukMember($memberId); // Carbon|null (pivot-based)
 
         $start = $today->copy();
-
         if ($lastEnd) {
-            $end = Carbon::parse($lastEnd)->startOfDay();
-            $start = $end->gte($today) ? $end->copy()->addDay() : $today->copy();
+            $start = $lastEnd->gte($today) ? $lastEnd->copy()->addDay() : $today->copy();
         }
 
         $finish = $start->copy()->addDays($days - 1);
@@ -514,40 +518,23 @@ class IzinLatihanController extends Controller
         return [$start->toDateString(), $finish->toDateString()];
     }
 
+    /**
+     * Map akhir membership per member (PIVOT-BASED).
+     */
     private function mapAkhirMembership(array $memberIds): array
     {
         $memberIds = array_values(array_unique(array_map('intval', array_filter($memberIds))));
         if (count($memberIds) === 0) return [];
 
-        // MAX tanggal_akhir sebagai buyer
-        $maxBuyer = TransaksiMembership::query()
-            ->valid()
-            ->whereIn('buyer_member_id', $memberIds)
-            ->select('buyer_member_id', DB::raw('MAX(tanggal_akhir) as max_akhir'))
-            ->groupBy('buyer_member_id')
-            ->pluck('max_akhir', 'buyer_member_id')
-            ->toArray();
-
-        // MAX tanggal_akhir sebagai participant
-        $maxParticipant = TransaksiMembership::query()
-            ->valid()
-            ->join('transaksi_membership_members as tmm', 'tmm.transaksi_membership_id', '=', 'transaksi_memberships.id')
+        // Ambil MAX tanggal_akhir dari pivot untuk tiap member (join transaksi agar respect canceled_at)
+        return TransaksiMembershipMember::query()
+            ->from('transaksi_membership_members as tmm')
+            ->join('transaksi_memberships as tm', 'tm.id', '=', 'tmm.transaksi_membership_id')
+            ->whereNull('tm.canceled_at')
             ->whereIn('tmm.member_id', $memberIds)
-            ->select('tmm.member_id', DB::raw('MAX(transaksi_memberships.tanggal_akhir) as max_akhir'))
+            ->select('tmm.member_id', DB::raw('MAX(tmm.tanggal_akhir) as max_akhir'))
             ->groupBy('tmm.member_id')
             ->pluck('max_akhir', 'tmm.member_id')
             ->toArray();
-
-        // Merge: ambil yang paling besar
-        $out = [];
-        foreach ($memberIds as $id) {
-            $a = $maxBuyer[$id] ?? null;
-            $b = $maxParticipant[$id] ?? null;
-
-            if ($a && $b) $out[$id] = max($a, $b);
-            else $out[$id] = $a ?: $b;
-        }
-
-        return $out;
     }
 }

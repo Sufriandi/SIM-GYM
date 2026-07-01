@@ -7,7 +7,7 @@
     
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    m,l;l;Oswald:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     

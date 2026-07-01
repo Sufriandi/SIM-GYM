@@ -4,23 +4,54 @@ namespace Database\Seeders;
 
 use App\Models\Member;
 use App\Models\User;
-use Illuminate\Database\Seeder;
 use Carbon\Carbon;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
 
 class MemberSeeder extends Seeder
 {
     public function run(): void
     {
-        $memberUsers = User::where('role', 'member')->orderBy('id')->get();
+        // Opsional kalau benar-benar ingin bersih (gunakan saat migrate:fresh):
+        // Member::truncate();
 
-        foreach ($memberUsers as $user) {
-            $tanggalDaftar = Carbon::today()->subDays(rand(1, 60));
+        $memberUsers = User::query()
+            ->where('role', 'member')
+            ->orderBy('id')
+            ->get();
+
+        if ($memberUsers->isEmpty()) {
+            return;
+        }
+
+        // Tanggal daftar dibuat realistis (mundur bertahap).
+        $baseDate = Carbon::now()->subDays(20)->startOfDay();
+
+        foreach ($memberUsers as $idx => $user) {
+            $payload = [
+                'user_id' => $user->id,
+            ];
+
+            // Kolom-kolom opsional (dibuat aman, hanya di-set jika ada).
+            if (Schema::hasColumn('members', 'tanggal_daftar')) {
+                $payload['tanggal_daftar'] = (clone $baseDate)->addDays($idx)->toDateString();
+            }
+
+            if (Schema::hasColumn('members', 'tanggal_mulai')) {
+                $payload['tanggal_mulai'] = null; // akan diisi oleh TransaksiMembershipSeeder
+            }
+
+            if (Schema::hasColumn('members', 'tanggal_akhir')) {
+                $payload['tanggal_akhir'] = null; // akan diisi oleh TransaksiMembershipSeeder
+            }
+
+            if (Schema::hasColumn('members', 'status')) {
+                $payload['status'] = 'aktif';
+            }
 
             Member::updateOrCreate(
                 ['user_id' => $user->id],
-                [
-                    'tanggal_daftar' => $tanggalDaftar->toDateString(),
-                ]
+                $payload
             );
         }
     }

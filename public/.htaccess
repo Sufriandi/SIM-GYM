@@ -23,3 +23,33 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+
+
+# ======================================================================
+# TAMBAHAN UNTUK CACHE FILE STATIS (Memperbaiki Peringatan Lighthouse)
+# ======================================================================
+<IfModule mod_expires.c>
+    ExpiresActive On
+    
+    # Cache Images (Gambar) selama 1 tahun
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    
+    # Cache CSS & JS selama 1 bulan
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    
+    # Cache Fonts selama 1 tahun
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType application/x-font-ttf "access plus 1 year"
+</IfModule>
+
+<IfModule mod_headers.c>
+    <FilesMatch "\.(js|css|jpg|jpeg|png|gif|svg|woff2|ttf)$">
+        Header set Cache-Control "max-age=2592000, public"
+    </FilesMatch>
+</IfModule>

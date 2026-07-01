@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
 @tailwind base;
 
 /* GLOBAL HEADING */
@@ -14,49 +13,48 @@
 @tailwind utilities;
 
 :root {
-  /* LIGHT THEME (angka = R G B) */
-  --brand-bg: 252 252 250;
-  --brand-shell: 245 230 214;
-  --brand-nav: 33 22 15;
-  --brand-sidebar: 38 24 16;
-  --brand-footer: 27 19 13;
+    /* LIGHT THEME (angka = R G B) */
+    --brand-bg: 252 252 250;
+    --brand-shell: 245 230 214;
+    --brand-nav: 33 22 15;
+    --brand-sidebar: 38 24 16;
+    --brand-footer: 27 19 13;
 
-  --brand-card: 248 242 231;
-  --brand-cardSoft: 251 247 238;
+    --brand-card: 248 242 231;
+    --brand-cardSoft: 251 247 238;
 
-  --brand-surface-50: 253 251 247;
-  --brand-surface-100: 246 239 224;
-  --brand-surface-200: 236 224 199;
+    --brand-surface-50: 253 251 247;
+    --brand-surface-100: 246 239 224;
+    --brand-surface-200: 236 224 199;
 
-  --brand-borderSoft: 227 213 197;
-  --brand-borderStrong: 166 124 57;
+    --brand-borderSoft: 227 213 197;
+    --brand-borderStrong: 166 124 57;
 
-  --text-main: 32 25 17;
-  --text-muted: 108 90 70;
+    --text-main: 32 25 17;
+    --text-muted: 108 90 70;
 }
 
 .dark {
-  /* DARK THEME - Premium Black & Gold */
-  --brand-bg: 8 8 8;              /* Deep black untuk background utama */
-  --brand-shell: 15 15 15;        /* Sedikit lebih terang dari bg */
-  --brand-nav: 10 10 10;          /* Navbar hitam premium */
-  --brand-sidebar: 12 12 12;      /* Sidebar konsisten dengan nav */
-  --brand-footer: 8 8 8;          /* Footer sama dengan bg utama */
+    /* DARK THEME - Premium Black & Gold */
+    --brand-bg: 8 8 8; /* Deep black untuk background utama */
+    --brand-shell: 15 15 15; /* Sedikit lebih terang dari bg */
+    --brand-nav: 10 10 10; /* Navbar hitam premium */
+    --brand-sidebar: 12 12 12; /* Sidebar konsisten dengan nav */
+    --brand-footer: 8 8 8; /* Footer sama dengan bg utama */
 
-  --brand-card: 18 18 18;         /* Card dengan kontras subtle */
-  --brand-cardSoft: 22 22 22;     /* Card soft lebih terang sedikit */
+    --brand-card: 18 18 18; /* Card dengan kontras subtle */
+    --brand-cardSoft: 22 22 22; /* Card soft lebih terang sedikit */
 
-  --brand-surface-50: 25 25 25;   /* Surface levels dengan gradasi halus */
-  --brand-surface-100: 30 30 30;
-  --brand-surface-200: 35 35 35;
+    --brand-surface-50: 25 25 25; /* Surface levels dengan gradasi halus */
+    --brand-surface-100: 30 30 30;
+    --brand-surface-200: 35 35 35;
 
-  --brand-borderSoft: 45 45 45;   /* Border soft - subtle gray */
-  --brand-borderStrong: 212 167 87; /* Border strong - gold accent tetap */
+    --brand-borderSoft: 45 45 45; /* Border soft - subtle gray */
+    --brand-borderStrong: 212 167 87; /* Border strong - gold accent tetap */
 
-  --text-main: 250 250 250;       /* Text putih bersih */
-  --text-muted: 160 160 160;      /* Text muted - gray terang */
+    --text-main: 250 250 250; /* Text putih bersih */
+    --text-muted: 160 160 160; /* Text muted - gray terang */
 }
-
 
 .swal2-container.swal2-top-end {
     margin-top: 65px !important;
@@ -81,13 +79,21 @@
 }
 
 ::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #d4a757 0%, #c08f3e 100%); /* Gold gradient */
+    background: linear-gradient(
+        180deg,
+        #d4a757 0%,
+        #c08f3e 100%
+    ); /* Gold gradient */
     border-radius: 999px;
     border: 2px solid #0a0a0a; /* Subtle border untuk depth */
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #e5b866 0%, #d4a757 100%); /* Lighter gold on hover */
+    background: linear-gradient(
+        180deg,
+        #e5b866 0%,
+        #d4a757 100%
+    ); /* Lighter gold on hover */
 }
 
 /* === CUSTOM SCROLLBAR CLASS (untuk komponen spesifik) === */
@@ -122,133 +128,164 @@
     display: none !important;
 }
 @layer components {
-  /* ===== Surface / Card ===== */
-  .card-surface {
-    @apply rounded-3xl bg-brand-card border border-brand-borderSoft/25 shadow-card;
-  }
+    /* ===== Surface / Card ===== */
+    .card-surface {
+        @apply rounded-3xl bg-brand-card border border-brand-borderSoft/25 shadow-card;
+    }
 
-  .card-premium {
-    @apply relative overflow-hidden rounded-3xl bg-brand-card border border-brand-borderSoft/25 shadow-card transition duration-200;
-  }
-  .card-premium:hover {
-    @apply shadow-card-strong border-brand-borderSoft/40;
-  }
-  .card-premium::before {
-    content: "";
-    @apply pointer-events-none absolute inset-0 opacity-0 transition duration-300;
-    background: linear-gradient(135deg, rgba(212,167,87,0.10), transparent 55%, rgba(199,53,39,0.10));
-  }
-  .card-premium:hover::before { @apply opacity-100; }
-  .card-premium::after {
-    content: "";
-    @apply pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-white/5 transition duration-300;
-  }
-  .card-premium:hover::after { @apply ring-gold-500/20; }
+    .card-premium {
+        @apply relative overflow-hidden rounded-3xl bg-brand-card border border-brand-borderSoft/25 shadow-card transition duration-200;
+    }
+    .card-premium:hover {
+        @apply shadow-card-strong border-brand-borderSoft/40;
+    }
+    .card-premium::before {
+        content: "";
+        @apply pointer-events-none absolute inset-0 opacity-0 transition duration-300;
+        background: linear-gradient(
+            135deg,
+            rgba(212, 167, 87, 0.1),
+            transparent 55%,
+            rgba(199, 53, 39, 0.1)
+        );
+    }
+    .card-premium:hover::before {
+        @apply opacity-100;
+    }
+    .card-premium::after {
+        content: "";
+        @apply pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-white/5 transition duration-300;
+    }
+    .card-premium:hover::after {
+        @apply ring-gold-500/20;
+    }
 
-  /* ===== Buttons (premium hover + shine) ===== */
-  .btn-primary {
-    @apply inline-flex items-center gap-2 justify-center
+    /* ===== Buttons (premium hover + shine) ===== */
+    .btn-primary {
+        @apply inline-flex items-center gap-2 justify-center
            px-7 py-4 rounded-pill font-heading font-bold
            text-brand-nav bg-gold-500
            shadow-gold-glow transition duration-200 relative overflow-hidden;
-  }
-  .btn-primary:hover { @apply bg-gold-400 shadow-gold-glow-strong; }
-  .btn-primary:active { transform: translateY(1px) scale(0.99); }
-  .btn-primary::before {
-    content: "";
-    @apply absolute inset-0 opacity-0 transition duration-300;
-    background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.18) 35%, transparent 70%);
-    transform: translateX(-80%);
-  }
-  .btn-primary:hover::before { opacity: 1; transform: translateX(80%); }
+    }
+    .btn-primary:hover {
+        @apply bg-gold-400 shadow-gold-glow-strong;
+    }
+    .btn-primary:active {
+        transform: translateY(1px) scale(0.99);
+    }
+    .btn-primary::before {
+        content: "";
+        @apply absolute inset-0 opacity-0 transition duration-300;
+        background: linear-gradient(
+            120deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.18) 35%,
+            transparent 70%
+        );
+        transform: translateX(-80%);
+    }
+    .btn-primary:hover::before {
+        opacity: 1;
+        transform: translateX(80%);
+    }
 
-  .btn-ghost {
-    @apply inline-flex items-center gap-2 justify-center
+    .btn-ghost {
+        @apply inline-flex items-center gap-2 justify-center
            px-7 py-4 rounded-pill font-heading font-bold
            bg-brand-card/40 border border-brand-borderSoft/25
            text-brand-text transition duration-200;
-  }
-  .btn-ghost:hover {
-    @apply bg-brand-card/70 border-gold-500/25 shadow-card;
-  }
-  .btn-ghost:active { transform: translateY(1px) scale(0.99); }
+    }
+    .btn-ghost:hover {
+        @apply bg-brand-card/70 border-gold-500/25 shadow-card;
+    }
+    .btn-ghost:active {
+        transform: translateY(1px) scale(0.99);
+    }
 
-  .btn-success {
-    @apply inline-flex items-center gap-2 justify-center
+    .btn-success {
+        @apply inline-flex items-center gap-2 justify-center
            px-7 py-4 rounded-pill font-heading font-bold
            bg-emerald-600 text-white border border-emerald-500/30
            shadow-card transition duration-200;
-  }
-  .btn-success:hover { @apply bg-emerald-500; }
-  .btn-success:active { transform: translateY(1px) scale(0.99); }
+    }
+    .btn-success:hover {
+        @apply bg-emerald-500;
+    }
+    .btn-success:active {
+        transform: translateY(1px) scale(0.99);
+    }
 
-  /* ===== Icon button ===== */
-  .icon-btn {
-    @apply w-11 h-11 rounded-full bg-brand-card/45 border border-brand-borderSoft/25
+    /* ===== Icon button ===== */
+    .icon-btn {
+        @apply w-11 h-11 rounded-full bg-brand-card/45 border border-brand-borderSoft/25
            hover:bg-brand-card/70 hover:border-gold-500/25
            transition flex items-center justify-center shadow-card;
-  }
+    }
 
-  /* ===== Coach card ===== */
-  @layer components {
-  /* ===== Coach card ===== */
-  .coach-card {
-    @apply rounded-3xl bg-brand-card border border-brand-borderSoft/25 shadow-card overflow-hidden
+    /* ===== Coach card ===== */
+    @layer components {
+        /* ===== Coach card ===== */
+        .coach-card {
+            @apply rounded-3xl bg-brand-card border border-brand-borderSoft/25 shadow-card overflow-hidden
            transition duration-200 hover:shadow-card-strong hover:border-brand-borderSoft/40;
-  }
+        }
+    }
+    .coach-card::before {
+        content: "";
+        @apply pointer-events-none absolute inset-0 opacity-0 transition duration-300;
+        background: linear-gradient(
+            135deg,
+            rgba(212, 167, 87, 0.1),
+            transparent 55%,
+            rgba(199, 53, 39, 0.1)
+        );
+    }
 
-
-  }
-  .coach-card::before {
-    content: "";
-    @apply pointer-events-none absolute inset-0 opacity-0 transition duration-300;
-    background: linear-gradient(135deg, rgba(212,167,87,0.10), transparent 55%, rgba(199,53,39,0.10));
-  }
-
-  /* ===== Paket cards ===== */
-  .paket-card {
-    @apply relative rounded-3xl bg-brand-card border border-brand-borderSoft/25 shadow-card overflow-hidden
+    /* ===== Paket cards ===== */
+    .paket-card {
+        @apply relative rounded-3xl bg-brand-card border border-brand-borderSoft/25 shadow-card overflow-hidden
            transition duration-200 hover:shadow-card-strong hover:border-brand-borderSoft/40;
-  }
-  .paket-card--featured {
-    @apply border-gold-500/55 shadow-gold-glow;
-  }
+    }
+    .paket-card--featured {
+        @apply border-gold-500/55 shadow-gold-glow;
+    }
 
-  /* ===== Reveal animation (React-like) ===== */
-  .reveal {
-    opacity: 0;
-    transform: translateY(14px);
-    filter: blur(6px);
-    transition: opacity 700ms cubic-bezier(0.22, 0.61, 0.36, 1),
-                transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1),
-                filter 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
-  }
-  .reveal.is-visible {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
-  }
+    /* ===== Reveal animation (React-like) ===== */
+    .reveal {
+        opacity: 0;
+        transform: translateY(14px);
+        filter: blur(6px);
+        transition:
+            opacity 700ms cubic-bezier(0.22, 0.61, 0.36, 1),
+            transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1),
+            filter 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+    .reveal.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+        filter: blur(0);
+    }
 }
 @layer utilities {
-  @keyframes slideUpFade {
-    from {
-      opacity: 0;
-      transform: translateY(14px);
+    @keyframes slideUpFade {
+        from {
+            opacity: 0;
+            transform: translateY(14px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
 
-  .animate-slide-up {
-    animation: slideUpFade 700ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
-    will-change: transform, opacity;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
     .animate-slide-up {
-      animation: none !important;
+        animation: slideUpFade 700ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+        will-change: transform, opacity;
     }
-  }
+
+    @media (prefers-reduced-motion: reduce) {
+        .animate-slide-up {
+            animation: none !important;
+        }
+    }
 }

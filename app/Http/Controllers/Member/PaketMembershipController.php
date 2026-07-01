@@ -18,7 +18,7 @@ class PaketMembershipController extends Controller
         $sort = $request->get('sort', 'recommended');
 
         $query = PaketMembership::public()
-            ->when($tipe, fn ($q) => $q->where('tipe', $tipe));
+            ->when($tipe, fn($q) => $q->where('tipe', $tipe));
 
         switch ($sort) {
             case 'price_low':
@@ -59,13 +59,13 @@ class PaketMembershipController extends Controller
         $qris      = InfoQris::query()->first();
 
         $waAdminRaw = User::query()
-        ->where('role', 'admin')
-        ->whereNotNull('no_hp')
-        ->orderBy('id', 'asc')
-        ->value('no_hp');
+            ->where('role', 'admin')
+            ->whereNotNull('no_hp')
+            ->orderBy('id', 'asc')
+            ->value('no_hp');
         $waAdmin = $waAdminRaw ? preg_replace('/^0/', '62', preg_replace('/\D/', '', $waAdminRaw)) : null;
-        $merchantName = 'BETA GYM'; 
-$merchantLogo = asset('images/logo.png'); 
+        $merchantName = 'BETA GYM';
+        $merchantLogo = asset('images/logo.webp');
 
 
         return view('member.membership.checkout', compact(
