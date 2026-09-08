@@ -62,10 +62,10 @@ class TransaksiMembershipController extends Controller
 
         // Dropdown modal: member
         $members = Member::query()
-            ->with('user')
-            ->whereHas('user', fn($u) => $u->where('role', 'member'))
+            ->with(['user' => fn($u) => $u->select('id', 'name', 'username', 'email')])
             ->join('users', 'users.id', '=', 'members.user_id')
-            ->select('members.*')
+            ->where('users.role', 'member')
+            ->select('members.id', 'members.user_id')
             ->orderBy('users.name')
             ->get();
 

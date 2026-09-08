@@ -252,12 +252,12 @@
                                     ? Storage::url($user->foto)
                                     : 'https://placehold.co/100x100/3A2D2A/F5E6D6?text=No+Foto';
 
-                                $statusKey = $member->status_membership ?? 'belum_aktif';
+                                $statusKey = $member->computed_status ?? $member->status_membership ?? 'belum_aktif';
                                 $statusVariant = $statusMap[$statusKey]['variant'] ?? 'neutral';
                                 $statusLabel =
                                     $statusMap[$statusKey]['label'] ?? Str::upper(str_replace('_', ' ', $statusKey));
 
-                                $paketAktifNama = $member->nama_paket_aktif ?? null;
+                                $paketAktifNama = isset($member->computed_status) ? $member->computed_paket : ($member->nama_paket_aktif ?? null);
 
                                 $tanggalDaftar = $member->tanggal_daftar
                                     ? Carbon::parse($member->tanggal_daftar)->format('d M Y')

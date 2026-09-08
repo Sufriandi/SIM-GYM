@@ -245,8 +245,9 @@ class DashboardController extends Controller
 
         if (class_exists(\App\Models\TransaksiMembershipMember::class)) {
             $pivotTable = (new \App\Models\TransaksiMembershipMember)->getTable();
+            $hasPivotTable = \Illuminate\Support\Facades\Cache::rememberForever('schema_has_' . $pivotTable, fn() => Schema::hasTable($pivotTable));
 
-            if ($trxIds->isNotEmpty() && Schema::hasTable($pivotTable)) {
+            if ($trxIds->isNotEmpty() && $hasPivotTable) {
                 $participantIds = DB::table($pivotTable)
                     ->whereIn('transaksi_membership_id', $trxIds)
                     ->pluck('member_id')
