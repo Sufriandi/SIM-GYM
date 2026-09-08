@@ -36,27 +36,47 @@ if (document.readyState === 'loading') {
 }
 
 // Instant link prefetching on hover / touchstart for sub-second page transitions
-if (typeof window !== 'undefined' && 'IntersectionObserver' in window) {
+if (typeof window !== 'undefined') {
     const prefetched = new Set();
+    let hoverTimeout = null;
+
     const prefetchUrl = (url) => {
         if (!url || prefetched.has(url)) return;
         prefetched.add(url);
-        const link = document.createElement('link');
-        link.rel = 'prefetch';
-        link.href = url;
-        document.head.appendChild(link);
+
+        try {
+            // Modern fetch prefetch with low priority
+            fetch(url, {
+                credentials: 'same-origin',
+                priority: 'low',
+                headers: { 'Purpose': 'prefetch', 'Sec-Purpose': 'prefetch' }
+            }).catch(() => {});
+        } catch (_) {}
     };
 
-    const handleHover = (e) => {
+    const isPrefetchable = (a) => {
+        if (!a || !a.href) return false;
+        if (a.origin !== window.location.origin) return false;
+        if (a.pathname === window.location.pathname) return false;
+        if (a.pathname.includes('/logout') || a.pathname.includes('/delete')) return false;
+        if (a.hasAttribute('download') || a.getAttribute('target') === '_blank') return false;
+        return true;
+    };
+
+    document.addEventListener('mouseover', (e) => {
         const a = e.target.closest('a');
-        if (!a || !a.href) return;
-        if (a.origin !== window.location.origin) return;
-        if (a.pathname.startsWith('/logout')) return;
-        if (a.hasAttribute('download') || a.getAttribute('target') === '_blank') return;
-        prefetchUrl(a.href);
-    };
+        if (!isPrefetchable(a)) return;
+        clearTimeout(hoverTimeout);
+        hoverTimeout = setTimeout(() => prefetchUrl(a.href), 65);
+    }, { passive: true });
 
-    document.addEventListener('mouseover', handleHover, { passive: true });
-    document.addEventListener('touchstart', handleHover, { passive: true });
+    document.addEventListener('mouseout', () => {
+        clearTimeout(hoverTimeout);
+    }, { passive: true });
+
+    document.addEventListener('touchstart', (e) => {
+        const a = e.target.closest('a');
+        if (isPrefetchable(a)) prefetchUrl(a.href);
+    }, { passive: true });
 }
 

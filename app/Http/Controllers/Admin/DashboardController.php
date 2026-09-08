@@ -372,21 +372,20 @@ class DashboardController extends Controller
      */
     protected function getProdukTerlarisBulanIni(Carbon $monthStart, Carbon $monthEnd): ?object
     {
-        // Guard: butuh Produk
-        if (!class_exists(\App\Models\Produk::class)) {
+        if (!class_exists(\App\Models\Produk::class) || !class_exists(\App\Models\TransaksiProdukItem::class)) {
             return null;
         }
 
-        // Tentukan tabel produk
-        $produkTable = (new \App\Models\Produk)->getTable();
+        try {
+            $top = DB::table('transaksi_produk_items as i')
+                ->join('transaksi_produks as t', 't.id', '=', 'i.transaksi_produk_id')
+                ->whereBetween('t.tanggal_transaksi', [$monthStart, $monthEnd])
+                ->selectRaw('i.produk_id, SUM(i.qty) as terjual')
+                ->groupBy('i.produk_id')
+                ->orderByDesc('terjual')
+                ->first();
 
-        // Prioritas 1: pakai model item jika ada
-        if (class_exists(\App\Models\TransaksiProdukItem::class)) {
-            $itemModel  = new \App\Models\TransaksiProdukItem();
-            $itemsTable = $itemModel->getTable();
-
-            $top = $this->queryProdukTerlarisViaItemsTable($itemsTable, $monthStart, $monthEnd);
-            if ($top) {
+            if ($top && !empty($top->produk_id)) {
                 $produk = \App\Models\Produk::query()->find($top->produk_id);
                 if ($produk) {
                     return (object)[
@@ -395,64 +394,10 @@ class DashboardController extends Controller
                     ];
                 }
             }
+        } catch (\Throwable $e) {
+            // Fallback gracefully if table not yet migrated
         }
 
-        // Prioritas 2: fallback tabel default transaksi_produk_items
-        if (Schema::hasTable('transaksi_produk_items')) {
-            $top = $this->queryProdukTerlarisViaItemsTable('transaksi_produk_items', $monthStart, $monthEnd);
-            if ($top) {
-                $produk = \App\Models\Produk::query()->find($top->produk_id);
-                if ($produk) {
-                    return (object)[
-                        'nama'    => $produk->nama,
-                        'terjual' => (int) $top->terjual,
-                    ];
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Query helper untuk cari produk terlaris dari tabel items
-     * Return: object {produk_id, terjual} atau null
-     */
-    protected function queryProdukTerlarisViaItemsTable(string $itemsTable, Carbon $monthStart, Carbon $monthEnd): ?object
-    {
-        if (!Schema::hasTable($itemsTable)) return null;
-
-        // Deteksi kolom qty yang umum
-        $qtyCol = $this->detectQtyColumn($itemsTable);
-        if (!$qtyCol) return null;
-
-        // Kolom wajib
-        if (!Schema::hasColumn($itemsTable, 'produk_id')) return null;
-        if (!Schema::hasColumn($itemsTable, 'transaksi_produk_id')) return null;
-
-        // Query TOP
-        $top = DB::table($itemsTable . ' as i')
-            ->join('transaksi_produks as t', 't.id', '=', 'i.transaksi_produk_id')
-            ->whereBetween('t.tanggal_transaksi', [$monthStart, $monthEnd])
-            ->selectRaw('i.produk_id, SUM(i.' . $qtyCol . ') as terjual')
-            ->groupBy('i.produk_id')
-            ->orderByDesc('terjual')
-            ->first();
-
-        // Pastikan ada hasil & produk_id valid
-        if (!$top || empty($top->produk_id)) return null;
-
-        return $top;
-    }
-
-    /**
-     * Deteksi nama kolom qty pada tabel item.
-     */
-    protected function detectQtyColumn(string $table): ?string
-    {
-        foreach (['qty', 'jumlah', 'quantity'] as $c) {
-            if (Schema::hasColumn($table, $c)) return $c;
-        }
         return null;
     }
 }

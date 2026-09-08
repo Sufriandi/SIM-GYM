@@ -301,5 +301,5 @@
         </x-ui.card>
     </div>
 
-    @vite('resources/js/member/member_history.jsx')
+    @vite('resources/js/member/membership_history.jsx')
 </x-layouts.member>
