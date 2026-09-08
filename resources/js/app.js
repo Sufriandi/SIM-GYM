@@ -4,10 +4,12 @@ import Alpine from "alpinejs";
 import Swal from "sweetalert2";
 import "../css/app.css";
 import collapse from '@alpinejs/collapse';
-import { createIcons, icons } from 'lucide';
+import { createIcons, icons } from './icons';
+import { initSpaRouter, navigateTo } from './spa-router';
 
 window.Alpine = Alpine;
 window.Swal = Swal;
+window.navigateTo = navigateTo;
 
 // Bundled Lucide icons (offline & high performance)
 window.lucide = {
@@ -27,6 +29,9 @@ Alpine.data('sidebarNav', (defaultOpen) => ({
 }));
 
 Alpine.start();
+
+// Initialize Persistent Shell SPA router
+initSpaRouter();
 
 // Auto-run lucide icons on load
 if (document.readyState === 'loading') {

@@ -43,7 +43,7 @@
             <x-admin.navbar :page-title="$pageTitle" :page-subtitle="$pageSubtitle" />
 
             {{-- CONTENT (SCROLLABLE, TANPA HORIZONTAL OVERFLOW) overflow-y-auto overflow-x-hidden custom-scrollbar --}}
-            <main class="flex-1 mt-20 px-4 lg:px-8 pb-8 ">
+            <main id="main-content" class="flex-1 mt-20 px-4 lg:px-8 pb-8">
                 {{ $slot }}
             </main>
         </div>

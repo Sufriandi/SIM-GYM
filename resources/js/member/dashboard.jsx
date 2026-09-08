@@ -199,4 +199,5 @@
   } else {
     boot();
   }
+  window.addEventListener("spa:navigated", boot);
 })();

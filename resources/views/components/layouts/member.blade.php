@@ -36,7 +36,7 @@
             <x-member.navbar :page-title="$pageTitle" :page-subtitle="$pageSubtitle" />
 
             {{-- KONTEN --}}
-            <main class="flex-1 mt-20 px-4 lg:px-8 pb-10 min-w-0 overflow-visible">
+            <main id="main-content" class="flex-1 mt-20 px-4 lg:px-8 pb-10 min-w-0 overflow-visible">
                 {{ $slot }}
             </main>
 
