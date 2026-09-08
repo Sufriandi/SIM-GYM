@@ -131,15 +131,13 @@ class Member extends Model
     {
         $d = $this->normalizeDate($date);
 
-        $q = \App\Models\TransaksiMembership::query()
-            ->whereNull('canceled_at')
+        return \App\Models\TransaksiMembershipMember::query()
+            ->where('member_id', $this->id)
             ->whereDate('tanggal_mulai', '<=', $d)
-            ->whereDate('tanggal_akhir', '>=', $d);
-
-        $this->membershipOwnershipQuery($q);
-
-        return $q->exists();
+            ->whereDate('tanggal_akhir', '>=', $d)
+            ->exists();
     }
+
 
     /**
      * Query transaksi membership aktif pada tanggal tertentu (default: hari ini).
@@ -148,15 +146,23 @@ class Member extends Model
     {
         $d = $this->normalizeDate($date ?: Carbon::today());
 
-        $q = \App\Models\TransaksiMembership::query()
+        return \App\Models\TransaksiMembership::query()
             ->with('paket')
-            ->whereNull('canceled_at')
-            ->whereDate('tanggal_mulai', '<=', $d)
-            ->whereDate('tanggal_akhir', '>=', $d);
-
-        $this->membershipOwnershipQuery($q);
-
-        return $q->orderByDesc('tanggal_akhir');
+            ->whereNull('canceled_at') // ← header saja
+            ->whereHas('participants', function ($q) use ($d) {
+                $q->where('member_id', $this->id)
+                    ->whereDate('tanggal_mulai', '<=', $d)
+                    ->whereDate('tanggal_akhir', '>=', $d);
+            })
+            ->orderByDesc(
+                \App\Models\TransaksiMembershipMember::select('tanggal_akhir')
+                    ->whereColumn(
+                        'transaksi_membership_id',
+                        'transaksi_memberships.id'
+                    )
+                    ->where('member_id', $this->id)
+                    ->limit(1)
+            );
     }
 
     // =========================================================

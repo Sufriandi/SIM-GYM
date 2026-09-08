@@ -104,7 +104,7 @@
         <div
             class="h-16 flex items-center gap-3 px-6 border-b border-brand-borderSoft/40
                    bg-gradient-to-r from-brand-gunmetal to-brand-black">
-            <img src="{{ asset('images/Logo.png') }}" alt="BETA GYM Logo"
+            <img src="{{ asset('images/logo.webp') }}" alt="BETA GYM Logo"
                 class="h-11 w-11 object-contain rounded-2xl shadow-gold-glow" loading="lazy">
             <div class="leading-tight">
                 <div class="text-[11px] tracking-[0.25em] uppercase text-gold-300 font-semibold">
@@ -366,7 +366,7 @@
                     Konfigurasi
                 </div>
 
-                <a href="{{ route('admin.profil_gym.index') }}"
+                {{-- <a href="{{ route('admin.profil_gym.index') }}"
                     class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-300
                         {{ $profilGymActive
                             ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20'
@@ -380,7 +380,7 @@
                             class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full animate-pulse">
                         </div>
                     @endif
-                </a>
+                </a> --}}
 
                 {{-- Rekening --}}
                 <a href="{{ route('admin.rekening.index') }}"

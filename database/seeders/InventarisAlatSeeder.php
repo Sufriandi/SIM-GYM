@@ -4,50 +4,53 @@ namespace Database\Seeders;
 
 use App\Models\InventarisAlat;
 use Illuminate\Database\Seeder;
-use Faker\Factory as Faker;
 
 class InventarisAlatSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        $faker = Faker::create('id_ID');
-
-        // Kalau mau bersih dulu:
+        // Opsional kalau benar-benar ingin bersih (gunakan saat migrate:fresh):
         // InventarisAlat::truncate();
 
-        $baseNames = [
-            'Treadmill',
-            'Sepeda Statis',
-            'Barbel Set',
-            'Dumbbell Set',
-            'Kettlebell',
-            'Bench Press',
-            'Smith Machine',
-            'Lat Pulldown',
-            'Cable Crossover',
-            'Leg Press',
-            'Pull-up Bar',
-            'Dip Station',
-            'Gym Ball',
-            'Matras Yoga',
-            'Foam Roller',
+        // Aman untuk enum kondisi: saya set semua 'baik' (sesuai seeder lama).
+        $items = [
+            [
+                'nama'      => 'Treadmill Komersial 3.0 HP',
+                'deskripsi' => 'Treadmill untuk cardio harian, cocok untuk jalan cepat hingga lari. Perawatan rutin belt dan pelumasan tiap bulan.',
+                'kondisi'   => 'baik',
+                'foto'      => 'inventaris/treadmill-komersial.jpg',
+            ],
+            [
+                'nama'      => 'Bench Press Flat (Heavy Duty)',
+                'deskripsi' => 'Bangku bench press rangka baja. Digunakan untuk bench press, dumbbell press, dan variasi chest workout.',
+                'kondisi'   => 'baik',
+                'foto'      => 'inventaris/bench-press-flat.jpg',
+            ],
+            [
+                'nama'      => 'Set Dumbbell 2–20 kg (Pairs)',
+                'deskripsi' => 'Dumbbell berpasangan untuk latihan kekuatan. Cocok untuk full-body workout dan progres beban bertahap.',
+                'kondisi'   => 'baik',
+                'foto'      => 'inventaris/dumbbell-set-2-20.jpg',
+            ],
+            [
+                'nama'      => 'Sepeda Statis Magnetic Resistance',
+                'deskripsi' => 'Sepeda statis untuk cardio low-impact. Cocok untuk pemula dan pemanasan sebelum latihan beban.',
+                'kondisi'   => 'baik',
+                'foto'      => 'inventaris/sepeda-statis-magnetic.jpg',
+            ],
+            [
+                'nama'      => 'Cable Crossover (Dual Pulley)',
+                'deskripsi' => 'Mesin kabel serbaguna untuk chest fly, triceps pushdown, face pull, dan latihan isolasi lainnya.',
+                'kondisi'   => 'baik',
+                'foto'      => 'inventaris/cable-crossover-dual.jpg',
+            ],
         ];
 
-        for ($i = 1; $i <= 31; $i++) {
-            $baseName = $baseNames[array_rand($baseNames)];
-            $namaAlat = $baseName . ' #' . str_pad($i, 2, '0', STR_PAD_LEFT);
-
-            InventarisAlat::create([
-                'nama'      => $namaAlat,
-                'deskripsi' => $faker->sentence(15),
-                // PAKAI NILAI YANG PASTI AMAN DENGAN ENUM / PANJANG KOLOM
-                'kondisi'   => 'baik',
-                // kolom foto tidak boleh null: isi path dummy
-                'foto'      => 'inventaris/alat-' . str_pad($i, 2, '0', STR_PAD_LEFT) . '.jpg',
-            ]);
+        foreach ($items as $item) {
+            InventarisAlat::updateOrCreate(
+                ['nama' => $item['nama']], // nama alat dibuat sebagai key stabil
+                $item
+            );
         }
     }
 }

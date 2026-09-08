@@ -185,7 +185,7 @@ class ProdukGymController extends Controller
             ->value('no_hp');
 
         $merchantName = 'BETA GYM';
-        $merchantLogo = asset('images/logo.png');
+        $merchantLogo = asset('images/logo.webp');
 
         return view('member.produk_gym.cart', [
             'pageTitle'    => 'Checkout',
@@ -467,8 +467,8 @@ class ProdukGymController extends Controller
 
         // Hapus yang tidak ada di session
         MemberCartItem::where('cart_id', (int) $cartModel->id)
-            ->when(!empty($idsInSession), fn ($q) => $q->whereNotIn('produk_id', $idsInSession))
-            ->when(empty($idsInSession), fn ($q) => $q) // jika session kosong, hapus semua item
+            ->when(!empty($idsInSession), fn($q) => $q->whereNotIn('produk_id', $idsInSession))
+            ->when(empty($idsInSession), fn($q) => $q) // jika session kosong, hapus semua item
             ->delete();
 
         // Upsert session items

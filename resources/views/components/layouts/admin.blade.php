@@ -14,21 +14,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     {{-- Favicon --}}
-    <link rel="icon" type="image/png" href="{{ asset('images/Logo.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/logo.webp') }}">
 
     {{-- Lucide Icons --}}
     <script src="https://unpkg.com/lucide@latest" defer></script>
     <script>
-    (function () {
-    const saved = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        (function() {
+            const saved = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-    // Default: ikut sistem kalau belum pernah pilih
-    const theme = saved || (prefersDark ? 'dark' : 'light');
+            // Default: ikut sistem kalau belum pernah pilih
+            const theme = saved || (prefersDark ? 'dark' : 'light');
 
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-    document.documentElement.dataset.theme = theme;
-    })();
+            document.documentElement.classList.toggle('dark', theme === 'dark');
+            document.documentElement.dataset.theme = theme;
+        })();
     </script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
