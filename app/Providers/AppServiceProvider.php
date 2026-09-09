@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Notifications\Messages\MailMessage;
 
 // Models
 use App\Models\Notification;
@@ -46,7 +48,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Singleton service (boleh seperti ini)
-        $this->app->singleton(NotificationService::class, fn () => new NotificationService());
+        $this->app->singleton(NotificationService::class, fn() => new NotificationService());
     }
 
     /**
@@ -75,6 +77,27 @@ class AppServiceProvider extends ServiceProvider
         InfoQris::observe(InfoQrisObserver::class);
         InfoRekening::observe(InfoRekeningObserver::class);
         ProfilGym::observe(ProfilGymObserver::class);
+
+        /**
+         * ==========================================================
+         * CUSTOM EMAIL: Reset Password (branded BETA GYM)
+         * Ganti template default Laravel dengan view custom sendiri
+         * di resources/views/emails/reset-password.blade.php
+         * ==========================================================
+         */
+        ResetPassword::toMailUsing(function ($notifiable, string $token) {
+            $url = url(route('password.reset', [
+                'token' => $token,
+                'email' => $notifiable->getEmailForPasswordReset(),
+            ], false));
+
+            return (new MailMessage)
+                ->subject('Reset Password - BETA GYM')
+                ->view('emails.reset-password', [
+                    'url'        => $url,
+                    'notifiable' => $notifiable,
+                ]);
+        });
 
         /**
          * ==========================================================
