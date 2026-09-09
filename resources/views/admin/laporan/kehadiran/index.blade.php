@@ -224,13 +224,22 @@
 
             {{-- Chart --}}
             <div class="lg:col-span-8">
-                <x-ui.card x-data="window.absensiDashboard({
-                    dailyRaw: @json($series['daily'] ?? [], JSON_UNESCAPED_UNICODE),
-                    hourlyRaw: @json($series['hourly'] ?? [], JSON_UNESCAPED_UNICODE),
-                    weekdayRaw: @json($series['weekday'] ?? [], JSON_UNESCAPED_UNICODE),
-                    start: @json($start),
-                    end: @json($end),
-                })" x-init="init()" class="p-6 border-brand-borderSoft h-full">
+                @php
+                    // PENTING: @json(...) TIDAK ke-compile kalau ditulis langsung
+                    // di dalam atribut komponen <x-ui.card ... x-data="..."> yang
+                    // menyebar banyak baris - hasilnya cuma teks "@json(...)" mentah,
+                    // bukan JSON beneran, dan bikin Alpine.js gagal total (chart
+                    // blank tanpa pesan error apapun). Makanya data disiapkan dulu
+                    // di sini, lalu disuntik pakai Js::from() yang aman buat atribut HTML.
+                    $chartPayload = [
+                        'dailyRaw' => $series['daily'] ?? [],
+                        'hourlyRaw' => $series['hourly'] ?? [],
+                        'weekdayRaw' => $series['weekday'] ?? [],
+                        'start' => $start,
+                        'end' => $end,
+                    ];
+                @endphp
+                <x-ui.card x-data="window.absensiDashboard({{ \Illuminate\Support\Js::from($chartPayload) }})" x-init="init()" class="p-6 border-brand-borderSoft h-full">
                     <div class="mb-4 flex items-start justify-between gap-3 flex-wrap">
                         <div>
                             <h3 class="text-sm font-bold text-text-main">Visualisasi Kehadiran</h3>
@@ -246,8 +255,7 @@
                             </button>
                             <button type="button" @click="setTab('jam')"
                                 class="px-3 py-2 text-xs font-semibold rounded-lg border border-brand-borderSoft"
-                                :class="tab === 'jam' ? 'bg-white text-text-main' :
-                                    'bg-white/60 text-text-muted hover:bg-white'">
+                                :class="tab === 'jam' ? 'bg-white text-text-main' : 'bg-white/60 text-text-muted hover:bg-white'">
                                 Per Jam
                             </button>
                             <button type="button" @click="setTab('hari')"
@@ -417,7 +425,7 @@
                             await loadScriptOnce('https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js');
                             await loadScriptOnce(
                                 'https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js'
-                            );
+                                );
                         }
                         return !!window.Chart;
                     }
