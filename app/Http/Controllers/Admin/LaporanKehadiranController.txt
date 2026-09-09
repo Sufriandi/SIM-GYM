@@ -204,43 +204,6 @@ class LaporanKehadiranController extends Controller
         ]);
     }
 
-    public function excel(Request $request)
-    {
-        $filters = $this->normalizeFilters($request);
-        $report  = $this->buildRingkasan($filters);
-
-        $html = view('admin.laporan.kehadiran.excel', [
-            'pageTitle' => 'Laporan Absensi & Kompensasi',
-            'filters'   => $filters,
-            'rows'      => $report['rows'],
-            'stats'     => $report['stats'],
-        ])->render();
-
-        $filename = 'laporan-kehadiran-' . now()->format('Ymd_His') . '.xls';
-
-        return response($html, 200, [
-            'Content-Type'        => 'application/vnd.ms-excel; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
-    }
-
-    public function pdf(Request $request)
-    {
-        $filters = $this->normalizeFilters($request);
-        $report  = $this->buildRingkasan($filters);
-
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.laporan.kehadiran.pdf', [
-            'pageTitle' => 'Laporan Absensi & Kompensasi',
-            'filters'   => $filters,
-            'rows'      => $report['rows'],
-            'stats'     => $report['stats'],
-        ])->setPaper('a4', 'portrait');
-
-        $filename = 'laporan-kehadiran-' . now()->format('Ymd_His') . '.pdf';
-
-        return $pdf->download($filename);
-    }
-
     // =========================================================
     // Helpers
     // =========================================================
@@ -293,20 +256,16 @@ class LaporanKehadiranController extends Controller
         ];
     }
 
-    private function memberNameExpr(string $memberAlias = 'm', string $userAlias = 'u', bool $aggregate = false): string
+    private function memberNameExpr(string $memberAlias = 'm', string $userAlias = 'u'): string
     {
-        // Kalau dipakai bareng groupBy (mis. topMembers), tiap kolom mentah
-        // wajib dibungkus fungsi agregat (MAX) supaya lolos ONLY_FULL_GROUP_BY.
-        $wrap = fn(string $col) => $aggregate ? "MAX($col)" : $col;
-
         // users.name biasanya ada
-        $parts = ["NULLIF(TRIM({$wrap("$userAlias.name")}), '')"];
+        $parts = ["NULLIF(TRIM($userAlias.name), '')"];
 
         // members bisa beda-beda kolomnya, coba beberapa kandidat umum
         $memberCandidates = ['nama', 'name', 'nama_lengkap', 'full_name'];
         foreach ($memberCandidates as $col) {
             if (Schema::hasColumn('members', $col)) {
-                $parts[] = "NULLIF(TRIM({$wrap("$memberAlias.$col")}), '')";
+                $parts[] = "NULLIF(TRIM($memberAlias.$col), '')";
             }
         }
 
@@ -391,12 +350,12 @@ class LaporanKehadiranController extends Controller
         }
 
         // MA7
-        $ma7 = $this->movingAverage(array_map(fn($x) => $x['total'], $daily), 7);
+        $ma7 = $this->movingAverage(array_map(fn ($x) => $x['total'], $daily), 7);
         foreach ($daily as $i => $d) {
             $daily[$i]['ma7'] = $ma7[$i];
         }
 
-        $longestStreak = $this->computeLongestStreak(array_map(fn($x) => $x['date'], $daily));
+        $longestStreak = $this->computeLongestStreak(array_map(fn ($x) => $x['date'], $daily));
 
         // Hourly
         $hourlyRaw = (clone $kmBase)
@@ -425,7 +384,7 @@ class LaporanKehadiranController extends Controller
             ->groupBy('wd')
             ->get();
 
-        $wdLabels = [0 => 'Senin', 1 => 'Selasa', 2 => 'Rabu', 3 => 'Kamis', 4 => 'Jumat', 5 => 'Sabtu', 6 => 'Minggu'];
+        $wdLabels = [0=>'Senin',1=>'Selasa',2=>'Rabu',3=>'Kamis',4=>'Jumat',5=>'Sabtu',6=>'Minggu'];
         $wdMap = [];
         foreach ($weekdayRaw as $r) $wdMap[(int) $r->wd] = (int) $r->total;
 
@@ -439,17 +398,15 @@ class LaporanKehadiranController extends Controller
         }
 
         // Top members
-        $topMembersNameExpr = $this->memberNameExpr('m', 'u', aggregate: true);
-
         $topMembers = (clone $kmBase)
             ->leftJoin('members as m', 'm.id', '=', 'km.member_id')
             ->leftJoin('users as u', 'u.id', '=', 'm.user_id')
-            ->selectRaw("km.member_id as member_id, {$topMembersNameExpr} as nama, COUNT(*) as total")
+            ->selectRaw("km.member_id as member_id, {$memberNameExpr} as nama, COUNT(*) as total")
             ->groupBy('km.member_id')
             ->orderByDesc('total')
             ->limit(10)
             ->get()
-            ->map(fn($r) => (object)[
+            ->map(fn ($r) => (object)[
                 'member_id' => (int) $r->member_id,
                 'nama'      => (string) $r->nama,
                 'total'     => (int) $r->total,
@@ -540,10 +497,7 @@ class LaporanKehadiranController extends Controller
         for ($i = 1; $i < count($dates); $i++) {
             $now = Carbon::parse($dates[$i])->startOfDay();
             if ($prev->copy()->addDay()->equalTo($now)) $cur++;
-            else {
-                $best = max($best, $cur);
-                $cur = 1;
-            }
+            else { $best = max($best, $cur); $cur = 1; }
             $prev = $now;
         }
         return max($best, $cur);

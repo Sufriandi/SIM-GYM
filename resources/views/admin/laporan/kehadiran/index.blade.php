@@ -7,37 +7,35 @@
 
     // ====== FILTER (kompatibel dengan versi sebelumnya) ======
     $filters = $filters ?? [];
-    $start   = $filters['start_date'] ?? now()->subDays(29)->toDateString();
-    $end     = $filters['end_date'] ?? now()->toDateString();
-    $sort    = $filters['sort'] ?? 'newest';
+    $start = $filters['start_date'] ?? now()->subDays(29)->toDateString();
+    $end = $filters['end_date'] ?? now()->toDateString();
+    $sort = $filters['sort'] ?? 'newest';
 
     // ====== DATA DARI CONTROLLER (tetap sama) ======
-    $stats  = $stats ?? [];
-    $series = $series ?? ['daily'=>[], 'hourly'=>[], 'weekday'=>[]];
+    $stats = $stats ?? [];
+    $series = $series ?? ['daily' => [], 'hourly' => [], 'weekday' => []];
 
-    $totalCheckins = (int)($stats['total_checkins'] ?? 0);
-    $uniqueMembers = (int)($stats['unique_members'] ?? 0);
-    $avgPerDay     = (float)($stats['avg_per_day'] ?? 0);
+    $totalCheckins = (int) ($stats['total_checkins'] ?? 0);
+    $uniqueMembers = (int) ($stats['unique_members'] ?? 0);
+    $avgPerDay = (float) ($stats['avg_per_day'] ?? 0);
 
-    $activeDays    = (int)($stats['active_days'] ?? 0);
-    $daysInRange   = (int)($stats['days_in_range'] ?? 0);
+    $activeDays = (int) ($stats['active_days'] ?? 0);
+    $daysInRange = (int) ($stats['days_in_range'] ?? 0);
 
-    $utilization   = $stats['utilization'] ?? null;
-    $utilization   = is_null($utilization)
-        ? ($daysInRange > 0 ? ($activeDays / $daysInRange) : 0)
-        : (float)$utilization;
+    $utilization = $stats['utilization'] ?? null;
+    $utilization = is_null($utilization) ? ($daysInRange > 0 ? $activeDays / $daysInRange : 0) : (float) $utilization;
 
-    $longestStreak = (int)($stats['longest_streak'] ?? 0);
-    $peakDay       = $stats['peak_day'] ?? null;
+    $longestStreak = (int) ($stats['longest_streak'] ?? 0);
+    $peakDay = $stats['peak_day'] ?? null;
 
-    $trendDelta    = (int)($stats['trend_delta'] ?? 0);
-    $trendPercent  = $stats['trend_percent'] ?? null;
+    $trendDelta = (int) ($stats['trend_delta'] ?? 0);
+    $trendPercent = $stats['trend_percent'] ?? null;
 
-    $topMembers    = $stats['top_members'] ?? collect();
+    $topMembers = $stats['top_members'] ?? collect();
 
     // (opsional) ringkasan kompensasi bila controller mengirim
-    $totalIzin      = (int)($stats['total_izin'] ?? 0);
-    $totalKompHari  = (int)($stats['total_kompensasi_hari'] ?? 0);
+    $totalIzin = (int) ($stats['total_izin'] ?? 0);
+    $totalKompHari = (int) ($stats['total_kompensasi_hari'] ?? 0);
 
     // query string helper
     $q = request()->query();
@@ -46,21 +44,35 @@
 
     // eksport (opsional)
     $hasExcel = Route::has('admin.laporan.kehadiran.excel');
-    $hasPdf   = Route::has('admin.laporan.kehadiran.pdf');
+    $hasPdf = Route::has('admin.laporan.kehadiran.pdf');
 @endphp
 
-<x-layouts.admin
-    :title="$pageTitle . ' – BETA GYM'"
-    :page-title="$pageTitle"
-    page-subtitle="Ringkasan analitik absensi (check-in) dan metrik kompensasi/izin pada rentang terpilih."
->
+<x-layouts.admin :title="$pageTitle . ' – BETA GYM'" :page-title="$pageTitle"
+    page-subtitle="Ringkasan analitik absensi (check-in) dan metrik kompensasi/izin pada rentang terpilih.">
     @once
         <style>
-            .stat-number { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-            .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
-            .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.02); }
-            .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 10px; }
-            .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.22); }
+            .stat-number {
+                font-variant-numeric: tabular-nums;
+                letter-spacing: -0.02em;
+            }
+
+            .custom-scrollbar::-webkit-scrollbar {
+                height: 6px;
+                width: 6px;
+            }
+
+            .custom-scrollbar::-webkit-scrollbar-track {
+                background: rgba(0, 0, 0, 0.02);
+            }
+
+            .custom-scrollbar::-webkit-scrollbar-thumb {
+                background: rgba(0, 0, 0, 0.12);
+                border-radius: 10px;
+            }
+
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                background: rgba(0, 0, 0, 0.22);
+            }
         </style>
     @endonce
 
@@ -101,9 +113,8 @@
             </form>
 
             {{-- Export Dropdown --}}
-            <div x-data="{ open:false }" class="relative">
-                <button type="button"
-                    @click="open = !open"
+            <div x-data="{ open: false }" class="relative">
+                <button type="button" @click="open = !open"
                     class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold
                            bg-white border border-brand-borderSoft hover:bg-gray-50 transition shadow-sm">
                     <i data-lucide="download" class="w-4 h-4 text-text-main"></i>
@@ -113,11 +124,9 @@
 
                 <div x-show="open" x-cloak @click.away="open=false"
                     class="absolute right-0 mt-2 w-64 rounded-2xl border border-brand-borderSoft bg-white shadow-2xl overflow-hidden z-30">
-                    <a
-                        class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50 {{ $hasExcel ? '' : 'opacity-60 cursor-not-allowed' }}"
-                        href="{{ $hasExcel ? (route('admin.laporan.kehadiran.excel') . ($qs ? ('?'.$qs) : '')) : '#' }}"
-                        @if(!$hasExcel) @click.prevent @endif
-                    >
+                    <a class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50 {{ $hasExcel ? '' : 'opacity-60 cursor-not-allowed' }}"
+                        href="{{ $hasExcel ? route('admin.laporan.kehadiran.excel') . ($qs ? '?' . $qs : '') : '#' }}"
+                        @if (!$hasExcel) @click.prevent @endif>
                         <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
                         <div class="min-w-0">
                             <div class="font-semibold text-text-main">Ekspor Excel</div>
@@ -125,11 +134,9 @@
                         </div>
                     </a>
 
-                    <a
-                        class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50 {{ $hasPdf ? '' : 'opacity-60 cursor-not-allowed' }}"
-                        href="{{ $hasPdf ? (route('admin.laporan.kehadiran.pdf') . ($qs ? ('?'.$qs) : '')) : '#' }}"
-                        @if(!$hasPdf) @click.prevent @endif
-                    >
+                    <a class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50 {{ $hasPdf ? '' : 'opacity-60 cursor-not-allowed' }}"
+                        href="{{ $hasPdf ? route('admin.laporan.kehadiran.pdf') . ($qs ? '?' . $qs : '') : '#' }}"
+                        @if (!$hasPdf) @click.prevent @endif>
                         <i data-lucide="file-text" class="w-4 h-4"></i>
                         <div class="min-w-0">
                             <div class="font-semibold text-text-main">Ekspor PDF</div>
@@ -149,7 +156,8 @@
                 <div class="relative z-10 flex h-full flex-col justify-between">
                     <div>
                         <p class="text-[11px] font-bold uppercase tracking-widest text-gray-400">Total Check-in</p>
-                        <h3 class="mt-2 text-3xl font-bold text-white stat-number">{{ number_format($totalCheckins) }}</h3>
+                        <h3 class="mt-2 text-3xl font-bold text-white stat-number">{{ number_format($totalCheckins) }}
+                        </h3>
                     </div>
                     <div class="mt-4 flex items-center gap-2">
                         <div class="h-1.5 w-full rounded-full bg-gray-700">
@@ -157,7 +165,8 @@
                         </div>
                     </div>
                     <p class="mt-2 text-[10px] text-gray-400">
-                        Rentang: {{ Carbon::parse($start)->translatedFormat('d M Y') }} – {{ Carbon::parse($end)->translatedFormat('d M Y') }}
+                        Rentang: {{ Carbon::parse($start)->translatedFormat('d M Y') }} –
+                        {{ Carbon::parse($end)->translatedFormat('d M Y') }}
                     </p>
                 </div>
                 <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-gold-500/10 blur-3xl"></div>
@@ -167,7 +176,8 @@
                 <div class="flex items-start justify-between">
                     <div>
                         <p class="text-[11px] font-bold uppercase tracking-widest text-text-muted">Member Unik</p>
-                        <p class="mt-1 text-2xl font-bold text-text-main stat-number">{{ number_format($uniqueMembers) }}</p>
+                        <p class="mt-1 text-2xl font-bold text-text-main stat-number">
+                            {{ number_format($uniqueMembers) }}</p>
                     </div>
                     <span class="flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600">
                         <i data-lucide="users" class="w-4 h-4"></i>
@@ -180,7 +190,8 @@
                 <div class="flex items-start justify-between">
                     <div>
                         <p class="text-[11px] font-bold uppercase tracking-widest text-text-muted">Rata-rata / Hari</p>
-                        <p class="mt-1 text-2xl font-bold text-text-main stat-number">{{ number_format($avgPerDay, 2, ',', '.') }}</p>
+                        <p class="mt-1 text-2xl font-bold text-text-main stat-number">
+                            {{ number_format($avgPerDay, 2, ',', '.') }}</p>
                     </div>
                     <span class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 text-emerald-600">
                         <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
@@ -193,14 +204,16 @@
                 <div class="flex items-start justify-between">
                     <div>
                         <p class="text-[11px] font-bold uppercase tracking-widest text-text-muted">Utilisasi</p>
-                        <p class="mt-1 text-2xl font-bold text-text-main stat-number">{{ round($utilization * 100, 1) }}%</p>
+                        <p class="mt-1 text-2xl font-bold text-text-main stat-number">
+                            {{ round($utilization * 100, 1) }}%</p>
                     </div>
                     <span class="flex items-center justify-center w-8 h-8 rounded-full bg-amber-50 text-amber-600">
                         <i data-lucide="activity" class="w-4 h-4"></i>
                     </span>
                 </div>
                 <p class="mt-3 text-xs text-text-muted">
-                    Hari aktif: <span class="font-semibold text-text-main">{{ $activeDays }}</span> / {{ $daysInRange }}
+                    Hari aktif: <span class="font-semibold text-text-main">{{ $activeDays }}</span> /
+                    {{ $daysInRange }}
                 </p>
             </x-ui.card>
 
@@ -211,17 +224,22 @@
 
             {{-- Chart --}}
             <div class="lg:col-span-8">
-                <x-ui.card
-                    x-data="window.absensiDashboard({
-                        dailyRaw: @json($series['daily'] ?? [], JSON_UNESCAPED_UNICODE),
-                        hourlyRaw: @json($series['hourly'] ?? [], JSON_UNESCAPED_UNICODE),
-                        weekdayRaw: @json($series['weekday'] ?? [], JSON_UNESCAPED_UNICODE),
-                        start: @json($start),
-                        end: @json($end),
-                    })"
-                    x-init="init()"
-                    class="p-6 border-brand-borderSoft h-full"
-                >
+                @php
+                    // PENTING: @json(...) TIDAK ke-compile kalau ditulis langsung
+                    // di dalam atribut komponen <x-ui.card ... x-data="..."> yang
+                    // menyebar banyak baris - hasilnya cuma teks "@json(...)" mentah,
+                    // bukan JSON beneran, dan bikin Alpine.js gagal total (chart
+                    // blank tanpa pesan error apapun). Makanya data disiapkan dulu
+                    // di sini, lalu disuntik pakai Js::from() yang aman buat atribut HTML.
+                    $chartPayload = [
+                        'dailyRaw' => $series['daily'] ?? [],
+                        'hourlyRaw' => $series['hourly'] ?? [],
+                        'weekdayRaw' => $series['weekday'] ?? [],
+                        'start' => $start,
+                        'end' => $end,
+                    ];
+                @endphp
+                <x-ui.card x-data="window.absensiDashboard({{ \Illuminate\Support\Js::from($chartPayload) }})" x-init="init()" class="p-6 border-brand-borderSoft h-full">
                     <div class="mb-4 flex items-start justify-between gap-3 flex-wrap">
                         <div>
                             <h3 class="text-sm font-bold text-text-main">Visualisasi Kehadiran</h3>
@@ -231,17 +249,19 @@
                         <div class="flex items-center gap-2 flex-wrap">
                             <button type="button" @click="setTab('tren')"
                                 class="px-3 py-2 text-xs font-semibold rounded-lg border border-brand-borderSoft"
-                                :class="tab==='tren' ? 'bg-white text-text-main' : 'bg-white/60 text-text-muted hover:bg-white'">
+                                :class="tab === 'tren' ? 'bg-white text-text-main' :
+                                    'bg-white/60 text-text-muted hover:bg-white'">
                                 Tren
                             </button>
                             <button type="button" @click="setTab('jam')"
                                 class="px-3 py-2 text-xs font-semibold rounded-lg border border-brand-borderSoft"
-                                :class="tab==='jam' ? 'bg-white text-text-main' : 'bg-white/60 text-text-muted hover:bg-white'">
+                                :class="tab === 'jam' ? 'bg-white text-text-main' : 'bg-white/60 text-text-muted hover:bg-white'">
                                 Per Jam
                             </button>
                             <button type="button" @click="setTab('hari')"
                                 class="px-3 py-2 text-xs font-semibold rounded-lg border border-brand-borderSoft"
-                                :class="tab==='hari' ? 'bg-white text-text-main' : 'bg-white/60 text-text-muted hover:bg-white'">
+                                :class="tab === 'hari' ? 'bg-white text-text-main' :
+                                    'bg-white/60 text-text-muted hover:bg-white'">
                                 Pola Hari
                             </button>
                             <button type="button" @click="resetZoom()"
@@ -257,14 +277,25 @@
                         <div class="text-xs text-text-muted mt-1">Memuat pustaka grafik dan menormalisasi data.</div>
                     </div>
 
-                    <div x-show="!loading && isAllEmpty()" x-cloak class="rounded-xl border border-brand-borderSoft bg-white/60 p-5">
-                        <div class="text-sm font-extrabold text-text-main">Belum ada data grafik pada rentang ini.</div>
+                    <div x-show="!loading && chartFailed" x-cloak
+                        class="rounded-xl border border-red-200 bg-red-50 p-5">
+                        <div class="text-sm font-extrabold text-red-700">Grafik gagal dimuat.</div>
+                        <div class="text-sm text-red-600 mt-1">
+                            Pustaka grafik tidak bisa diambil (lokal maupun online). Cek koneksi internet, lalu refresh
+                            halaman.
+                        </div>
+                    </div>
+
+                    <div x-show="!loading && !chartFailed && isAllEmpty()" x-cloak
+                        class="rounded-xl border border-brand-borderSoft bg-white/60 p-5">
+                        <div class="text-sm font-extrabold text-text-main">Belum ada data grafik pada rentang ini.
+                        </div>
                         <div class="text-sm text-text-muted mt-1">
                             Pastikan controller mengirim <span class="font-semibold">daily/hourly/weekday</span>.
                         </div>
                     </div>
 
-                    <div class="mt-3" x-show="!loading && !isAllEmpty()">
+                    <div class="mt-3" x-show="!loading && !chartFailed && !isAllEmpty()">
                         <div x-show="tab==='tren'" class="h-[360px]">
                             <canvas id="chartTren"></canvas>
                             <div class="text-xs text-text-muted mt-3">
@@ -299,7 +330,7 @@
                         <div class="flex items-center justify-between">
                             <span class="text-text-muted">Jumlah (hari puncak)</span>
                             <span class="font-bold text-text-main">
-                                {{ $peakDay ? number_format((int)($peakDay['total'] ?? 0)) : '-' }}
+                                {{ $peakDay ? number_format((int) ($peakDay['total'] ?? 0)) : '-' }}
                             </span>
                         </div>
                         <div class="flex items-center justify-between">
@@ -336,20 +367,23 @@
                         @if (count($topMembers) > 0)
                             @foreach ($topMembers as $i => $m)
                                 @php
-                                    $namaTop = $m->nama ?? $m->user_name ?? $m->name ?? '-';
-                                    $totTop  = (int)($m->total ?? 0);
+                                    $namaTop = $m->nama ?? ($m->user_name ?? ($m->name ?? '-'));
+                                    $totTop = (int) ($m->total ?? 0);
                                 @endphp
-                                <div class="flex items-center justify-between rounded-xl border border-brand-borderSoft px-3 py-2 hover:bg-gray-50 transition">
+                                <div
+                                    class="flex items-center justify-between rounded-xl border border-brand-borderSoft px-3 py-2 hover:bg-gray-50 transition">
                                     <div class="min-w-0">
                                         <div class="text-sm font-extrabold text-text-main truncate">
                                             {{ $i + 1 }}. {{ $namaTop }}
                                         </div>
                                     </div>
-                                    <div class="text-sm font-extrabold text-text-main">{{ number_format($totTop) }}</div>
+                                    <div class="text-sm font-extrabold text-text-main">{{ number_format($totTop) }}
+                                    </div>
                                 </div>
                             @endforeach
                         @else
-                            <div class="rounded-xl border border-brand-borderSoft bg-gray-50 px-3 py-3 text-sm text-text-muted">
+                            <div
+                                class="rounded-xl border border-brand-borderSoft bg-gray-50 px-3 py-3 text-sm text-text-muted">
                                 Belum ada data pada rentang ini.
                             </div>
                         @endif
@@ -362,8 +396,8 @@
         {{-- SCRIPT: Chart.js + Dashboard Factory (dipakai Ringkasan) --}}
         @once
             <script>
-                (function(){
-                    function loadScriptOnce(src){
+                (function() {
+                    function loadScriptOnce(src) {
                         return new Promise((resolve, reject) => {
                             const already = document.querySelector(`script[data-src="${src}"]`);
                             if (already) return resolve(true);
@@ -379,14 +413,24 @@
                         });
                     }
 
-                    async function ensureChartStack(){
+                    async function ensureChartStack() {
                         if (window.Chart) return true;
-                        await loadScriptOnce('https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js');
-                        await loadScriptOnce('https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js');
+                        try {
+                            // Coba file LOKAL dulu (tidak butuh internet, jadi tetap jalan
+                            // walau koneksi lagi lambat/putus - penting buat demo).
+                            await loadScriptOnce('/vendor/chartjs/chart.umd.min.js');
+                            await loadScriptOnce('/vendor/chartjs/chartjs-plugin-zoom.min.js');
+                        } catch (e) {
+                            // Fallback ke CDN kalau file lokal entah kenapa tidak ada.
+                            await loadScriptOnce('https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js');
+                            await loadScriptOnce(
+                                'https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js'
+                                );
+                        }
                         return !!window.Chart;
                     }
 
-                    function tryRegisterZoom(){
+                    function tryRegisterZoom() {
                         if (!window.Chart || typeof window.Chart.register !== 'function') return;
                         const candidates = [
                             window.ChartZoom,
@@ -405,7 +449,12 @@
                         return {
                             tab: 'tren',
                             loading: true,
-                            charts: { tren:null, jam:null, hari:null },
+                            chartFailed: false,
+                            charts: {
+                                tren: null,
+                                jam: null,
+                                hari: null
+                            },
 
                             rawDaily: payload.dailyRaw || [],
                             rawHourly: payload.hourlyRaw || [],
@@ -424,8 +473,13 @@
                                 try {
                                     const d = new Date(String(dateStr) + 'T00:00:00');
                                     if (isNaN(d.getTime())) return String(dateStr || '');
-                                    return new Intl.DateTimeFormat('id-ID', { day:'2-digit', month:'short' }).format(d);
-                                } catch (e) { return String(dateStr || ''); }
+                                    return new Intl.DateTimeFormat('id-ID', {
+                                        day: '2-digit',
+                                        month: 'short'
+                                    }).format(d);
+                                } catch (e) {
+                                    return String(dateStr || '');
+                                }
                             },
 
                             normalizeDaily(arr) {
@@ -443,7 +497,7 @@
                                     })
                                     .filter(x => x.date);
 
-                                out.sort((a,b) => String(a.date).localeCompare(String(b.date)));
+                                out.sort((a, b) => String(a.date).localeCompare(String(b.date)));
 
                                 const hasMa = out.some(x => x.ma7 !== null);
                                 if (!hasMa && out.length) {
@@ -456,8 +510,14 @@
                                 }
 
                                 if (!out.some(x => x.is_peak) && out.length) {
-                                    let max = -1, idx = -1;
-                                    out.forEach((x, i) => { if (x.total > max) { max = x.total; idx = i; } });
+                                    let max = -1,
+                                        idx = -1;
+                                    out.forEach((x, i) => {
+                                        if (x.total > max) {
+                                            max = x.total;
+                                            idx = i;
+                                        }
+                                    });
                                     if (idx >= 0) out[idx].is_peak = true;
                                 }
 
@@ -476,20 +536,26 @@
                                 const out = [];
                                 for (let i = 0; i < 24; i++) {
                                     const hh = String(i).padStart(2, '0');
-                                    out.push({ label: `${hh}:00`, total: this.clampNum(map.get(hh) ?? 0) });
+                                    out.push({
+                                        label: `${hh}:00`,
+                                        total: this.clampNum(map.get(hh) ?? 0)
+                                    });
                                 }
                                 return out;
                             },
 
                             normalizeWeekday(arr) {
-                                const order = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
+                                const order = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
                                 const map = new Map();
                                 (arr || []).forEach(x => {
                                     const k = x.label ?? x.hari ?? null;
                                     if (!k) return;
                                     map.set(String(k), this.clampNum(x.total ?? 0));
                                 });
-                                return order.map(h => ({ label: h, total: this.clampNum(map.get(h) ?? 0) }));
+                                return order.map(h => ({
+                                    label: h,
+                                    total: this.clampNum(map.get(h) ?? 0)
+                                }));
                             },
 
                             isAllEmpty() {
@@ -501,7 +567,9 @@
 
                             destroy(name) {
                                 if (this.charts[name]) {
-                                    try { this.charts[name].destroy(); } catch(e){}
+                                    try {
+                                        this.charts[name].destroy();
+                                    } catch (e) {}
                                     this.charts[name] = null;
                                 }
                             },
@@ -510,13 +578,14 @@
                                 this.tab = v;
                                 this.$nextTick(() => {
                                     if (v === 'tren') this.renderTren();
-                                    if (v === 'jam')  this.renderJam();
+                                    if (v === 'jam') this.renderJam();
                                     if (v === 'hari') this.renderHari();
                                 });
                             },
 
                             resetZoom() {
-                                const c = this.tab === 'tren' ? this.charts.tren : (this.tab === 'jam' ? this.charts.jam : this.charts.hari);
+                                const c = this.tab === 'tren' ? this.charts.tren : (this.tab === 'jam' ? this.charts.jam :
+                                    this.charts.hari);
                                 if (c && typeof c.resetZoom === 'function') c.resetZoom();
                             },
 
@@ -526,36 +595,84 @@
                                 if (!el || !window.Chart || !this.daily.length) return;
 
                                 const labels = this.daily.map(x => x.label);
-                                const data   = this.daily.map(x => x.total);
-                                const ma7    = this.daily.map(x => x.ma7);
+                                const data = this.daily.map(x => x.total);
+                                const ma7 = this.daily.map(x => x.ma7);
 
-                                const peakIdx  = this.daily.findIndex(x => x.is_peak);
+                                const peakIdx = this.daily.findIndex(x => x.is_peak);
                                 const peakData = data.map((v, i) => i === peakIdx ? v : null);
 
                                 this.charts.tren = new window.Chart(el, {
                                     type: 'line',
                                     data: {
                                         labels,
-                                        datasets: [
-                                            { label: 'Check-in', data, fill: true, tension: 0.35, pointRadius: 3, pointHoverRadius: 7, borderWidth: 2 },
-                                            { label: 'Rata-rata 7 Hari', data: ma7, fill: false, tension: 0.25, borderDash: [7,7], pointRadius: 0, borderWidth: 2 },
-                                            { label: 'Hari Puncak', data: peakData, fill: false, showLine: false, pointRadius: 7, pointHoverRadius: 10, borderWidth: 2 },
+                                        datasets: [{
+                                                label: 'Check-in',
+                                                data,
+                                                fill: true,
+                                                tension: 0.35,
+                                                pointRadius: 3,
+                                                pointHoverRadius: 7,
+                                                borderWidth: 2
+                                            },
+                                            {
+                                                label: 'Rata-rata 7 Hari',
+                                                data: ma7,
+                                                fill: false,
+                                                tension: 0.25,
+                                                borderDash: [7, 7],
+                                                pointRadius: 0,
+                                                borderWidth: 2
+                                            },
+                                            {
+                                                label: 'Hari Puncak',
+                                                data: peakData,
+                                                fill: false,
+                                                showLine: false,
+                                                pointRadius: 7,
+                                                pointHoverRadius: 10,
+                                                borderWidth: 2
+                                            },
                                         ]
                                     },
                                     options: {
                                         responsive: true,
                                         maintainAspectRatio: false,
-                                        interaction: { mode: 'index', intersect: false },
+                                        interaction: {
+                                            mode: 'index',
+                                            intersect: false
+                                        },
                                         plugins: {
-                                            legend: { display: true },
+                                            legend: {
+                                                display: true
+                                            },
                                             zoom: {
-                                                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
-                                                pan:  { enabled: true, mode: 'x' }
+                                                zoom: {
+                                                    wheel: {
+                                                        enabled: true
+                                                    },
+                                                    pinch: {
+                                                        enabled: true
+                                                    },
+                                                    mode: 'x'
+                                                },
+                                                pan: {
+                                                    enabled: true,
+                                                    mode: 'x'
+                                                }
                                             }
                                         },
                                         scales: {
-                                            y: { beginAtZero: true, ticks: { precision: 0 } },
-                                            x: { grid: { display: false } }
+                                            y: {
+                                                beginAtZero: true,
+                                                ticks: {
+                                                    precision: 0
+                                                }
+                                            },
+                                            x: {
+                                                grid: {
+                                                    display: false
+                                                }
+                                            }
                                         }
                                     }
                                 });
@@ -567,18 +684,39 @@
                                 if (!el || !window.Chart) return;
 
                                 const labels = (this.hourly || []).map(x => x.label);
-                                const data   = (this.hourly || []).map(x => x.total);
+                                const data = (this.hourly || []).map(x => x.total);
 
                                 this.charts.jam = new window.Chart(el, {
                                     type: 'bar',
-                                    data: { labels, datasets: [{ label: 'Check-in', data, borderWidth: 1 }] },
+                                    data: {
+                                        labels,
+                                        datasets: [{
+                                            label: 'Check-in',
+                                            data,
+                                            borderWidth: 1
+                                        }]
+                                    },
                                     options: {
                                         responsive: true,
                                         maintainAspectRatio: false,
-                                        plugins: { legend: { display: true } },
+                                        plugins: {
+                                            legend: {
+                                                display: true
+                                            }
+                                        },
                                         scales: {
-                                            y: { beginAtZero: true, ticks: { precision: 0 } },
-                                            x: { ticks: { maxRotation: 0, autoSkip: true } }
+                                            y: {
+                                                beginAtZero: true,
+                                                ticks: {
+                                                    precision: 0
+                                                }
+                                            },
+                                            x: {
+                                                ticks: {
+                                                    maxRotation: 0,
+                                                    autoSkip: true
+                                                }
+                                            }
                                         }
                                     }
                                 });
@@ -590,26 +728,46 @@
                                 if (!el || !window.Chart) return;
 
                                 const labels = (this.weekday || []).map(x => x.label);
-                                const data   = (this.weekday || []).map(x => x.total);
+                                const data = (this.weekday || []).map(x => x.total);
 
                                 this.charts.hari = new window.Chart(el, {
                                     type: 'bar',
-                                    data: { labels, datasets: [{ label: 'Check-in', data, borderWidth: 1 }] },
+                                    data: {
+                                        labels,
+                                        datasets: [{
+                                            label: 'Check-in',
+                                            data,
+                                            borderWidth: 1
+                                        }]
+                                    },
                                     options: {
                                         responsive: true,
                                         maintainAspectRatio: false,
-                                        plugins: { legend: { display: true } },
+                                        plugins: {
+                                            legend: {
+                                                display: true
+                                            }
+                                        },
                                         scales: {
-                                            y: { beginAtZero: true, ticks: { precision: 0 } },
-                                            x: { grid: { display: false } }
+                                            y: {
+                                                beginAtZero: true,
+                                                ticks: {
+                                                    precision: 0
+                                                }
+                                            },
+                                            x: {
+                                                grid: {
+                                                    display: false
+                                                }
+                                            }
                                         }
                                     }
                                 });
                             },
 
                             async init() {
-                                this.daily   = this.normalizeDaily(this.rawDaily);
-                                this.hourly  = this.normalizeHourly(this.rawHourly);
+                                this.daily = this.normalizeDaily(this.rawDaily);
+                                this.hourly = this.normalizeHourly(this.rawHourly);
                                 this.weekday = this.normalizeWeekday(this.rawWeekday);
 
                                 try {
@@ -617,6 +775,7 @@
                                     tryRegisterZoom();
                                 } catch (e) {
                                     this.loading = false;
+                                    this.chartFailed = true;
                                     return;
                                 }
 
@@ -627,7 +786,8 @@
                             }
                         };
                     };
-                })();
+                })
+                ();
             </script>
         @endonce
 

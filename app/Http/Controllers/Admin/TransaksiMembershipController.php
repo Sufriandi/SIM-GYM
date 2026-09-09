@@ -132,10 +132,10 @@ class TransaksiMembershipController extends Controller
 
                 $lastEnd = TransaksiMembership::endDateTerakhirUntukMember($mid);
 
-                $mulai = $lastEnd
-                    ? ($lastEnd->gte($transDay) ? $lastEnd->copy()->addDay() : $transDay)
-                    : $transDay;
-
+                $mulai = $transDay;
+                if ($lastEnd && $lastEnd->gte($transDay)) {
+                    $mulai = $lastEnd->copy()->addDay();
+                }
                 $akhir = $mulai->copy()->addDays(((int) $paket->durasi) - 1);
 
                 $periods[$mid] = ['mulai' => $mulai, 'akhir' => $akhir];
@@ -217,9 +217,10 @@ class TransaksiMembershipController extends Controller
 
             $lastEnd = TransaksiMembership::endDateTerakhirUntukMember($memberId);
 
-            $tanggalMulai = $lastEnd
-                ? ($lastEnd->gte($transDay) ? $lastEnd->copy()->addDay() : $transDay)
-                : $transDay;
+            $tanggalMulai = $transDay;
+            if ($lastEnd && $lastEnd->gte($transDay)) {
+                $tanggalMulai = $lastEnd->copy()->addDay();
+            }
 
             $tanggalAkhir = $tanggalMulai->copy()->addDays($jumlahHari - 1);
 
@@ -281,9 +282,12 @@ class TransaksiMembershipController extends Controller
             $earliestStart = TransaksiMembershipMember::where('transaksi_membership_id', $transaksiMembership->id)
                 ->min('tanggal_mulai');
 
-            $mulai = $earliestStart
-                ? Carbon::parse($earliestStart)->startOfDay()
-                : ($transaksiMembership->tanggal_mulai ? Carbon::parse($transaksiMembership->tanggal_mulai)->startOfDay() : null);
+            $mulai = null;
+            if ($earliestStart) {
+                $mulai = Carbon::parse($earliestStart)->startOfDay();
+            } elseif ($transaksiMembership->tanggal_mulai) {
+                $mulai = Carbon::parse($transaksiMembership->tanggal_mulai)->startOfDay();
+            }
 
             if ($mulai === null) {
                 abort(403, 'Tanggal mulai transaksi tidak valid.');
