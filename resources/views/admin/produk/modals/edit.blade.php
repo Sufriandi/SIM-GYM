@@ -55,15 +55,15 @@
     "
     x-show="openEditId === {{ $produk->id }} || {{ $openEditOnLoad ? 'true' : 'false' }}" x-cloak x-transition
     @click.self="resetEditForm(); openEditId = null"
-    class="fixed inset-0 z-50 flex items-start justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
+    class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm"
     @keydown.escape.window="resetEditForm(); openEditId = null" role="dialog" aria-modal="true">
 
     <div @click.stop x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
         x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-200"
         x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-        class="relative w-full max-w-4xl rounded-3xl shadow-2xl border border-brand-borderSoft
+        class="relative w-full max-w-4xl my-auto rounded-3xl shadow-2xl border border-brand-borderSoft
                bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell
-               h-full max-h-[calc(100vh-48px)] flex flex-col overflow-hidden">
+               max-h-[92vh] flex flex-col overflow-hidden">
 
         {{-- HEADER (Fixed) --}}
         <div

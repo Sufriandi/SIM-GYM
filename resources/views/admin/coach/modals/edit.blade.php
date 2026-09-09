@@ -12,11 +12,11 @@
 @endphp
 
 <div x-show="openEditId === {{ $coach->id }} || {{ $openEditOnLoad ? 'true' : 'false' }}" x-cloak x-transition
-    class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
+    class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm"
     @keydown.escape.window="openEditId = null" @click.self="openEditId = null">
 
     {{-- x-data: inisialisasi imageUrl dengan foto lama (jika ada) --}}
-    <div class="relative w-full max-w-4xl rounded-3xl shadow-2xl border border-brand-borderSoft bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell flex flex-col max-h-[90vh]"
+    <div class="relative w-full max-w-4xl my-auto rounded-3xl shadow-2xl border border-brand-borderSoft bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell flex flex-col max-h-[90vh]"
         x-data="{ imageUrl: @js($currentFotoUrl) }">
 
         {{-- HEADER --}}

@@ -1,13 +1,13 @@
 {{-- resources/views/admin/members/modals/create.blade.php --}}
 
 <div x-show="openCreate" x-cloak x-transition
-    class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm">
+    class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm">
 
     <div @click.away="openCreate = false" @keydown.escape.window="openCreate = false"
         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
         x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-200"
         x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-        class="relative w-full max-w-5xl rounded-3xl shadow-2xl border border-brand-borderSoft
+        class="relative w-full max-w-5xl my-auto rounded-3xl shadow-2xl border border-brand-borderSoft
                bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell"
         x-data="{
             imageUrl: null,

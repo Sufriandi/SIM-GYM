@@ -4,12 +4,12 @@
     x-cloak
     x-transition
     @click.self="openEditStok = false"
-    class="fixed inset-0 z-[999] flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
+    class="fixed inset-0 z-[999] overflow-y-auto flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm"
 >
     <div
         @click.away="openEditStok = false"
-        class="relative w-full max-w-xl rounded-3xl shadow-2xl border border-brand-borderSoft 
-               bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell"
+        class="relative w-full max-w-xl my-auto rounded-3xl shadow-2xl border border-brand-borderSoft 
+               bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell overflow-hidden"
     >
         <form :action="`{{ url('admin/stok_produk') }}/${editStokForm.id}`" method="POST">
             @csrf

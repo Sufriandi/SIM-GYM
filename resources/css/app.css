@@ -288,4 +288,9 @@
             animation: none !important;
         }
     }
+
+    /* Ensure #main-content never establishes a containing block that traps position:fixed modals */
+    #main-content {
+        transform: none !important;
+    }
 }

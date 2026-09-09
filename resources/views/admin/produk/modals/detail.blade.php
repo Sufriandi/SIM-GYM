@@ -14,13 +14,13 @@
 @endphp
 
 <div x-show="openDetailId === {{ $produk->id }}" x-cloak x-transition
-    class="fixed inset-0 z-50 flex items-start justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
+    class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm"
     @click.self="openDetailId = null" @keydown.escape.window="openDetailId = null" role="dialog" aria-modal="true"
     aria-labelledby="modal-produk-detail-title">
 
-    <div class="relative w-full max-w-5xl rounded-3xl shadow-2xl border border-brand-borderSoft
+    <div class="relative w-full max-w-5xl my-auto rounded-3xl shadow-2xl border border-brand-borderSoft
                 bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell
-                max-h-[calc(100vh-48px)] flex flex-col"
+                max-h-[92vh] flex flex-col"
         @click.stop>
 
         {{-- HEADER (fixed) --}}

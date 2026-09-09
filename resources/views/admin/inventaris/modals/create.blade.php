@@ -1,7 +1,7 @@
 {{-- RESOURCES/VIEWS/ADMIN/INVENTARIS/MODALS/CREATE.BLADE.PHP --}}
 
 <div x-show="openCreate" x-cloak x-transition
-    class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm">
+    class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm">
 
     {{-- TAMBAHKAN x-data DI SINI UNTUK MENGELOLA PREVIEW --}}
     <div @click.away="openCreate = false" x-data="{
@@ -17,7 +17,7 @@
             }
         }
     }"
-        class="relative w-full max-w-4xl rounded-3xl shadow-2xl border border-brand-borderSoft bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell">
+        class="relative w-full max-w-4xl my-auto rounded-3xl shadow-2xl border border-brand-borderSoft bg-gradient-to-br from-brand-shell via-brand-card to-brand-shell">
 
         {{-- HEADER --}}
         <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b-2 border-brand-borderSoft/80">

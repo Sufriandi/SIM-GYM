@@ -256,10 +256,9 @@ export async function navigateTo(url, pushState = true) {
     isNavigating = true;
     startProgress();
 
-    // Smooth subtle cross-fade
-    currentMain.style.transition = 'opacity 120ms ease, transform 120ms ease';
-    currentMain.style.opacity = '0.55';
-    currentMain.style.transform = 'translateY(4px)';
+    // Smooth subtle cross-fade on opacity only (never apply transform to <main> to prevent trapping position:fixed modals)
+    currentMain.style.transition = 'opacity 100ms ease';
+    currentMain.style.opacity = '0.65';
 
     try {
         const res = await fetch(fullTarget, {
@@ -347,7 +346,11 @@ export async function navigateTo(url, pushState = true) {
         window.location.href = fullTarget;
     } finally {
         currentMain.style.opacity = '1';
-        currentMain.style.transform = 'translateY(0)';
+        currentMain.style.transform = '';
+        currentMain.style.transition = '';
+        setTimeout(() => {
+            currentMain.style.opacity = '';
+        }, 120);
         finishProgress();
         isNavigating = false;
     }
@@ -358,6 +361,13 @@ export async function navigateTo(url, pushState = true) {
  */
 export function initSpaRouter() {
     if (typeof window === 'undefined') return;
+
+    // Clean up any leftover transform on <main> from previous states
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+        mainEl.style.transform = '';
+        mainEl.style.transition = '';
+    }
 
     // Intercept internal link clicks
     document.addEventListener('click', (e) => {
