@@ -85,6 +85,99 @@ class LaporanKeuanganController extends Controller
         ));
     }
 
+    public function excel(Request $request)
+    {
+        $data = $this->buildRingkasanData($request);
+
+        $html = view('admin.laporan.keuangan.excel', $data)->render();
+
+        $filename = 'laporan-keuangan-' . now()->format('Ymd_His') . '.xls';
+
+        return response($html, 200, [
+            'Content-Type'        => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
+    public function pdf(Request $request)
+    {
+        $data = $this->buildRingkasanData($request);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.laporan.keuangan.pdf', $data)
+            ->setPaper('a4', 'portrait');
+
+        $filename = 'laporan-keuangan-' . now()->format('Ymd_His') . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Data ringkasan yang sama persis dengan index(), dipakai bareng
+     * oleh index(), excel(), dan pdf() supaya nggak duplikasi logic.
+     */
+    private function buildRingkasanData(Request $request): array
+    {
+        [$from, $to] = $this->range($request);
+
+        $produkBase = TransaksiProduk::whereNull('canceled_at')
+            ->whereBetween('tanggal_transaksi', [$from, $to]);
+
+        $memberBase = TransaksiMembership::whereNull('canceled_at')
+            ->where('jenis_transaksi', TransaksiMembership::JENIS_PEMBAYARAN)
+            ->whereBetween('tanggal_transaksi', [$from, $to]);
+
+        $harianBase = LatihanHarian::whereNull('canceled_at')
+            ->whereBetween('tanggal', [$from, $to]);
+
+        $totalProduk = (int) $produkBase->sum('total');
+        $totalMembership = (int) $memberBase->sum('total');
+        $totalHarian = (int) $harianBase->sum('total');
+        $grandTotal = $totalProduk + $totalMembership + $totalHarian;
+
+        $produkDaily = $produkBase->clone()
+            ->selectRaw('DATE(tanggal_transaksi) as tgl, SUM(total) as total')
+            ->groupBy('tgl')->pluck('total', 'tgl')->toArray();
+
+        $memberDaily = $memberBase->clone()
+            ->selectRaw('DATE(tanggal_transaksi) as tgl, SUM(total) as total')
+            ->groupBy('tgl')->pluck('total', 'tgl')->toArray();
+
+        $harianDaily = $harianBase->clone()
+            ->selectRaw('DATE(tanggal) as tgl, SUM(total) as total')
+            ->groupBy('tgl')->pluck('total', 'tgl')->toArray();
+
+        $daily = $this->mergeDaily3($produkDaily, $memberDaily, $harianDaily, $from, $to);
+
+        $metodeProduk = $produkBase->clone()
+            ->select('metode_pembayaran', DB::raw('sum(total) as total'))
+            ->groupBy('metode_pembayaran')->pluck('total', 'metode_pembayaran')->toArray();
+
+        $metodeMember = $memberBase->clone()
+            ->select('metode_pembayaran', DB::raw('sum(total) as total'))
+            ->groupBy('metode_pembayaran')->pluck('total', 'metode_pembayaran')->toArray();
+
+        $metodeHarian = $harianBase->clone()
+            ->select('metode_pembayaran', DB::raw('sum(total) as total'))
+            ->groupBy('metode_pembayaran')->pluck('total', 'metode_pembayaran')->toArray();
+
+        $grandMetode = [
+            'cash'     => ($metodeProduk['cash'] ?? 0) + ($metodeMember['cash'] ?? 0) + ($metodeHarian['cash'] ?? 0),
+            'transfer' => ($metodeProduk['transfer'] ?? 0) + ($metodeMember['transfer'] ?? 0) + ($metodeHarian['transfer'] ?? 0),
+            'qris'     => ($metodeProduk['qris'] ?? 0) + ($metodeMember['qris'] ?? 0) + ($metodeHarian['qris'] ?? 0),
+        ];
+
+        return compact(
+            'from',
+            'to',
+            'totalProduk',
+            'totalMembership',
+            'totalHarian',
+            'grandTotal',
+            'daily',
+            'grandMetode'
+        );
+    }
+
     /**
      * LAPORAN PRODUK (Detail & Top Seller)
      */

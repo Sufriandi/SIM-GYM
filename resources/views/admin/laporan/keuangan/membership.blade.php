@@ -166,6 +166,36 @@
                         </a>
                     </div>
                 </form>
+
+                {{-- Export Dropdown --}}
+                <div x-data="{ open: false }" class="relative flex-shrink-0">
+                    <button type="button" @click="open = !open"
+                        class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold
+                               bg-white border border-brand-borderSoft hover:bg-gray-50 transition shadow-sm">
+                        <i data-lucide="download" class="w-4 h-4 text-text-main"></i>
+                        <span>Ekspor</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-text-muted"></i>
+                    </button>
+                    <div x-show="open" x-cloak @click.away="open=false"
+                        class="absolute right-0 mt-2 w-64 rounded-2xl border border-brand-borderSoft bg-white shadow-2xl overflow-hidden z-30">
+                        <a class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50"
+                            href="{{ route('admin.laporan.keuangan.membership.excel') . ($qs ? '?' . $qs : '') }}">
+                            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                            <div class="min-w-0">
+                                <div class="font-semibold text-text-main">Ekspor Excel</div>
+                                <div class="text-xs text-text-muted">Rekap laporan membership.</div>
+                            </div>
+                        </a>
+                        <a class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50"
+                            href="{{ route('admin.laporan.keuangan.membership.pdf') . ($qs ? '?' . $qs : '') }}">
+                            <i data-lucide="file-text" class="w-4 h-4"></i>
+                            <div class="min-w-0">
+                                <div class="font-semibold text-text-main">Ekspor PDF</div>
+                                <div class="text-xs text-text-muted">Siap cetak, khusus laporan membership.</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
 
