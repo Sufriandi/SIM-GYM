@@ -306,18 +306,27 @@ Route::middleware(['auth', 'admin'])
             // Route::get('/absensi/pdf', [AbsensiReportController::class, 'exportPdf'])
             //     ->name('absensi.pdf');
             Route::prefix('kehadiran')->name('kehadiran.')->group(function () {
-            Route::get('/', [LaporanKehadiranController::class, 'index'])->name('index');
-            Route::get('/absensi', [LaporanKehadiranController::class, 'absensi'])->name('absensi');
-            Route::get('/kompensasi', [LaporanKehadiranController::class, 'kompensasi'])->name('kompensasi');
-            Route::get('/audit', [LaporanKehadiranController::class, 'audit'])->name('audit');
+                Route::get('/', [LaporanKehadiranController::class, 'index'])->name('index');
+                Route::get('/absensi', [LaporanKehadiranController::class, 'absensi'])->name('absensi');
+                Route::get('/kompensasi', [LaporanKehadiranController::class, 'kompensasi'])->name('kompensasi');
+                Route::get('/audit', [LaporanKehadiranController::class, 'audit'])->name('audit');
+                Route::get('/excel', [LaporanKehadiranController::class, 'excel'])->name('excel');
+                Route::get('/pdf', [LaporanKehadiranController::class, 'pdf'])->name('pdf');
             });
-            Route::get('/excel', [LaporanKehadiranController::class, 'excel'])->name('excel');
             // ===== Laporan Keuangan (BARU) =====
             Route::prefix('keuangan')->name('keuangan.')->group(function () {
                 Route::get('/', [LaporanKeuanganController::class, 'index'])->name('index');
+                Route::get('/excel', [LaporanKeuanganController::class, 'excel'])->name('excel');
+                Route::get('/pdf', [LaporanKeuanganController::class, 'pdf'])->name('pdf');
                 Route::get('/produk', [LaporanKeuanganController::class, 'produk'])->name('produk');
+                Route::get('/produk/pdf', [LaporanKeuanganController::class, 'pdfProduk'])->name('produk.pdf');
+                Route::get('/produk/excel', [LaporanKeuanganController::class, 'excelProduk'])->name('produk.excel');
                 Route::get('/membership', [LaporanKeuanganController::class, 'membership'])->name('membership');
+                Route::get('/membership/pdf', [LaporanKeuanganController::class, 'pdfMembership'])->name('membership.pdf');
+                Route::get('/membership/excel', [LaporanKeuanganController::class, 'excelMembership'])->name('membership.excel');
                 Route::get('/harian', [LaporanKeuanganController::class, 'harian'])->name('harian');
+                Route::get('/harian/pdf', [LaporanKeuanganController::class, 'pdfHarian'])->name('harian.pdf');
+                Route::get('/harian/excel', [LaporanKeuanganController::class, 'excelHarian'])->name('harian.excel');
                 Route::get('/gabungan', [LaporanKeuanganController::class, 'gabungan'])->name('gabungan');
             });
 
@@ -443,9 +452,8 @@ Route::middleware(['auth', 'member', SyncMemberCartToSession::class])
             Route::get('/riwayat', [\App\Http\Controllers\Member\MemberMembershipHistoryController::class, 'index'])
                 ->name('history');
         });
-
     });
-    
+
 
 
 
