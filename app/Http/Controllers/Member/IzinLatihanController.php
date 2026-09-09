@@ -8,6 +8,7 @@ use App\Models\Member;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use App\Services\ImageUploadService;
 
 class IzinLatihanController extends Controller
 {
@@ -130,7 +131,7 @@ class IzinLatihanController extends Controller
             'tanggal_mulai' => 'required|date|after_or_equal:today',
             'jumlah_hari'   => 'required|integer|min:1|max:30',
             'alasan'        => 'required|string|max:1000',
-            'bukti_alasan'  => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:2048',
+            'bukti_alasan'  => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf,doc,docx|max:5120',
         ],
         [
             'tanggal_mulai.required'       => 'Tanggal mulai izin wajib diisi.',
@@ -141,8 +142,8 @@ class IzinLatihanController extends Controller
             'jumlah_hari.min'              => 'Durasi izin minimal 1 hari.',
             'jumlah_hari.max'              => 'Durasi izin maksimal 30 hari.',
             'alasan.required'              => 'Alasan izin wajib diisi.',
-            'bukti_alasan.mimes'           => 'Bukti harus berformat JPG, JPEG, PNG, PDF, DOC, atau DOCX.',
-            'bukti_alasan.max'             => 'Ukuran file bukti maksimal 2MB.',
+            'bukti_alasan.mimes'           => 'Bukti harus berformat JPG, JPEG, PNG, WEBP, PDF, DOC, atau DOCX.',
+            'bukti_alasan.max'             => 'Ukuran file bukti maksimal 5MB.',
         ]
     );
 
@@ -195,10 +196,16 @@ class IzinLatihanController extends Controller
         }
     }
 
-    // 4) Upload bukti (jika ada)
+    // 4) Upload bukti (jika ada) - konversi gambar ke WebP otomatis & aman untuk dokumen PDF/Word
     $path_bukti = null;
     if ($request->hasFile('bukti_alasan')) {
-        $path_bukti = $request->file('bukti_alasan')->store('uploads/bukti_izin', 'public');
+        $path_bukti = ImageUploadService::uploadOrConvertAsWebp(
+            $request->file('bukti_alasan'),
+            'uploads/bukti_izin',
+            null,
+            1600,
+            85
+        );
     }
 
     // 5) Simpan izin baru (pending)

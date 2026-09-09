@@ -9,6 +9,7 @@ use App\Models\TransaksiMembership;
 use App\Models\TransaksiMembershipMember;
 use App\Models\User;
 use Carbon\Carbon;
+use App\Services\ImageUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;
@@ -107,7 +108,7 @@ class IzinLatihanController extends Controller
                 'member_id'     => 'required|exists:members,id',
                 'jumlah_hari'   => 'required|integer|min:1|max:30',
                 'tanggal_mulai' => 'required|date',
-                'bukti_alasan'  => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:10240',
+                'bukti_alasan'  => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf,doc,docx|max:10240',
                 'alasan'        => 'nullable|string|max:5000',
             ],
             [
@@ -120,7 +121,7 @@ class IzinLatihanController extends Controller
                 'tanggal_mulai.required' => 'Tanggal mulai wajib diisi.',
                 'tanggal_mulai.date'     => 'Format tanggal mulai tidak valid.',
                 'bukti_alasan.max'       => 'Ukuran file maksimal 10MB.',
-                'bukti_alasan.mimes'     => 'Format file harus JPG, JPEG, PNG, PDF, DOC, atau DOCX.',
+                'bukti_alasan.mimes'     => 'Format file harus JPG, JPEG, PNG, WEBP, PDF, DOC, atau DOCX.',
             ]
         );
 
@@ -154,7 +155,13 @@ class IzinLatihanController extends Controller
 
         $buktiPath = null;
         if ($request->hasFile('bukti_alasan')) {
-            $buktiPath = $request->file('bukti_alasan')->store('uploads/bukti_izin', 'public');
+            $buktiPath = ImageUploadService::uploadOrConvertAsWebp(
+                $request->file('bukti_alasan'),
+                'uploads/bukti_izin',
+                null,
+                1600,
+                85
+            );
         }
 
         $alasanText = isset($validated['alasan']) ? trim((string) $validated['alasan']) : '';

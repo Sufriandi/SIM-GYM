@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\InventarisAlat;
+use App\Services\ImageUploadService;
 use Illuminate\Http\Request;
 
 class InventarisAlatController extends Controller
@@ -59,14 +60,14 @@ class InventarisAlatController extends Controller
         $request->validate([
             'nama'        => 'required',
             'deskripsi'   => 'nullable|string',
-            'foto'        => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'foto'        => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'kondisi'     => 'required|in:Baik,Maintenance,Rusak',
         ]);
 
         $data = $request->only(['nama', 'deskripsi', 'kondisi']);
 
         if ($request->hasFile('foto')) {
-            $data['foto'] = $request->file('foto')->store('inventaris', 'public');
+            $data['foto'] = ImageUploadService::uploadAsWebp($request->file('foto'), 'inventaris', null, 1200, 85);
         }
 
         InventarisAlat::create($data);
@@ -101,14 +102,14 @@ class InventarisAlatController extends Controller
         $request->validate([
             'nama'        => 'required',
             'deskripsi'   => 'nullable|string',
-            'foto'        => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'foto'        => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'kondisi'     => 'required|in:Baik,Maintenance,Rusak',
         ]);
 
         $data = $request->only(['nama', 'deskripsi', 'kondisi']);
 
         if ($request->hasFile('foto')) {
-            $data['foto'] = $request->file('foto')->store('inventaris', 'public');
+            $data['foto'] = ImageUploadService::uploadAsWebp($request->file('foto'), 'inventaris', $inventaris->foto, 1200, 85);
         }
 
         $inventaris->update($data);
@@ -123,6 +124,10 @@ class InventarisAlatController extends Controller
      */
     public function destroy(InventarisAlat $inventaris)
     {
+        if ($inventaris->foto) {
+            ImageUploadService::delete($inventaris->foto);
+        }
+
         $inventaris->delete();
 
         return redirect()

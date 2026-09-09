@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Coach;
+use App\Services\ImageUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -52,12 +53,12 @@ class CoachController extends Controller
             'no_hp'     => 'required|string|max:20',
             'alamat'    => 'required|string',
             'deskripsi' => 'nullable|string',
-            'foto'      => 'nullable|image|max:2048', // 2MB
+            'foto'      => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
         ]);
 
-        // Upload foto jika ada
+        // Upload foto jika ada (kompres & convert WebP)
         if ($request->hasFile('foto')) {
-            $validated['foto'] = $request->file('foto')->store('coach', 'public');
+            $validated['foto'] = ImageUploadService::uploadAsWebp($request->file('foto'), 'coach', null, 1000, 85);
         }
 
         Coach::create($validated);
@@ -91,17 +92,12 @@ class CoachController extends Controller
             'no_hp'     => 'required|string|max:20',
             'alamat'    => 'required|string',
             'deskripsi' => 'nullable|string',
-            'foto'      => 'nullable|image|max:2048',
+            'foto'      => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
         ]);
 
-        // Jika upload foto baru
+        // Jika upload foto baru (kompres & convert WebP, hapus foto lama)
         if ($request->hasFile('foto')) {
-            // Hapus foto lama jika ada
-            if ($coach->foto && Storage::disk('public')->exists($coach->foto)) {
-                Storage::disk('public')->delete($coach->foto);
-            }
-
-            $validated['foto'] = $request->file('foto')->store('coach', 'public');
+            $validated['foto'] = ImageUploadService::uploadAsWebp($request->file('foto'), 'coach', $coach->foto, 1000, 85);
         }
 
         $coach->update($validated);
@@ -114,9 +110,9 @@ class CoachController extends Controller
      */
     public function destroy(Coach $coach)
     {
-        // Hapus foto juga
-        if ($coach->foto && Storage::disk('public')->exists($coach->foto)) {
-            Storage::disk('public')->delete($coach->foto);
+        // Hapus foto jika ada
+        if ($coach->foto) {
+            ImageUploadService::delete($coach->foto);
         }
 
         $coach->delete();

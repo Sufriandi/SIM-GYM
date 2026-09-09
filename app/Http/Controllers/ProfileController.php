@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\ImageUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -33,7 +34,7 @@ class ProfileController extends Controller
             'no_hp' => ['nullable', 'regex:/^\+?\d{10,15}$/'],
             'alamat'        => ['nullable', 'string', 'max:500'],
             'jenis_kelamin' => ['nullable', Rule::in(['laki-laki', 'perempuan'])],
-            'foto'          => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'], // 2MB
+            'foto'          => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
         ]);
 
         
@@ -44,13 +45,15 @@ class ProfileController extends Controller
             $data['email_verified_at'] = null;
         }
 
-        // Upload foto baru (hapus foto lama jika ada)
+        // Upload foto baru (kompres HD & convert WebP, hapus foto lama)
         if ($request->hasFile('foto')) {
-            if ($user->foto && Storage::disk('public')->exists($user->foto)) {
-                Storage::disk('public')->delete($user->foto);
-            }
-
-            $data['foto'] = $request->file('foto')->store('users/foto', 'public');
+            $data['foto'] = ImageUploadService::uploadAsWebp(
+                $request->file('foto'),
+                'users/foto',
+                $user->foto,
+                800,
+                85
+            );
         }
 
         $user->fill($data)->save();

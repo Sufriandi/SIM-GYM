@@ -213,7 +213,7 @@
                                         }
                                     ">
                                 <p class="text-[11px] text-text-muted mt-1">Kosongkan jika tidak ingin mengubah. Maks
-                                    2MB. Format: JPG/PNG.</p>
+                                    5MB. Format: JPG, JPEG, PNG, WebP (Otomatis dikompres & dikonversi ke WebP HD).</p>
                             </div>
 
                         </div>

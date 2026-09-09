@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\ImageUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -65,10 +66,9 @@ class ProfileController extends Controller
             'jenis_kelamin' => $request->jenis_kelamin,
         ];
 
-        // handle upload foto
+        // handle upload foto (kompres HD & convert WebP)
         if ($request->hasFile('foto')) {
-            $path = $request->file('foto')->store('profile', 'public'); // storage/app/public/profile/xxx
-            $dataUpdate['foto'] = $path;
+            $dataUpdate['foto'] = ImageUploadService::uploadAsWebp($request->file('foto'), 'profile', $user->foto, 800, 85);
         }
 
         $user->update($dataUpdate);

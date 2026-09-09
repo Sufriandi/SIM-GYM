@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ProfilGym;
+use App\Services\ImageUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -85,8 +86,8 @@ class ProfilGymController extends Controller
     public function destroy(ProfilGym $profilGym)
     {
         foreach (['logo', 'favicon', 'hero_image'] as $field) {
-            if ($profilGym->$field && Storage::disk('public')->exists($profilGym->$field)) {
-                Storage::disk('public')->delete($profilGym->$field);
+            if ($profilGym->$field) {
+                ImageUploadService::delete($profilGym->$field);
             }
         }
 
@@ -112,9 +113,9 @@ class ProfilGymController extends Controller
             'jam_tutup'  => 'nullable',
 
             // file (opsional)
-            'logo'       => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-            'favicon'    => 'nullable|image|mimes:jpg,jpeg,png,webp|max:1024',
-            'hero_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+            'logo'       => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'favicon'    => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'hero_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:8192',
         ];
 
         $rulesKontak = [
@@ -133,25 +134,26 @@ class ProfilGymController extends Controller
     }
 
     /**
-     * Handle upload file + hapus file lama jika update.
+     * Handle upload file + kompres WebP + hapus file lama jika update.
      */
     private function handleUploads(Request $request, array $data, ?ProfilGym $profilGym): array
     {
-        $uploadMap = [
-            'logo'       => 'profil_gym/logo',
-            'favicon'    => 'profil_gym/favicon',
-            'hero_image' => 'profil_gym/hero',
+        $uploadSettings = [
+            'logo'       => ['folder' => 'profil_gym/logo', 'maxDim' => 800, 'quality' => 85],
+            'favicon'    => ['folder' => 'profil_gym/favicon', 'maxDim' => 256, 'quality' => 90],
+            'hero_image' => ['folder' => 'profil_gym/hero', 'maxDim' => 1920, 'quality' => 85],
         ];
 
-        foreach ($uploadMap as $field => $folder) {
+        foreach ($uploadSettings as $field => $config) {
             if ($request->hasFile($field)) {
-
-                // hapus file lama kalau update
-                if ($profilGym && $profilGym->$field && Storage::disk('public')->exists($profilGym->$field)) {
-                    Storage::disk('public')->delete($profilGym->$field);
-                }
-
-                $data[$field] = $request->file($field)->store($folder, 'public');
+                $oldPath = $profilGym ? $profilGym->$field : null;
+                $data[$field] = ImageUploadService::uploadAsWebp(
+                    $request->file($field),
+                    $config['folder'],
+                    $oldPath,
+                    $config['maxDim'],
+                    $config['quality']
+                );
             } else {
                 // jangan timpa path lama dengan null
                 unset($data[$field]);

@@ -8,8 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Cache;
-use Intervention\Image\ImageManager;
-use Intervention\Image\Drivers\Gd\Driver;
+use App\Services\ImageUploadService;
 
 class MemberController extends Controller
 {
@@ -151,28 +150,22 @@ class MemberController extends Controller
             'password'      => ['required', 'string', 'min:8', 'confirmed'],
             'alamat'        => ['nullable', 'string'],
             'jenis_kelamin' => ['nullable', 'in:laki-laki,perempuan'],
-            'foto'          => ['nullable', 'image', 'max:2048'], // Validasi max 2MB sebelum dikompres
+            'foto'          => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp,gif', 'max:5120'],
         ]);
 
         DB::beginTransaction();
         $fotoPath = null;
 
         try {
-            // OPTIMASI GAMBAR: Resize dan Convert ke WebP
+            // OPTIMASI GAMBAR: Resize HD dan Convert ke WebP
             if ($request->hasFile('foto')) {
-                $file = $request->file('foto');
-                $filename = 'users/' . time() . '_' . uniqid() . '.webp';
-                
-                $manager = new ImageManager(new Driver());
-                $image = $manager->read($file->getRealPath());
-                
-                // Perkecil gambar jika lebarnya lebih dari 300px (proporsional)
-                $image->scaleDown(width: 300);
-                
-                // Simpan dengan kualitas 80% dalam format WebP
-                Storage::disk('public')->put($filename, (string) $image->toWebp(80));
-                
-                $fotoPath = $filename;
+                $fotoPath = ImageUploadService::uploadAsWebp(
+                    $request->file('foto'),
+                    'users',
+                    null,
+                    800,
+                    85
+                );
             }
 
             $user = User::create([
@@ -204,8 +197,8 @@ class MemberController extends Controller
         } catch (\Throwable $th) {
             DB::rollBack();
 
-            if (!empty($fotoPath) && Storage::disk('public')->exists($fotoPath)) {
-                Storage::disk('public')->delete($fotoPath);
+            if (!empty($fotoPath)) {
+                ImageUploadService::delete($fotoPath);
             }
 
             return back()
@@ -225,7 +218,7 @@ class MemberController extends Controller
             'no_hp'         => ['nullable', 'string', 'max:20', 'unique:users,no_hp,' . ($user->id ?? 'NULL')],
             'alamat'        => ['nullable', 'string'],
             'jenis_kelamin' => ['nullable', 'in:laki-laki,perempuan'],
-            'foto'          => ['nullable', 'image', 'max:2048'],
+            'foto'          => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp,gif', 'max:5120'],
         ]);
 
         DB::beginTransaction();
@@ -241,23 +234,15 @@ class MemberController extends Controller
                     'jenis_kelamin' => $request->jenis_kelamin,
                 ];
 
-                // OPTIMASI GAMBAR: Update dengan Resize dan Convert ke WebP
+                // OPTIMASI GAMBAR: Update dengan Resize HD dan Convert ke WebP
                 if ($request->hasFile('foto')) {
-                    // Hapus foto lama
-                    if ($user->foto && Storage::disk('public')->exists($user->foto)) {
-                        Storage::disk('public')->delete($user->foto);
-                    }
-                    
-                    $file = $request->file('foto');
-                    $filename = 'users/' . time() . '_' . uniqid() . '.webp';
-                    
-                    $manager = new ImageManager(new Driver());
-                    $image = $manager->read($file->getRealPath());
-                    $image->scaleDown(width: 300);
-                    
-                    Storage::disk('public')->put($filename, (string) $image->toWebp(80));
-                    
-                    $dataUser['foto'] = $filename;
+                    $dataUser['foto'] = ImageUploadService::uploadAsWebp(
+                        $request->file('foto'),
+                        'users',
+                        $user->foto,
+                        800,
+                        85
+                    );
                 }
 
                 $user->update($dataUser);

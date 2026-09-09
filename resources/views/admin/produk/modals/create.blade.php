@@ -195,7 +195,7 @@
                                     <p class="text-xs text-danger mt-1">{{ $message }}</p>
                                 @enderror
                                 <p class="text-[11px] text-text-muted mt-1">
-                                    Maksimal 2MB. Format: JPG, JPEG, PNG.
+                                    Maksimal 5MB. Format: JPG, JPEG, PNG, WebP (Otomatis dikompres & dikonversi ke WebP HD).
                                 </p>
                             </div>
                         </div>

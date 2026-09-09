@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use App\Services\ImageUploadService;
 
 class IzinLatihanController extends Controller
 {
@@ -82,7 +83,7 @@ class IzinLatihanController extends Controller
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'jumlah_hari'     => 'required|integer|min:1',
             'alasan'          => 'required|string',
-            'bukti_alasan'    => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:2048',
+            'bukti_alasan'    => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf,doc,docx|max:5120',
         ]);
 
         if ($validator->fails()) {
@@ -95,9 +96,13 @@ class IzinLatihanController extends Controller
 
         $buktiPath = null;
         if ($request->hasFile('bukti_alasan')) {
-            $file = $request->file('bukti_alasan');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $buktiPath = $file->storeAs('izin_bukti', $filename, 'public');
+            $buktiPath = ImageUploadService::uploadOrConvertAsWebp(
+                $request->file('bukti_alasan'),
+                'izin_bukti',
+                null,
+                1600,
+                85
+            );
         }
 
         $izin = IzinLatihan::create([

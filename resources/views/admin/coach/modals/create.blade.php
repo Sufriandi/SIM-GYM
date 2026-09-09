@@ -98,7 +98,7 @@
                                     class="block w-full text-sm text-text-main file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gold-600 file:text-white hover:file:bg-gold-700"
                                     @change="const file = $event.target.files[0]; if(file){ const reader = new FileReader(); reader.onload = (e) => { createImageUrl = e.target.result; }; reader.readAsDataURL(file); } else { createImageUrl = null; }">
                                 <p class="text-[11px] text-text-muted mt-1">
-                                    Maksimal 2MB. Format yang didukung: JPG, JPEG, PNG.
+                                    Maksimal 5MB. Format: JPG, JPEG, PNG, WebP (Otomatis dikompres & dikonversi ke WebP HD).
                                 </p>
                             </div>
                         </div>

@@ -109,7 +109,7 @@
                                 <input type="file" id="foto_create" name="foto" accept="image/*"
                                     @change="setCreatePreview($event)"
                                     class="block w-full text-sm text-text-main file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gold-600 file:text-white hover:file:bg-gold-700">
-                                <p class="text-[11px] text-text-muted mt-1">Maksimal 2MB. Format: JPG, JPEG, PNG.</p>
+                                <p class="text-[11px] text-text-muted mt-1">Maksimal 5MB. Format: JPG, JPEG, PNG, WebP (Otomatis dikompres & dikonversi ke WebP HD).</p>
                             </div>
                         </div>
                     </div>

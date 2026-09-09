@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\InfoQris;
+use App\Services\ImageUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -14,10 +15,10 @@ class InfoQrisController extends Controller
         $validated = $request->validate([
             'nama_qris'  => ['required', 'string', 'max:150'],
             'keterangan' => ['nullable', 'string'],
-            'gambar'     => ['required', 'image', 'max:2048'], // input file name="gambar"
+            'gambar'     => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:5120'], // input file name="gambar"
         ]);
 
-        $path = $request->file('gambar')->store('qris', 'public');
+        $path = ImageUploadService::uploadAsWebp($request->file('gambar'), 'qris', null, 1200, 90);
 
         InfoQris::create([
             'nama_qris'   => $validated['nama_qris'],
@@ -35,7 +36,7 @@ class InfoQrisController extends Controller
         $validated = $request->validate([
             'nama_qris'  => ['required', 'string', 'max:150'],
             'keterangan' => ['nullable', 'string'],
-            'gambar'     => ['nullable', 'image', 'max:2048'],
+            'gambar'     => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:5120'],
         ]);
 
         $data = [
@@ -44,11 +45,7 @@ class InfoQrisController extends Controller
         ];
 
         if ($request->hasFile('gambar')) {
-            if ($infoQris->path_gambar && Storage::disk('public')->exists($infoQris->path_gambar)) {
-                Storage::disk('public')->delete($infoQris->path_gambar);
-            }
-
-            $data['path_gambar'] = $request->file('gambar')->store('qris', 'public');
+            $data['path_gambar'] = ImageUploadService::uploadAsWebp($request->file('gambar'), 'qris', $infoQris->path_gambar, 1200, 90);
         }
 
         $infoQris->update($data);
@@ -60,10 +57,9 @@ class InfoQrisController extends Controller
 
     public function destroy(InfoQris $infoQris)
     {
-        // Jika soft delete, file sebetulnya boleh dipertahankan.
-        // Tapi Anda minta menghindari penumpukan -> kita hapus file saat delete.
-        if ($infoQris->path_gambar && Storage::disk('public')->exists($infoQris->path_gambar)) {
-            Storage::disk('public')->delete($infoQris->path_gambar);
+        // Hapus file saat delete
+        if ($infoQris->path_gambar) {
+            ImageUploadService::delete($infoQris->path_gambar);
         }
 
         $infoQris->delete(); // soft delete

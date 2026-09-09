@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Produk;
+use App\Services\ImageUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -42,7 +43,7 @@ class ProdukController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'foto'      => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'foto'      => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
             'nama'      => ['required', 'string', 'max:255', Rule::unique('produks', 'nama')],
             'kategori'  => ['required', Rule::in($this->kategoriOptions)],
             'harga'     => 'required|integer|min:0',
@@ -51,7 +52,7 @@ class ProdukController extends Controller
 
         $fotoPath = null;
         if ($request->hasFile('foto')) {
-            $fotoPath = $request->file('foto')->store('photos/produks', 'public');
+            $fotoPath = ImageUploadService::uploadAsWebp($request->file('foto'), 'photos/produks', null, 1200, 85);
         }
 
         try {
@@ -66,7 +67,7 @@ class ProdukController extends Controller
                 ->with('success', 'Produk baru berhasil ditambahkan.');
         } catch (\Exception $e) {
             if ($fotoPath) {
-                Storage::disk('public')->delete($fotoPath);
+                ImageUploadService::delete($fotoPath);
             }
 
             return back()
@@ -87,17 +88,13 @@ class ProdukController extends Controller
             'kategori'  => ['required', Rule::in($this->kategoriOptions)],
             'harga'     => 'required|integer|min:0',
             'deskripsi' => 'nullable|string',
-            'foto'      => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'foto'      => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
         ]);
 
         $fotoPath = $produk->foto;
 
         if ($request->hasFile('foto')) {
-            // hapus file lama hanya jika Anda benar-benar replace foto
-            if ($fotoPath && Storage::disk('public')->exists($fotoPath)) {
-                Storage::disk('public')->delete($fotoPath);
-            }
-            $fotoPath = $request->file('foto')->store('photos/produks', 'public');
+            $fotoPath = ImageUploadService::uploadAsWebp($request->file('foto'), 'photos/produks', $produk->foto, 1200, 85);
         }
 
         $produk->update([
