@@ -47,32 +47,41 @@
     
         statusDraft: @js($status ?? ''),
         sortDraft: @js($sort ?? ''),
-    }"
-        x-effect="
-            const main = document.querySelector('main');
-            const html = document.documentElement;
-            const body = document.body;
-            const locked = openCreate || !!openEditId || !!openDetailId;
-            const targets = [html, body, main].filter(Boolean);
 
-            if (locked) {
-                targets.forEach((el) => {
-                    if (el.dataset.prevOverflowY === undefined) {
-                        el.dataset.prevOverflowY = el.style.overflowY || '';
-                    }
-                    el.style.overflowY = 'hidden';
-                });
-            } else {
-                targets.forEach((el) => {
-                    if (el.dataset.prevOverflowY !== undefined) {
-                        el.style.overflowY = el.dataset.prevOverflowY;
-                        delete el.dataset.prevOverflowY;
-                    } else {
-                        el.style.removeProperty('overflow-y');
-                    }
-                });
-            }
-        ">
+        toggleScroll() {
+            // requestAnimationFrame mencegah forced reflow
+            requestAnimationFrame(() => {
+                const locked = this.openCreate || !!this.openEditId || !!this.openDetailId;
+                const targets = [document.documentElement, document.body, document.querySelector('main')].filter(Boolean);
+
+                if (locked) {
+                    targets.forEach((el) => {
+                        if (el.dataset.prevOverflowY === undefined) {
+                            el.dataset.prevOverflowY = el.style.overflowY || '';
+                        }
+                        el.style.overflowY = 'hidden';
+                    });
+                } else {
+                    targets.forEach((el) => {
+                        if (el.dataset.prevOverflowY !== undefined) {
+                            el.style.overflowY = el.dataset.prevOverflowY;
+                            delete el.dataset.prevOverflowY;
+                        } else {
+                            el.style.removeProperty('overflow-y');
+                        }
+                    });
+                }
+            });
+        }
+    }"
+    x-init="
+        $watch('openCreate', () => toggleScroll());
+        $watch('openEditId', () => toggleScroll());
+        $watch('openDetailId', () => toggleScroll());
+        
+        // Eksekusi awal jika ada modal terbuka (misal error validasi)
+        if (openCreate) setTimeout(() => toggleScroll(), 50);
+    ">
 
         {{-- HEADER --}}
         <x-ui.section-header :title="$pageTitle" subtitle="Daftar member aktif dan histori keanggotaannya." />
@@ -178,7 +187,7 @@
         <x-ui.card class="border-brand-borderSoft overflow-visible max-h-none">
             <div class="px-6 py-4 border-b border-brand-borderSoft flex items-center justify-between">
                 <div>
-                    <h3 class="text-lg font-bold text-text-main">Daftar Member</h3>
+                    <h1 class="text-lg font-bold text-text-main">Daftar Member</h1>
                     <p class="text-xs text-text-muted mt-0.5">
                         Semua member yang terdaftar dalam sistem.
                         @if ($search)
@@ -269,6 +278,7 @@
                                         class="w-14 h-14 rounded-lg border border-brand-borderSoft/80 bg-brand-surface-50 overflow-hidden">
                                         <img src="{{ $foto }}" alt="Foto {{ $displayName }}"
                                             class="w-full h-full object-cover"
+                                            loading="lazy" decoding="async" width="56" height="56"
                                             onerror="this.onerror=null; this.src='https://placehold.co/100x100/3A2D2A/F5E6D6?text=No+Foto';">
                                     </div>
                                 </td>
@@ -281,6 +291,7 @@
                                             class="sm:hidden w-10 h-10 rounded-lg border border-brand-borderSoft/80 bg-brand-surface-50 overflow-hidden shrink-0">
                                             <img src="{{ $foto }}" alt="Foto {{ $displayName }}"
                                                 class="w-full h-full object-cover"
+                                                loading="lazy" decoding="async" width="40" height="40"
                                                 onerror="this.onerror=null; this.src='https://placehold.co/100x100/3A2D2A/F5E6D6?text=No+Foto';">
                                         </div>
 
