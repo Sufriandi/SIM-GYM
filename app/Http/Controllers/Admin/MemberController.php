@@ -67,6 +67,15 @@ class MemberController extends Controller
                 $join->on('tm.id', '=', 'tm_latest.latest_id');
             });
 
+            $query->leftJoin('paket_memberships as tm_paket', 'tm_paket.id', '=', 'tm.paket_id');
+
+            $query->addSelect([
+                'tm.id as latest_tm_id',
+                'tm.tanggal_mulai as latest_tm_tanggal_mulai',
+                'tm.tanggal_akhir as latest_tm_tanggal_akhir',
+                'tm_paket.nama as latest_tm_paket_nama',
+            ]);
+
             // FILTER STATUS
             if ($status === 'aktif') {
                 $query->whereNotNull('tm.id')
@@ -105,6 +114,29 @@ class MemberController extends Controller
             'status' => $status,
             'sort'   => $sort,
         ]);
+
+        $todayStr = now()->toDateString();
+        $members->getCollection()->transform(function ($member) use ($todayStr) {
+            if (!empty($member->latest_tm_id)) {
+                $mulai = (string) ($member->latest_tm_tanggal_mulai ?? '');
+                $akhir = (string) ($member->latest_tm_tanggal_akhir ?? '');
+
+                if ($mulai !== '' && $akhir !== '' && $mulai <= $todayStr && $akhir >= $todayStr) {
+                    $member->computed_status = 'aktif';
+                    $member->computed_paket = $member->latest_tm_paket_nama;
+                } elseif ($akhir !== '' && $akhir < $todayStr) {
+                    $member->computed_status = 'expired';
+                    $member->computed_paket = $member->latest_tm_paket_nama;
+                } else {
+                    $member->computed_status = 'belum_aktif';
+                    $member->computed_paket = $member->latest_tm_paket_nama;
+                }
+            } else {
+                $member->computed_status = 'belum_aktif';
+                $member->computed_paket = null;
+            }
+            return $member;
+        });
 
         return view('admin.members.index', compact('members', 'search', 'status', 'sort'));
     }

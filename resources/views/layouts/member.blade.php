@@ -42,9 +42,6 @@
         @yield('content')
     </main>
 
-    {{-- 1. Sertakan Library SweetAlert2 --}}
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
     {{-- 2. Skrip Penangan Notifikasi --}}
     <script>
     document.addEventListener('DOMContentLoaded', function () {

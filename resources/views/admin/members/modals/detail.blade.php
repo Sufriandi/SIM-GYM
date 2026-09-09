@@ -17,21 +17,26 @@
 
     $tglDaftar = $member->tanggal_daftar ? Carbon::parse($member->tanggal_daftar)->translatedFormat('d F Y') : '-';
 
-    // AMBIL DATA TRANSAKSI AKTIF
-    $activeTx = $member->active_membership_transaction;
+    // AMBIL DATA TRANSAKSI AKTIF (Gunakan data pre-joined agar zero-query)
+    $durasiMulai = !empty($member->latest_tm_tanggal_mulai)
+        ? Carbon::parse($member->latest_tm_tanggal_mulai)->translatedFormat('d F Y')
+        : '-';
 
-    $durasiMulai = $activeTx ? Carbon::parse($activeTx->tanggal_mulai)->translatedFormat('d F Y') : '-';
-    $durasiAkhir = $activeTx ? Carbon::parse($activeTx->tanggal_akhir)->translatedFormat('d F Y') : '-';
+    $durasiAkhir = !empty($member->latest_tm_tanggal_akhir)
+        ? Carbon::parse($member->latest_tm_tanggal_akhir)->translatedFormat('d F Y')
+        : '-';
 
-    $statusKey = $member->status_membership ?? 'belum_aktif';
+    $hasTx = !empty($member->latest_tm_id) || ($durasiMulai !== '-');
+
+    $statusKey = $member->computed_status ?? $member->status_membership ?? 'belum_aktif';
     $statusVariant = match ($statusKey) {
         'aktif' => 'success',
         'expired' => 'danger',
         'belum_aktif' => 'warning',
-        'default' => 'neutral',
+        default => 'neutral',
     };
     $statusLabel = Str::upper(str_replace('_', ' ', $statusKey));
-    $paketAktifNama = $member->nama_paket_aktif ?? null;
+    $paketAktifNama = isset($member->computed_status) ? $member->computed_paket : ($member->nama_paket_aktif ?? null);
 
     $jenisKelamin = !empty($user?->jenis_kelamin) ? ucfirst($user->jenis_kelamin) : '-';
 
@@ -103,14 +108,14 @@
                                 <div>
                                     <p class="text-[11px] text-text-muted mb-0.5 uppercase tracking-wider">Mulai</p>
                                     <p
-                                        class="text-sm {{ $activeTx ? 'text-text-main font-medium' : 'text-text-muted italic' }}">
+                                        class="text-sm {{ $hasTx ? 'text-text-main font-medium' : 'text-text-muted italic' }}">
                                         {{ $durasiMulai }}
                                     </p>
                                 </div>
                                 <div>
                                     <p class="text-[11px] text-text-muted mb-0.5 uppercase tracking-wider">Berakhir</p>
                                     <p
-                                        class="text-sm {{ $activeTx ? 'text-text-main font-medium' : 'text-text-muted italic' }}">
+                                        class="text-sm {{ $hasTx ? 'text-text-main font-medium' : 'text-text-muted italic' }}">
                                         {{ $durasiAkhir }}
                                     </p>
                                 </div>

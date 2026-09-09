@@ -16,8 +16,6 @@
     {{-- Favicon --}}
     <link rel="icon" type="image/png" href="{{ asset('images/logo.webp') }}">
 
-    {{-- Lucide Icons --}}
-    <script src="https://unpkg.com/lucide@latest" defer></script>
     <script>
         (function() {
             const saved = localStorage.getItem('theme');
@@ -45,7 +43,7 @@
             <x-admin.navbar :page-title="$pageTitle" :page-subtitle="$pageSubtitle" />
 
             {{-- CONTENT (SCROLLABLE, TANPA HORIZONTAL OVERFLOW) overflow-y-auto overflow-x-hidden custom-scrollbar --}}
-            <main class="flex-1 mt-20 px-4 lg:px-8 pb-8 ">
+            <main id="main-content" class="flex-1 mt-20 px-4 lg:px-8 pb-8">
                 {{ $slot }}
             </main>
         </div>
@@ -53,32 +51,6 @@
 
     {{-- TOAST GLOBAL --}}
     <x-ui.toast />
-
-    {{-- Init Lucide --}}
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            if (window.lucide) {
-                window.lucide.createIcons();
-            }
-        });
-    </script>
-
-    {{-- ALPINE.JS GLOBAL UNTUK ADMIN --}}
-    <script src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('sidebarNav', (defaultOpen) => ({
-                openKehadiran: JSON.parse(localStorage.getItem('sidebar-openKehadiran') ?? (
-                    defaultOpen ? 'true' : 'false')),
-
-                toggleKehadiran() {
-                    this.openKehadiran = !this.openKehadiran;
-                    localStorage.setItem('sidebar-openKehadiran', JSON.stringify(this.openKehadiran));
-                },
-            }));
-        });
-    </script>
 
     @stack('scripts')
 </body>

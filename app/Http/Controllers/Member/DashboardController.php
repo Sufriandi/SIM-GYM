@@ -59,9 +59,9 @@ class DashboardController extends Controller
 
         $latestMembership = null;
 
-        $hasMembershipTables =
-            Schema::hasTable('transaksi_memberships') &&
-            Schema::hasTable('transaksi_membership_members');
+        $hasMembershipTables = \Illuminate\Support\Facades\Cache::rememberForever('schema_has_member_membership_tables', function () {
+            return Schema::hasTable('transaksi_memberships') && Schema::hasTable('transaksi_membership_members');
+        });
 
         if ($hasMembershipTables) {
 

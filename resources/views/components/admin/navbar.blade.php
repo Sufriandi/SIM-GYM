@@ -115,21 +115,21 @@
         notifItems: [],
         lastMaxId: 0,
 
-        pollMs: 5000,
+        pollMs: 30000,
         pollTimer: null,
 
         initNotifications() {
-            // initial load dropdown list (tanpa bunyi)
-            this.fetchNotif(true);
-
-            // IMPORTANT: polling tetap jalan walaupun tab hidden
+            // Polling background setiap 30s saat tab aktif
             this.pollTimer = setInterval(() => {
-                this.fetchNotif(false);
+                if (!document.hidden) {
+                    this.fetchNotif(false);
+                }
             }, this.pollMs);
 
-            // optional: saat balik tab, refresh list dropdown (tanpa bunyi)
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) this.fetchNotif(true);
+                if (!document.hidden && this.showNotifications) {
+                    this.fetchNotif(true);
+                }
             });
         },
 
@@ -185,7 +185,9 @@
             this.showNotifications = !this.showNotifications;
             this.showProfile = false;
 
-            if (this.showNotifications) this.fetchNotif(true);
+            if (this.showNotifications && this.notifItems.length === 0) {
+                this.fetchNotif(true);
+            }
         },
 
         formatTime(iso) {
@@ -483,8 +485,3 @@
     </div>
 </header>
 
-@once
-    @push('scripts')
-        <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    @endpush
-@endonce

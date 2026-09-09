@@ -26,7 +26,6 @@
         })();
     </script>
 
-    <script defer src="https://unpkg.com/lucide@latest"></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
@@ -38,7 +37,7 @@
             <x-member.navbar :page-title="$pageTitle" :page-subtitle="$pageSubtitle" />
 
             {{-- KONTEN --}}
-            <main class="flex-1 mt-20 px-4 lg:px-8 pb-10 min-w-0 overflow-visible">
+            <main id="main-content" class="flex-1 mt-20 px-4 lg:px-8 pb-10 min-w-0 overflow-visible">
                 {{ $slot }}
             </main>
 
@@ -48,13 +47,6 @@
 
     <x-ui.toast />
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            if (window.lucide) window.lucide.createIcons();
-        });
-    </script>
-
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     @stack('scripts')
 </body>
 

@@ -34,21 +34,21 @@
         notifItems: [],
         lastMaxId: 0,
 
-        pollMs: 5000,
+        pollMs: 30000,
         pollTimer: null,
 
         initNotifications() {
-            // initial load dropdown list
-            this.fetchNotif(true);
-
-            // polling tetap jalan
+            // Polling background setiap 30s saat tab aktif
             this.pollTimer = setInterval(() => {
-                this.fetchNotif(false);
+                if (!document.hidden) {
+                    this.fetchNotif(false);
+                }
             }, this.pollMs);
 
-            // saat balik tab -> refresh list
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) this.fetchNotif(true);
+                if (!document.hidden && this.showNotifications) {
+                    this.fetchNotif(true);
+                }
             });
         },
 
@@ -103,7 +103,9 @@
             this.showNotifications = !this.showNotifications;
             this.showProfile = false;
 
-            if (this.showNotifications) this.fetchNotif(true);
+            if (this.showNotifications && this.notifItems.length === 0) {
+                this.fetchNotif(true);
+            }
         },
 
         formatTime(iso) {

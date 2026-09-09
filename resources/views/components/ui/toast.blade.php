@@ -33,28 +33,34 @@
 
 @if($toast ?? false)
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // pastikan Swal (SweetAlert2) sudah tersedia global
-            if (typeof Swal === 'undefined') {
-                console.warn('SweetAlert2 (Swal) tidak ditemukan. Pastikan sudah di-load.');
-                return;
+        (function () {
+            function showToast() {
+                if (typeof Swal === 'undefined') {
+                    console.warn('SweetAlert2 (Swal) tidak ditemukan.');
+                    return;
+                }
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: @json($toast['type'] ?? 'success'),
+                    title: @json($toast['message'] ?? ''),
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    background: '#1f2937',
+                    color: '#f9fafb',
+                    customClass: {
+                        popup: 'shadow-btn-primary rounded-xl',
+                        title: 'text-[13px] font-medium',
+                    },
+                });
             }
 
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: @json($toast['type'] ?? 'success'),
-                title: @json($toast['message'] ?? ''),
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true,
-                background: '#1f2937', // sedikit gelap biar kontras
-                color: '#f9fafb',
-                customClass: {
-                    popup: 'shadow-btn-primary rounded-xl',
-                    title: 'text-[13px] font-medium',
-                },
-            });
-        });
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', showToast);
+            } else {
+                showToast();
+            }
+        })();
     </script>
 @endif
