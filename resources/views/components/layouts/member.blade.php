@@ -6,7 +6,7 @@
 ])
 
 <!DOCTYPE html>
-<html lang="id" class="h-full overflow-x-hidden">
+<html lang="id" class="scroll-smooth">
 
 <head>
     <meta charset="utf-8">
@@ -29,7 +29,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
-<body class="min-h-screen bg-brand-bg text-text-main antialiased overflow-x-hidden">
+<body class="min-h-screen bg-brand-bg text-text-main antialiased overflow-x-clip">
     <div class="min-h-screen flex bg-brand-bg">
         <x-member.sidebar />
 

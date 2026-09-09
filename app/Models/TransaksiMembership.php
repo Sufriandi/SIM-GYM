@@ -109,6 +109,19 @@ class TransaksiMembership extends Model
         return $end ? Carbon::parse($end)->startOfDay() : null;
     }
 
+    public static function isAktifUntukMember(int $memberId, $date = null): bool
+    {
+        $d = $date ? Carbon::parse($date)->toDateString() : Carbon::today()->toDateString();
+
+        return TransaksiMembershipMember::query()
+            ->join('transaksi_memberships as tm', 'tm.id', '=', 'transaksi_membership_members.transaksi_membership_id')
+            ->whereNull('tm.canceled_at')
+            ->where('transaksi_membership_members.member_id', $memberId)
+            ->whereDate('transaksi_membership_members.tanggal_mulai', '<=', $d)
+            ->whereDate('transaksi_membership_members.tanggal_akhir', '>=', $d)
+            ->exists();
+    }
+
     public function getStatusAttribute(): string
     {
         if ($this->canceled_at) {

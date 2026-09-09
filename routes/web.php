@@ -8,6 +8,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\GuestCoachController;
+use App\Http\Controllers\GuestMembershipController;
 
 
 // Controller Admin
@@ -66,16 +67,13 @@ Route::name('guest.')->group(function () {
     Route::get('/', [HomeController::class, 'index'])->name('home');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // === MEMBERSHIP ROUTES ===
+    Route::get('/membership', [GuestMembershipController::class, 'index'])->name('membership.index');
+
     // === MARKETPLACE ROUTES ===
 
     // 1. Index (Katalog)
     Route::get('/marketplace', [MarketplaceController::class, 'index'])->name('marketplace.index');
-
-    // 2. Cart & Checkout
-    Route::get('/marketplace/cart', [MarketplaceController::class, 'cart'])->name('marketplace.cart');
-
-    // 3. Detail Produk (Wildcard {slug})
-    Route::get('/marketplace/{slug}', [MarketplaceController::class, 'show'])->name('marketplace.show');
 
     // === COACH ROUTES ===
     Route::get('/coaches', [GuestCoachController::class, 'index'])->name('coaches.index');
@@ -83,33 +81,42 @@ Route::name('guest.')->group(function () {
 });
 
 
-// // halaman cart (pastikan route name ini memang dipakai di controller)
-// Route::get('/marketplace/cart', [MarketplaceController::class, 'cart'])
-//     ->name('guest.marketplace.cart');
+// ==========================================
+// MARKETPLACE CART & ACTIONS (MENGARAHKAN KE LOGIN)
+// Pengunjung harus login untuk mengakses keranjang dan transaksi
+// ==========================================
+Route::get('/marketplace/cart', function () {
+    return redirect()->route('login');
+})->name('guest.marketplace.cart');
 
-// // actions
-// Route::post('/cart/add/{id}', [MarketplaceController::class, 'addToCart'])
-//     ->name('guest.marketplace.cart.add');
-
-// // remove via POST (untuk AJAX tanpa reload)
-// Route::post('/cart/remove/{id}', [MarketplaceController::class, 'removeFromCart'])
-//     ->name('guest.marketplace.cart.remove');
-
-// // fallback lama (kalau masih ada link GET remove di tempat lain)
-// Route::get('/cart/remove/{id}', [MarketplaceController::class, 'removeFromCart']);
-
-// // qty via POST (AJAX)
-// Route::post('/cart/{id}/quantity', [MarketplaceController::class, 'updateCartQuantity'])
-//     ->name('guest.marketplace.cart.quantity');
-
-// // guard: kalau keakses GET (misal refresh), jangan 405
-// Route::get('/cart/{id}/quantity', function () {
-//     return redirect()->route('guest.marketplace.cart');
-// });
-Route::middleware('auth')->group(function () {
-    Route::post('/cart/add/{id}', [MarketplaceController::class, 'add'])->name('cart.add');
-    Route::get('/marketplace/cart', [MarketplaceController::class, 'index'])->name('guest.marketplace.cart');
+Route::get('/cart', function () {
+    return redirect()->route('login');
 });
+
+Route::middleware('auth')->group(function () {
+    // Tambah ke Keranjang
+    Route::post('/cart/add/{id}', [MarketplaceController::class, 'addToCart'])
+        ->name('cart.add');
+    Route::post('/guest/cart/add/{id}', [MarketplaceController::class, 'addToCart'])
+        ->name('guest.marketplace.cart.add');
+
+    // Hapus dari Keranjang
+    Route::post('/cart/remove/{id}', [MarketplaceController::class, 'removeFromCart'])
+        ->name('guest.marketplace.cart.remove');
+    Route::get('/cart/remove/{id}', [MarketplaceController::class, 'removeFromCart']);
+
+    // Update Qty
+    Route::post('/cart/{id}/quantity', [MarketplaceController::class, 'updateCartQuantity'])
+        ->name('guest.marketplace.cart.quantity');
+    Route::get('/cart/{id}/quantity', function () {
+        return redirect()->route('login');
+    });
+});
+
+// Detail Produk Publik (Wildcard {slug} diletakkan setelah /marketplace/cart)
+Route::get('/marketplace/{slug}', [MarketplaceController::class, 'show'])
+    ->where('slug', '^[0-9]+-.*$')
+    ->name('guest.marketplace.show');
 
 
 /*
@@ -377,14 +384,24 @@ Route::middleware(['auth', 'member', SyncMemberCartToSession::class])
             ->name('produk_gym.show');
 
         // =========================
-        // Cart (Member)
+        // Cart & Payment (Member)
         // =========================
         Route::get('/produk_gym/cart', [ProdukGymController::class, 'cart'])
             ->name('produk_gym.cart');
 
+        Route::get('/produk_gym/pembayaran', [ProdukGymController::class, 'payment'])
+            ->name('produk_gym.payment');
+
+        Route::get('/produk_gym/checkout', [ProdukGymController::class, 'payment'])
+            ->name('produk_gym.checkout');
+
         Route::post('/produk_gym/cart/add/{id}', [ProdukGymController::class, 'addToCart'])
             ->whereNumber('id')
             ->name('produk_gym.cart.add');
+
+        Route::post('/produk_gym/buy-now/{id}', [ProdukGymController::class, 'buyNow'])
+            ->whereNumber('id')
+            ->name('produk_gym.buy_now');
 
         // AJAX remove (sesuai JS Anda yang POST)
         Route::post('/produk_gym/cart/remove/{id}', [ProdukGymController::class, 'removeFromCart'])
@@ -435,6 +452,10 @@ Route::middleware(['auth', 'member', SyncMemberCartToSession::class])
             Route::get('/{paketMembership}/checkout', [\App\Http\Controllers\Member\PaketMembershipController::class, 'checkout'])
                 ->whereNumber('paketMembership')
                 ->name('checkout');
+
+            Route::get('/{paketMembership}/pembayaran', [\App\Http\Controllers\Member\PaketMembershipController::class, 'checkout'])
+                ->whereNumber('paketMembership')
+                ->name('payment');
 
             // DETAIL PAKET MEMBERSHIP
             Route::get('/{paketMembership}', [\App\Http\Controllers\Member\PaketMembershipController::class, 'show'])

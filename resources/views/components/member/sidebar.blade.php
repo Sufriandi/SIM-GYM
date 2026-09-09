@@ -155,11 +155,18 @@
                 {{-- MEMBERSHIP --}}
                 <a href="{{ route('member.membership.index') }}" @click="mobileOpen = false"
                     class="group flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium
-                    {{ $isMembership
-                        ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300'
-                        : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white' }}">
-                    <i data-lucide="id-card" class="w-5 h-5"></i>
+                           transition-all duration-300
+                           {{ $isMembership
+                               ? 'bg-gradient-to-r from-gold-500/20 to-transparent text-gold-300 shadow-lg shadow-gold-500/20'
+                               : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
+                    aria-current="{{ $isMembership ? 'page' : 'false' }}">
+                    <i data-lucide="id-card"
+                        class="w-5 h-5 transition-transform duration-300 group-hover:scale-110"></i>
                     <span>Membership</span>
+
+                    @if ($isMembership)
+                        <div class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full animate-pulse"></div>
+                    @endif
                 </a>
 
                 {{-- Produk Gym --}}
@@ -171,11 +178,13 @@
                                : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
                     aria-current="{{ $isProduk ? 'page' : 'false' }}">
                     <i data-lucide="shopping-bag"
-                        class="w-5 h-5 transition-transform duration-300
-                               {{ $isProduk ? 'text-gold-300' : 'group-hover:scale-110' }}"></i>
+                        class="w-5 h-5 transition-transform duration-300 group-hover:scale-110"></i>
                     <span>Produk Gym</span>
-                </a>
 
+                    @if ($isProduk)
+                        <div class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full animate-pulse"></div>
+                    @endif
+                </a>
 
                 {{-- Coach --}}
                 <a href="{{ route('member.coach.index') }}" @click="mobileOpen = false"
@@ -186,9 +195,12 @@
                                : 'text-brand-silver hover:bg-brand-gunmetal/40 hover:text-white hover:translate-x-1' }}"
                     aria-current="{{ $isCoach ? 'page' : 'false' }}">
                     <i data-lucide="users"
-                        class="w-5 h-5 transition-transform duration-300
-                               {{ $isCoach ? 'text-gold-300' : 'group-hover:scale-110' }}"></i>
+                        class="w-5 h-5 transition-transform duration-300 group-hover:scale-110"></i>
                     <span>Coach</span>
+
+                    @if ($isCoach)
+                        <div class="ml-auto w-1.5 h-8 bg-gradient-to-b from-gold-400 to-gold-600 rounded-full animate-pulse"></div>
+                    @endif
                 </a>
             </div>
         </nav>

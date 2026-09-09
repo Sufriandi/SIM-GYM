@@ -155,32 +155,30 @@
 
                         <div class="my-6 border-t border-brand-borderSoft"></div>
 
-                        {{-- MINI CARDS (rapi + jelas di dark) --}}
-                        <div class="grid grid-cols-2 gap-4">
-
+                        {{-- DETAIL KONTAK (rapi + jelas di dark & light) --}}
+                        <div class="space-y-3">
                             {{-- No HP --}}
-                            <div class="{{ $miniCard }} p-4 min-h-[96px]">
-                                <div class="flex items-center gap-2">
-                                    <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl
-                                                 bg-brand-shell border border-brand-borderSoft">
+                            <div class="{{ $miniCard }} p-3.5">
+                                <div class="flex items-center gap-3">
+                                    <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-brand-shell border border-brand-borderSoft shrink-0">
                                         <svg class="w-4 h-4 text-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2H5a2 2 0 01-2-2v-3.28z"></path>
+                                                  d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-10a2 2 0 01-2-2v-3.28z"></path>
                                         </svg>
                                     </span>
-                                    <div class="text-[11px] font-semibold text-text-muted">No. HP</div>
-                                </div>
-
-                                <div class="mt-3 text-sm font-extrabold text-text-main font-mono tracking-tight truncate">
-                                    {{ $user?->no_hp ?: '-' }}
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[11px] font-semibold text-text-muted uppercase tracking-wider">No. Handphone</div>
+                                        <div class="mt-0.5 text-sm font-extrabold text-text-main font-mono tracking-tight truncate">
+                                            {{ $user?->no_hp ?: '-' }}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
                             {{-- Jenis Kelamin --}}
-                            <div class="{{ $miniCard }} p-4 min-h-[96px]">
-                                <div class="flex items-center gap-2">
-                                    <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl
-                                                 bg-brand-shell border border-brand-borderSoft">
+                            <div class="{{ $miniCard }} p-3.5">
+                                <div class="flex items-center gap-3">
+                                    <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-brand-shell border border-brand-borderSoft shrink-0">
                                         <svg class="w-4 h-4 text-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                   d="M12 12a5 5 0 100-10 5 5 0 000 10z"></path>
@@ -188,33 +186,33 @@
                                                   d="M20 21a8 8 0 10-16 0"></path>
                                         </svg>
                                     </span>
-                                    <div class="text-[11px] font-semibold text-text-muted">J. Kelamin</div>
-                                </div>
-
-                                <div class="mt-3 text-sm font-extrabold text-text-main truncate">
-                                    {{ $user?->jenis_kelamin ? Str::title(str_replace('-', ' ', $user->jenis_kelamin)) : '-' }}
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Jenis Kelamin</div>
+                                        <div class="mt-0.5 text-sm font-extrabold text-text-main truncate">
+                                            {{ $user?->jenis_kelamin ? Str::title(str_replace(['-', '_'], ' ', $user->jenis_kelamin)) : '-' }}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                        </div>
-
-                        {{-- Alamat --}}
-                        <div class="mt-4 {{ $miniCard }} p-4">
-                            <div class="flex items-center gap-2">
-                                <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl
-                                             bg-brand-shell border border-brand-borderSoft">
-                                    <svg class="w-4 h-4 text-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M12 21s7-4.35 7-11a7 7 0 10-14 0c0 6.65 7 11 7 11z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M12 10a2 2 0 110-4 2 2 0 010 4z"></path>
-                                    </svg>
-                                </span>
-                                <div class="text-[11px] font-semibold text-text-muted">Alamat</div>
-                            </div>
-
-                            <div class="mt-2 text-sm text-text-main leading-relaxed line-clamp-3">
-                                {{ $user?->alamat ?: '-' }}
+                            {{-- Alamat --}}
+                            <div class="{{ $miniCard }} p-3.5">
+                                <div class="flex items-start gap-3">
+                                    <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-brand-shell border border-brand-borderSoft shrink-0 mt-0.5">
+                                        <svg class="w-4 h-4 text-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M12 21s7-4.35 7-11a7 7 0 10-14 0c0 6.65 7 11 7 11z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M12 10a2 2 0 110-4 2 2 0 010 4z"></path>
+                                        </svg>
+                                    </span>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Alamat</div>
+                                        <div class="mt-0.5 text-sm text-text-main leading-relaxed line-clamp-3 break-words">
+                                            {{ $user?->alamat ?: '-' }}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

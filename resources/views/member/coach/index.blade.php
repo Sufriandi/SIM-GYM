@@ -197,11 +197,7 @@
                             <div class="mt-4 space-y-2">
                                 <div class="flex items-center gap-2 text-[11px] sm:text-xs text-brand-textSoft/80">
                                     <i data-lucide="map-pin" class="w-4 h-4 text-gold-500/70"></i>
-                                    <span class="truncate">{{ $coach->alamat ?: 'Lokasi gym' }}</span>
-                                </div>
-                                <div class="flex items-center gap-2 text-[11px] sm:text-xs text-brand-textSoft/80">
-                                    <i data-lucide="phone" class="w-4 h-4 text-gold-500/70"></i>
-                                    <span class="truncate">{{ $coach->no_hp ?: '-' }}</span>
+                                    <span class="truncate">BETA GYM Center</span>
                                 </div>
                             </div>
 

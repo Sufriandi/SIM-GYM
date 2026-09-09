@@ -8,36 +8,40 @@ use App\Models\InfoRekening;
 use App\Models\PaketMembership;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 
 class PaketMembershipController extends Controller
 {
     public function index(Request $request)
     {
-        $tipe = $request->get('tipe');
-        $sort = $request->get('sort', 'recommended');
+        $pakets = PaketMembership::query()
+            ->where('is_public', true)
+            ->orderBy('harga', 'asc')
+            ->get();
 
-        $query = PaketMembership::public()
-            ->when($tipe, fn($q) => $q->where('tipe', $tipe));
+        $recommendedId = null;
+        $longestId = null;
 
-        switch ($sort) {
-            case 'price_low':
-                $query->orderBy('harga', 'asc');
-                break;
-            case 'price_high':
-                $query->orderBy('harga', 'desc');
-                break;
-            case 'duration_long':
-                $query->orderBy('durasi', 'desc');
-                break;
-            default:
-                $query->orderBy('created_at', 'desc');
-                break;
+        if ($pakets->isNotEmpty()) {
+            // Paket paling populer: prioritaskan "Paket 1 Bulan" (single)
+            $popularPaket = $pakets->firstWhere('nama', 'Paket 1 Bulan')
+                ?? $pakets->first(fn($p) => stripos($p->nama, '1 Bulan') !== false && $p->tipe === 'single')
+                ?? $pakets->first();
+            $recommendedId = $popularPaket?->id;
+
+            // Paket durasi terpanjang di luar paket populer
+            $longest = $pakets->where('id', '!=', $recommendedId)->sortByDesc('durasi')->first();
+            $longestId = $longest?->id;
         }
 
-        $pakets = $query->get();
-
-        return view('member.membership.index', compact('pakets'));
+        return view('member.membership.index', [
+            'pageTitle'     => 'Paket Membership',
+            'pageSubtitle'  => 'Pilih paket membership sesuai ritme dan target latihan Anda.',
+            'pakets'        => $pakets,
+            'recommendedId' => $recommendedId,
+            'longestId'     => $longestId,
+        ]);
     }
 
     public function show(PaketMembership $paketMembership)
@@ -53,7 +57,15 @@ class PaketMembershipController extends Controller
 
         $totalTagihan = (int) $paketMembership->harga;
         $paketNama    = (string) $paketMembership->nama;
-        $orderId      = 'MBR-' . strtoupper(Str::random(9));
+
+        // Gunakan session agar Order ID konsisten saat refresh laman
+        $sessionKey = 'pending_mbr_order_' . $paketMembership->id;
+        if (!Session::has($sessionKey)) {
+            Session::put($sessionKey, 'MBR-' . now()->format('ymd') . '-' . strtoupper(
+                Str::of(Str::random(12))->replaceMatches('/[^A-Za-z]/', '')->substr(0, 6)
+            ));
+        }
+        $orderId = Session::get($sessionKey);
 
         $rekenings = InfoRekening::query()->orderBy('nama_bank')->get();
         $qris      = InfoQris::query()->first();
@@ -63,21 +75,22 @@ class PaketMembershipController extends Controller
             ->whereNotNull('no_hp')
             ->orderBy('id', 'asc')
             ->value('no_hp');
-        $waAdmin = $waAdminRaw ? preg_replace('/^0/', '62', preg_replace('/\D/', '', $waAdminRaw)) : null;
+        $waAdmin = $waAdminRaw ? preg_replace('/^0/', '62', preg_replace('/\D/', '', $waAdminRaw)) : '6281234567890';
         $merchantName = 'BETA GYM';
         $merchantLogo = asset('images/logo.webp');
 
-
-        return view('member.membership.checkout', compact(
-            'paketMembership',
-            'totalTagihan',
-            'paketNama',
-            'orderId',
-            'rekenings',
-            'qris',
-            'waAdmin',
-            'merchantName',
-            'merchantLogo',
-        ));
+        return view('member.membership.checkout', [
+            'pageTitle'       => 'Payment Gateway – ' . $paketNama,
+            'pageSubtitle'    => 'Selesaikan pembayaran untuk mengaktifkan membership.',
+            'paketMembership' => $paketMembership,
+            'totalTagihan'    => $totalTagihan,
+            'paketNama'       => $paketNama,
+            'orderId'         => $orderId,
+            'rekenings'       => $rekenings,
+            'qris'            => $qris,
+            'waAdmin'         => $waAdmin,
+            'merchantName'    => $merchantName,
+            'merchantLogo'    => $merchantLogo,
+        ]);
     }
 }

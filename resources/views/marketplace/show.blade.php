@@ -76,17 +76,12 @@
                 </nav>
 
                 {{-- B. Cart Button (Icon Bulat Simple seperti Index) --}}
-                <a href="{{ route('guest.marketplace.cart') }}"
-                   class="relative w-11 h-11 flex items-center justify-center rounded-full bg-gold-500 hover:bg-gold-400 text-brand-nav transition-all shadow-lg hover:shadow-gold-glow group flex-shrink-0">
+                <a href="{{ route('login') }}"
+                   class="relative w-11 h-11 flex items-center justify-center rounded-full bg-gold-500 hover:bg-gold-400 text-brand-nav transition-all shadow-lg hover:shadow-gold-glow group flex-shrink-0"
+                   title="Login untuk melihat keranjang">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="group-hover:-rotate-6 transition-transform">
                         <circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
                     </svg>
-
-                    @if($cartCount > 0)
-                        <span class="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full border-2 border-brand-dark shadow-sm font-bold">
-                            {{ $cartCount }}
-                        </span>
-                    @endif
                 </a>
             </div>
 
@@ -184,47 +179,41 @@
 
                     {{-- E. ACTION BUTTON (Capsule) --}}
                     {{-- Sticky on Mobile, Static on Desktop --}}
-                    {{-- E. ACTION BUTTON (CAPSULE) --}}
-{{-- Sticky on Mobile, Static on Desktop --}}
-<div class="fixed bottom-0 left-0 w-full bg-[#0a0a0a]/90 backdrop-blur-md border-t border-brand-borderSoft/20 p-4 z-50 lg:static lg:bg-transparent lg:border-none lg:p-0 lg:z-auto">
-    <div class="container mx-auto lg:px-0">
+                    <div class="fixed bottom-0 left-0 w-full bg-[#0a0a0a]/90 backdrop-blur-md border-t border-brand-borderSoft/20 p-4 z-50 lg:static lg:bg-transparent lg:border-none lg:p-0 lg:z-auto">
+                        <div class="container mx-auto lg:px-0">
 
-        @auth
-            @if($ready)
-                <form action="{{ url('/cart/add/'.$product->id) }}" method="POST" class="w-full">
-                    @csrf
-                    <button type="submit"
-                            class="group relative w-full py-4 bg-gold-500 hover:bg-gold-400 text-brand-nav font-bold text-sm uppercase tracking-widest rounded-full transition-all duration-300 shadow-[0_4px_20px_-5px_rgba(234,179,8,0.4)] hover:shadow-[0_8px_30px_-5px_rgba(234,179,8,0.5)] hover:-translate-y-0.5 overflow-hidden flex items-center justify-center gap-3">
-                        <span>Masukkan Keranjang</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                             class="transition-transform duration-300 group-hover:translate-x-1">
-                            <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
-                        </svg>
-                    </button>
-                </form>
-            @else
-                <button disabled
-                        class="w-full py-4 bg-brand-surface-200/20 text-brand-silver/30 font-bold text-sm uppercase tracking-widest rounded-full cursor-not-allowed border border-brand-borderSoft/10">
-                    Stok Habis
-                </button>
-            @endif
-        @else
-            {{-- Guest: wajib login dulu (tidak add ke cart) --}}
-            <a href="{{ Route::has('login') ? route('login') : url('/login') }}"
-               class="group relative w-full py-4 rounded-full transition-all duration-300 overflow-hidden flex items-center justify-center gap-3
-                      bg-black/30 hover:bg-black/40 border border-gold-500/20 hover:border-gold-500/40 text-white font-bold text-sm uppercase tracking-widest">
-                <i data-lucide="log-in" class="w-5 h-5 text-gold-500/90"></i>
-                <span>Login untuk Menambahkan</span>
-            </a>
-        @endauth
+                            @auth
+                                @if($ready)
+                                    <form action="{{ route('cart.add', $product->id) }}" method="POST" class="w-full">
+                                        @csrf
+                                        <button type="submit"
+                                                class="group relative w-full py-4 bg-gold-500 hover:bg-gold-400 text-brand-nav font-bold text-sm uppercase tracking-widest rounded-full transition-all duration-300 shadow-[0_4px_20px_-5px_rgba(234,179,8,0.4)] hover:shadow-[0_8px_30px_-5px_rgba(234,179,8,0.5)] hover:-translate-y-0.5 overflow-hidden flex items-center justify-center gap-3">
+                                            <span>Masukkan Keranjang</span>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                 class="transition-transform duration-300 group-hover:translate-x-1">
+                                                <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                @else
+                                    <button disabled
+                                            class="w-full py-4 bg-brand-surface-200/20 text-brand-silver/30 font-bold text-sm uppercase tracking-widest rounded-full cursor-not-allowed border border-brand-borderSoft/10">
+                                        Stok Habis
+                                    </button>
+                                @endif
+                            @else
+                                {{-- Guest: wajib login dulu (tidak add ke cart) --}}
+                                <a href="{{ route('login') }}"
+                                   class="group relative w-full py-4 rounded-full transition-all duration-300 overflow-hidden flex items-center justify-center gap-3
+                                          bg-black/30 hover:bg-black/40 border border-gold-500/20 hover:border-gold-500/40 text-white font-bold text-sm uppercase tracking-widest">
+                                    <i data-lucide="log-in" class="w-5 h-5 text-gold-500/90"></i>
+                                    <span>Login untuk Menambahkan</span>
+                                </a>
+                            @endauth
 
-    </div>
-</div>
-
-{{-- Mobile Spacer --}}
-<div class="lg:hidden h-20"></div>
-
+                        </div>
+                    </div>
 
                     {{-- Mobile Spacer --}}
                     <div class="lg:hidden h-20"></div>
@@ -258,57 +247,99 @@
                                 $rReady = ((int)$related->stok) > 0;
                             @endphp
 
-                            {{-- CARD: surface-card (hitam premium seperti index coach) --}}
-                            <a href="{{ route('guest.marketplace.show', $rSlug) }}"
-                               class="group rounded-3xl overflow-hidden surface-card flex flex-col">
+                            @php
+                                $rStok = (int)($related->stok ?? 0);
+                            @endphp
 
-                                <div class="relative w-full aspect-[3/4] bg-[#0b0b0b] overflow-hidden">
-                                    <img src="{{ $rImg }}"
-                                         alt="{{ $related->nama }}"
-                                         class="w-full h-full object-cover object-center brightness-95
-                                                group-hover:brightness-110 group-hover:scale-[1.06]
-                                                transition duration-700"
-                                         loading="lazy">
+                            {{-- CARD: PREMIUM PRODUCT CARD (HIGH CONTRAST & ELEGANT) --}}
+                            <div class="group relative rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col
+                                        bg-[#181b22] hover:bg-[#1d222b]
+                                        border border-white/15 hover:border-gold-500/70
+                                        transition-all duration-300
+                                        shadow-[0_10px_28px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.12)]
+                                        hover:shadow-[0_20px_45px_-8px_rgba(212,167,87,0.3),inset_0_1px_0_rgba(255,255,255,0.2)]
+                                        hover:-translate-y-2">
 
-                                    <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent"></div>
-
-                                    @if(!$rReady)
-                                        <div class="absolute top-3 right-3 px-2 py-1 bg-red-600/90 backdrop-blur text-white text-[9px] font-bold uppercase tracking-wider rounded">
-                                            Habis
-                                        </div>
-                                    @endif
-
+                                <a href="{{ route('guest.marketplace.show', $rSlug) }}" class="relative w-full aspect-[3/4] bg-[#12141a] block overflow-hidden border-b border-white/[0.08]">
+                                    {{-- Kategori Tag --}}
                                     @if($related->kategori)
-                                        <div class="absolute top-3 left-3">
-                                            <span class="px-2 py-1 bg-black/60 backdrop-blur text-white text-[9px] font-bold uppercase tracking-wider rounded border border-white/10">
+                                        <div class="absolute top-3 left-3 z-20">
+                                            <span class="px-2.5 py-1 bg-black/70 backdrop-blur-md text-gold-400 text-[9px] font-bold uppercase tracking-wider rounded-full shadow-md border border-gold-500/30">
                                                 {{ $related->kategori }}
                                             </span>
                                         </div>
                                     @endif
-                                </div>
 
-                                <div class="p-4 flex flex-col flex-1 border-t border-brand-borderSoft/10">
-                                    <h4 class="text-white font-bold text-sm line-clamp-2 min-h-[2.5rem] group-hover:text-gold-500 transition-colors">
-                                        {{ $related->nama }}
-                                    </h4>
-
-                                    <div class="mt-3 pt-3 border-t border-brand-borderSoft/10 flex items-center justify-between gap-2">
-                                        <p class="text-white font-bold font-display text-sm">
-                                            Rp {{ number_format((int)$related->harga, 0, ',', '.') }}
-                                        </p>
-
-                                        @if($rReady)
-                                            <span class="text-[9px] font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded">
-                                                Stok {{ $related->stok }}
+                                    {{-- Stock Status Tag --}}
+                                    <div class="absolute top-3 right-3 z-20">
+                                        @if(!$rReady)
+                                            <span class="px-2.5 py-1 bg-red-950/90 backdrop-blur-md text-red-300 text-[9px] font-bold uppercase tracking-wider rounded-full border border-red-500/40 shadow-md flex items-center gap-1.5">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Habis
                                             </span>
-                                        @else
-                                            <span class="text-[9px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded">
-                                                0 Unit
+                                        @elseif($rStok <= 3)
+                                            <span class="px-2.5 py-1 bg-amber-950/90 backdrop-blur-md text-amber-300 text-[9px] font-bold uppercase tracking-wider rounded-full border border-amber-500/40 shadow-md flex items-center gap-1.5">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Sisa {{ $rStok }}
                                             </span>
                                         @endif
                                     </div>
+
+                                    <img src="{{ $rImg }}"
+                                         alt="{{ $related->nama }}"
+                                         class="w-full h-full object-cover object-center brightness-95
+                                                group-hover:brightness-105 group-hover:scale-110
+                                                transition-all duration-700 ease-out"
+                                         loading="lazy">
+
+                                    <div class="absolute inset-0 bg-gradient-to-t from-[#181b22] via-black/10 to-black/30 opacity-70 group-hover:opacity-40 transition-opacity duration-300 pointer-events-none"></div>
+
+                                    {{-- Hover Quick View Indicator --}}
+                                    <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                                        <div class="w-11 h-11 rounded-full bg-gold-500 text-brand-nav flex items-center justify-center shadow-[0_4px_20px_rgba(234,179,8,0.6)] transform scale-75 group-hover:scale-100 transition-transform duration-300">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                                                <circle cx="12" cy="12" r="3"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </a>
+
+                                <div class="p-4 sm:p-5 flex flex-col flex-1 bg-[#15171e]/95 relative z-10">
+                                    <a href="{{ route('guest.marketplace.show', $rSlug) }}" class="block mb-2.5">
+                                        <h4 class="text-sm sm:text-base font-bold text-white line-clamp-2 h-[2.75rem] group-hover:text-gold-400 transition-colors leading-snug">
+                                            {{ $related->nama }}
+                                        </h4>
+                                    </a>
+
+                                    <div class="mb-3">
+                                        @if($rReady)
+                                            <span class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 ring-2 ring-emerald-400/20 animate-pulse"></span> Stok: {{ $rStok }} unit
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-red-400 bg-red-500/15 border border-red-500/30 px-2.5 py-0.5 rounded-full">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> Stok Habis
+                                            </span>
+                                        @endif
+                                    </div>
+
+                                    <div class="mt-auto pt-3 border-t border-white/10 flex items-center justify-between gap-2">
+                                        <div>
+                                            <span class="text-[9px] uppercase font-extrabold tracking-wider text-brand-silver/60 block">Harga</span>
+                                            <p class="text-white font-extrabold font-display text-base sm:text-lg group-hover:text-gold-300 transition-colors">
+                                                Rp {{ number_format((int)$related->harga, 0, ',', '.') }}
+                                            </p>
+                                        </div>
+
+                                        <a href="{{ route('guest.marketplace.show', $rSlug) }}"
+                                           class="w-10 h-10 rounded-full bg-gold-500 hover:bg-gold-400 text-brand-nav font-bold flex items-center justify-center transition-all duration-300 shadow-[0_4px_14px_rgba(212,167,87,0.35)] hover:scale-110 flex-shrink-0 group-hover:shadow-gold-glow"
+                                           title="Lihat Detail Produk">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-300 group-hover:translate-x-0.5">
+                                                <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+                                            </svg>
+                                        </a>
+                                    </div>
                                 </div>
-                            </a>
+                            </div>
                         @endforeach
                     </div>
                 </div>

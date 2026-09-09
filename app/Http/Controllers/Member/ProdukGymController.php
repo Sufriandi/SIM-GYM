@@ -102,10 +102,32 @@ class ProdukGymController extends Controller
             ->limit(4)
             ->get();
 
+        $rekenings = InfoRekening::query()->orderBy('nama_bank')->get();
+        $qris = InfoQris::query()->first();
+
+        $waAdminRaw = User::query()
+            ->where('role', 'admin')
+            ->whereNotNull('no_hp')
+            ->orderBy('id', 'asc')
+            ->value('no_hp');
+
+        $merchantName = 'BETA GYM';
+        $merchantLogo = asset('images/logo.webp');
+
+        $orderId = 'TP-' . now()->format('ymd') . '-' . strtoupper(
+            Str::of(Str::random(12))->replaceMatches('/[^A-Za-z]/', '')->substr(0, 6)
+        );
+
         return view('member.produk_gym.show', [
             'pageTitle'       => $product->nama,
             'product'         => $product,
             'relatedProducts' => $relatedProducts,
+            'rekenings'       => $rekenings,
+            'qris'            => $qris,
+            'waAdmin'         => $waAdminRaw ? preg_replace('/^0/', '62', preg_replace('/\D/', '', $waAdminRaw)) : null,
+            'merchantName'    => $merchantName,
+            'merchantLogo'    => $merchantLogo,
+            'orderId'         => $orderId,
         ]);
     }
 
@@ -204,6 +226,146 @@ class ProdukGymController extends Controller
     }
 
     /**
+     * PAYMENT GATEWAY (Member)
+     * - Laman dedicated pembayaran (bukan modal)
+     * - Review pesanan & pilih metode pembayaran (Transfer Bank / QRIS)
+     */
+    public function payment(Request $request)
+    {
+        $isDirect = ($request->query('type') === 'direct') && Session::has('buy_now_item');
+
+        if ($isDirect) {
+            $directItem = Session::get('buy_now_item');
+            $productId  = (int) ($directItem['id'] ?? 0);
+            $product    = $productId ? Produk::find($productId) : null;
+
+            if (!$product || (int)($product->stok ?? 0) < 1) {
+                Session::forget(['buy_now_item', 'buy_now_order_id']);
+                return redirect()->route('member.produk_gym.index')
+                    ->with('error', 'Produk tidak tersedia atau stok habis.');
+            }
+
+            $stokDb = (int) $product->stok;
+            $qty    = (int) ($directItem['quantity'] ?? 1);
+            if ($qty < 1) $qty = 1;
+            if ($qty > $stokDb) $qty = $stokDb;
+
+            $directItem['quantity'] = $qty;
+            $directItem['price']    = (float) $product->harga;
+            $directItem['name']     = (string) $product->nama;
+            $directItem['photo']    = $product->foto;
+            $directItem['category'] = $product->kategori;
+            Session::put('buy_now_item', $directItem);
+
+            $cart = [
+                $productId => $directItem,
+            ];
+
+            $subtotal   = $qty * (float) $product->harga;
+            $adminFee   = 0;
+            $total      = $subtotal;
+            $itemsCount = $qty;
+
+            if (!Session::has('buy_now_order_id')) {
+                Session::put('buy_now_order_id', 'TP-' . now()->format('ymd') . '-' . strtoupper(
+                    Str::of(Str::random(12))->replaceMatches('/[^A-Za-z]/', '')->substr(0, 6)
+                ));
+            }
+            $orderId = Session::get('buy_now_order_id');
+
+            $productSlug = $product->id . '-' . Str::slug($product->nama);
+            $backUrl     = route('member.produk_gym.show', $productSlug);
+            $backText    = 'Kembali ke Detail Produk';
+        } else {
+            $cart = Session::get('cart', []);
+
+            if (empty($cart)) {
+                return redirect()->route('member.produk_gym.cart')->with('warning', 'Keranjang belanja Anda masih kosong.');
+            }
+
+            // Reconcile snapshot dari DB
+            $changed = false;
+            foreach ($cart as $id => $item) {
+                $pid = (int) $id;
+                $product = Produk::find($pid);
+
+                if (!$product || (int)($product->stok ?? 0) < 1) {
+                    unset($cart[$id]);
+                    $changed = true;
+                    continue;
+                }
+
+                $stokDb = (int) $product->stok;
+                $qty = (int) ($item['quantity'] ?? 1);
+                if ($qty < 1) $qty = 1;
+                if ($qty > $stokDb) {
+                    $qty = $stokDb;
+                    $changed = true;
+                }
+
+                $cart[$id]['price']    = (float) $product->harga;
+                $cart[$id]['name']     = (string) $product->nama;
+                $cart[$id]['quantity'] = $qty;
+                $cart[$id]['photo']    = $product->foto;
+                $cart[$id]['category'] = $product->kategori;
+            }
+
+            if ($changed) {
+                Session::put('cart', $cart);
+            }
+
+            $this->syncSessionCartToDb($cart);
+
+            [$subtotal, $adminFee, $total, $itemsCount] = $this->computeCartTotals($cart);
+
+            if ($itemsCount < 1 || $total <= 0) {
+                return redirect()->route('member.produk_gym.cart')->with('warning', 'Tidak ada item yang dapat dibayar.');
+            }
+
+            if (!Session::has('pending_order_id')) {
+                Session::put('pending_order_id', 'TP-' . now()->format('ymd') . '-' . strtoupper(
+                    Str::of(Str::random(12))->replaceMatches('/[^A-Za-z]/', '')->substr(0, 6)
+                ));
+            }
+            $orderId = Session::get('pending_order_id');
+
+            $backUrl  = route('member.produk_gym.cart');
+            $backText = 'Kembali ke Keranjang';
+        }
+
+        $rekenings = InfoRekening::query()->orderBy('nama_bank')->get();
+        $qris      = InfoQris::query()->first();
+
+        $waAdminRaw = User::query()
+            ->where('role', 'admin')
+            ->whereNotNull('no_hp')
+            ->orderBy('id', 'asc')
+            ->value('no_hp');
+
+        $waAdmin = $waAdminRaw ? preg_replace('/^0/', '62', preg_replace('/\D/', '', $waAdminRaw)) : '6281234567890';
+        $merchantName = 'BETA GYM';
+        $merchantLogo = asset('images/logo.webp');
+
+        return view('member.produk_gym.payment', [
+            'pageTitle'    => 'Payment Gateway',
+            'cart'         => $cart,
+            'subtotal'     => $subtotal,
+            'adminFee'     => $adminFee,
+            'total'        => $total,
+            'itemsCount'   => $itemsCount,
+            'orderId'      => $orderId,
+            'rekenings'    => $rekenings,
+            'qris'         => $qris,
+            'waAdmin'      => $waAdmin,
+            'merchantName' => $merchantName,
+            'merchantLogo' => $merchantLogo,
+            'isDirect'     => $isDirect,
+            'backUrl'      => $backUrl,
+            'backText'     => $backText,
+        ]);
+    }
+
+    /**
      * ADD TO CART (Member)
      * - tetap di halaman produk (tidak redirect ke cart)
      * - simpan ke session + DB (persistent)
@@ -217,10 +379,11 @@ class ProdukGymController extends Controller
             return back()->with('error', 'Maaf, stok produk ini habis.');
         }
 
+        $addQty = max(1, (int) $request->input('quantity', 1));
         $cart = Session::get('cart', []);
 
         if (isset($cart[$id])) {
-            $newQty = (int) ($cart[$id]['quantity'] ?? 1) + 1;
+            $newQty = (int) ($cart[$id]['quantity'] ?? 1) + $addQty;
 
             if ($newQty > $stok) {
                 return back()->with('error', 'Stok tidak mencukupi untuk menambah jumlah.');
@@ -231,7 +394,7 @@ class ProdukGymController extends Controller
             $cart[$id] = [
                 'id'       => (int) $product->id,
                 'name'     => (string) ($product->nama ?? ''),
-                'quantity' => 1,
+                'quantity' => min($addQty, $stok),
                 'price'    => (float) ($product->harga ?? 0),
                 'photo'    => $product->foto,
                 'category' => $product->kategori,
@@ -251,6 +414,48 @@ class ProdukGymController extends Controller
 
         // tetap di halaman produk
         return back()->with('success', 'Produk berhasil ditambahkan ke keranjang.');
+    }
+
+    /**
+     * BUY NOW (Direct Checkout)
+     * - Langsung beli tanpa manual tambah/masuk keranjang
+     * - Terisolasi dari keranjang belanja member (TIDAK menyentuh atau merusak cart)
+     * - Menempatkan item dengan quantity yang dipilih langsung ke checkout
+     * - Redirect langsung ke laman pembayaran (payment gateway) khusus produk ini
+     */
+    public function buyNow(Request $request, int $id)
+    {
+        $product = Produk::findOrFail($id);
+
+        $stok = (int) ($product->stok ?? 0);
+        if ($stok < 1) {
+            return back()->with('error', 'Maaf, stok produk ini habis.');
+        }
+
+        $qty = max(1, (int) $request->input('quantity', 1));
+        if ($qty > $stok) {
+            $qty = $stok;
+        }
+
+        // Simpan snapshot produk HANYA di session buy_now_item (TIDAK diubah ke cart)
+        $buyNowItem = [
+            'id'       => (int) $product->id,
+            'name'     => (string) ($product->nama ?? ''),
+            'quantity' => (int) $qty,
+            'price'    => (float) ($product->harga ?? 0),
+            'photo'    => $product->foto,
+            'category' => $product->kategori,
+        ];
+
+        Session::put('buy_now_item', $buyNowItem);
+
+        // Reset/set pending order ID fresh khusus untuk direct purchase ini
+        Session::put('buy_now_order_id', 'TP-' . now()->format('ymd') . '-' . strtoupper(
+            Str::of(Str::random(12))->replaceMatches('/[^A-Za-z]/', '')->substr(0, 6)
+        ));
+
+        // Mengarah langsung ke laman pembayaran khusus produk ini (type=direct)
+        return redirect()->route('member.produk_gym.payment', ['type' => 'direct']);
     }
 
     /**

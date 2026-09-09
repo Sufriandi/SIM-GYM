@@ -139,15 +139,17 @@ function updateSidebarActive(targetUrl) {
 
         if (isSubmenu) {
             link.classList.add('text-brand-silver');
-            const icon = link.querySelector('i[data-lucide]');
-            if (icon) {
+            const icons = link.querySelectorAll('i[data-lucide], svg.lucide, svg');
+            icons.forEach(icon => {
                 icon.classList.remove('text-gold-300');
                 icon.classList.add('text-brand-silver/70');
-            }
+            });
         } else {
             link.classList.add('text-brand-silver');
-            const icon = link.querySelector('i[data-lucide]');
-            if (icon) icon.classList.remove('text-gold-300');
+            const icons = link.querySelectorAll('i[data-lucide], svg.lucide, svg');
+            icons.forEach(icon => {
+                icon.classList.remove('text-gold-300');
+            });
         }
 
         // Remove pulse indicators
@@ -165,11 +167,11 @@ function updateSidebarActive(targetUrl) {
 
         if (isSubmenu) {
             bestLink.classList.add('font-medium', 'bg-gradient-to-r', 'from-gold-500/10', 'to-transparent');
-            const icon = bestLink.querySelector('i[data-lucide]');
-            if (icon) {
+            const icons = bestLink.querySelectorAll('i[data-lucide], svg.lucide, svg');
+            icons.forEach(icon => {
                 icon.classList.remove('text-brand-silver/70');
                 icon.classList.add('text-gold-300');
-            }
+            });
 
             // Ensure parent submenu is open in Alpine
             const parentButton = isSubmenu.previousElementSibling;
@@ -183,8 +185,10 @@ function updateSidebarActive(targetUrl) {
             }
         } else {
             bestLink.classList.add('bg-gradient-to-r', 'from-gold-500/20', 'to-transparent', 'shadow-lg', 'shadow-gold-500/20');
-            const icon = bestLink.querySelector('i[data-lucide]');
-            if (icon) icon.classList.add('text-gold-300');
+            const icons = bestLink.querySelectorAll('i[data-lucide], svg.lucide, svg');
+            icons.forEach(icon => {
+                icon.classList.add('text-gold-300');
+            });
 
             // Add active pulse pill
             if (!bestLink.querySelector('.sidebar-active-indicator')) {

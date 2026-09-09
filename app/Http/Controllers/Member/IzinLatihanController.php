@@ -113,7 +113,7 @@ class IzinLatihanController extends Controller
     $member = $this->getCurrentMember();
 
     // Gate: membership harus aktif (pakai transaksi, bukan field di members)
-    if (!\App\Models\TransaksiMembership::isAktifUntukMember($member->id, \Carbon\Carbon::today())) {
+    if (!$this->isMembershipActive($member)) {
         return redirect()
             ->route('member.izin_latihan.index')
             ->with('error', 'Anda hanya dapat mengajukan izin jika membership Anda masih aktif.');

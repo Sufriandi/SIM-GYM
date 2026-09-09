@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Coach;
+use App\Models\ProfilGym;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -16,15 +17,13 @@ class GuestCoachController extends Controller
         $coaches = Coach::query()
             ->when($search, function ($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
-                  ->orWhere('no_hp', 'like', "%{$search}%")
-                  ->orWhere('alamat', 'like', "%{$search}%")
                   ->orWhere('deskripsi', 'like', "%{$search}%");
             })
             ->latest()
             ->paginate(12)
             ->withQueryString();
 
-        // Siapkan data siap render (tanpa logic di Blade)
+        // Siapkan data siap render (tanpa membuka privasi alamat ke publik)
         $coaches->getCollection()->transform(function (Coach $coach) {
             $coach->slug = $this->makeSlug($coach->id, $coach->nama);
 
@@ -33,8 +32,8 @@ class GuestCoachController extends Controller
                 'https://placehold.co/900x1100/111827/FACC15?text=' . urlencode($coach->nama ?? 'COACH') . '&font=raleway'
             );
 
-            $wa = $this->normalizeWa($coach->no_hp);
-            $coach->wa_url = $wa ? "https://wa.me/{$wa}" : null;
+            // WhatsApp link langsung ke Coach pribadi (tanpa perantara gym)
+            $coach->wa_direct_url = $this->makeCoachWaUrl($coach->no_hp, $coach->nama);
 
             return $coach;
         });
@@ -62,10 +61,10 @@ class GuestCoachController extends Controller
             'https://placehold.co/1200x1400/111827/FACC15?text=' . urlencode($coach->nama ?? 'COACH') . '&font=raleway'
         );
 
-        $wa = $this->normalizeWa($coach->no_hp);
-        $coach->wa_url = $wa ? "https://wa.me/{$wa}" : null;
+        // WhatsApp link langsung ke Coach pribadi (tanpa perantara gym)
+        $coach->wa_direct_url = $this->makeCoachWaUrl($coach->no_hp, $coach->nama);
 
-        // Jika slug tidak canonical, redirect 301 ke slug yang benar (opsional tapi bagus)
+        // Jika slug tidak canonical, redirect 301 ke slug yang benar
         if ($slug !== $coach->slug) {
             return redirect()
                 ->route('guest.coaches.show', $coach->slug)
@@ -88,6 +87,20 @@ class GuestCoachController extends Controller
         // slug format: "{id}-{nama}"
         $idPart = explode('-', $slug, 2)[0] ?? '0';
         return (int) $idPart;
+    }
+
+    private function makeCoachWaUrl(?string $phone, ?string $coachName): ?string
+    {
+        $wa = $this->normalizeWa($phone);
+        if (!$wa) return null;
+
+        $trimmed = trim((string) $coachName);
+        $displayName = Str::startsWith(strtolower($trimmed), 'coach ')
+            ? $trimmed
+            : 'Coach ' . $trimmed;
+
+        $msg = "Halo {$displayName}, saya member BETA GYM ingin berkonsultasi mengenai program dan jadwal latihan.";
+        return "https://wa.me/{$wa}?text=" . rawurlencode($msg);
     }
 
     private function normalizeWa(?string $phone): ?string
@@ -129,3 +142,4 @@ class GuestCoachController extends Controller
         return Storage::url($path);
     }
 }
+

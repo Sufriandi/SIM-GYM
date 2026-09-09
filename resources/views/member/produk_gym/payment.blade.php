@@ -1,43 +1,50 @@
-{{-- resources/views/member/membership/checkout.blade.php --}}
+{{-- resources/views/member/produk_gym/payment.blade.php --}}
 @php
     use Illuminate\Support\Facades\Storage;
     use Illuminate\Support\Str;
 
     $fmt = fn($v) => number_format((float) $v, 0, ',', '.');
 
-    $totalTagihan = (int) ($totalTagihan ?? $paketMembership->harga ?? 0);
-    $paketNama    = (string) ($paketNama ?? $paketMembership->nama ?? 'Paket Membership');
-    $durasi       = (int) ($paketMembership->durasi ?? 30);
-    $rawTipe      = strtolower((string) ($paketMembership->tipe ?? 'single'));
+    $totalTagihan = (int) ($total ?? 0);
+    $subtotalVal  = (int) ($subtotal ?? 0);
+    $adminFeeVal  = (int) ($adminFee ?? 0);
+    $orderId      = $orderId ?? ('TP-' . now()->format('ymd') . '-' . strtoupper(Str::random(6)));
 
-    $tipeLabels = [
-        'single' => 'Single',
-        'double' => 'Double',
-        'triple' => 'Grup / Triple',
-    ];
-    $tipeLabel = $tipeLabels[$rawTipe] ?? ucfirst($rawTipe);
+    $imgUrl = function ($path, $fallbackText) {
+        $path = trim((string) $path);
+        if ($path === '') return 'https://placehold.co/600x600/151515/cca43b?text=' . urlencode($fallbackText ?: 'PRODUK') . '&font=raleway';
+        if (Str::startsWith($path, ['http://', 'https://'])) return $path;
+        $path = str_replace('\\', '/', $path);
+        $path = ltrim($path, '/');
+        if (Str::startsWith($path, 'storage/')) return url('/' . $path);
+        if (Str::startsWith($path, 'public/')) $path = Str::after($path, 'public/');
+        return Storage::url($path);
+    };
 
-    $orderId = $orderId ?? ('MBR-' . now()->format('ymd') . '-' . strtoupper(Str::random(6)));
-
-    $qrisImg  = !empty($qris?->path_gambar) ? Storage::url($qris->path_gambar) : '';
+    $qrisImg = !empty($qris?->path_gambar) ? Storage::url($qris->path_gambar) : '';
     $qrisNama = (string) ($qris?->nama_qris ?? 'BETA GYM');
     $firstBank = (!empty($rekenings) && count($rekenings) > 0) ? $rekenings->first() : null;
 
     $memberUser = Auth::user();
     $memberName = $memberUser?->name ?? 'Member BETA GYM';
+
+    // Rincian item string untuk template WhatsApp
+    $itemSummaryList = [];
+    foreach (($cart ?? []) as $it) {
+        $itemSummaryList[] = '• ' . ($it['name'] ?? 'Produk') . ' (' . ($it['quantity'] ?? 1) . 'x)';
+    }
+    $itemsSummaryText = implode("\n", $itemSummaryList);
 @endphp
 
-<x-layouts.member :pageTitle="'Payment Gateway – ' . $paketNama" :pageSubtitle="'Selesaikan pembayaran untuk mengaktifkan membership Anda.'">
+<x-layouts.member :pageTitle="'Payment Gateway – ' . $orderId" :pageSubtitle="'Selesaikan pembayaran pesanan produk Anda.'">
 
     <div class="max-w-6xl mx-auto px-2 sm:px-4 pb-20"
-         x-data="membershipPaymentGatewayPage({
+         x-data="paymentGatewayPage({
              total: {{ $totalTagihan }},
              orderId: @js($orderId),
              memberName: @js($memberName),
-             paketNama: @js($paketNama),
-             paketDurasi: {{ $durasi }},
-             paketTipe: @js($tipeLabel),
              waAdmin: @js($waAdmin),
+             itemsSummary: @js($itemsSummaryText),
              initialBank: {
                  bank: @js($firstBank?->nama_bank ?? ''),
                  noRek: @js($firstBank?->nomor_rekening ?? ''),
@@ -53,24 +60,30 @@
         {{-- Top Navigation & Breadcrumb --}}
         <div class="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-brand-borderSoft/40">
             <nav class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-text-muted">
-                <a href="{{ route('member.membership.index') }}" class="hover:text-gold-600 transition-colors">
-                    Paket Membership
+                <a href="{{ route('member.produk_gym.index') }}" class="hover:text-gold-600 transition-colors">
+                    Marketplace
                 </a>
                 <span>/</span>
-                <a href="{{ route('member.membership.show', $paketMembership->id) }}" class="hover:text-gold-600 transition-colors truncate max-w-[150px] sm:max-w-xs">
-                    {{ $paketNama }}
-                </a>
+                @if(!empty($isDirect))
+                    <a href="{{ $backUrl ?? route('member.produk_gym.index') }}" class="hover:text-gold-600 transition-colors truncate max-w-[150px] sm:max-w-xs">
+                        Detail Produk
+                    </a>
+                @else
+                    <a href="{{ route('member.produk_gym.cart') }}" class="hover:text-gold-600 transition-colors">
+                        Keranjang
+                    </a>
+                @endif
                 <span>/</span>
                 <span class="text-gold-600 dark:text-gold-400">Payment Gateway</span>
             </nav>
 
-            <a href="{{ route('member.membership.show', $paketMembership->id) }}"
+            <a href="{{ $backUrl ?? route('member.produk_gym.cart') }}"
                class="inline-flex items-center gap-2 text-xs font-bold text-text-muted hover:text-text-main transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="m15 18-6-6 6-6"/>
                 </svg>
-                Kembali ke Detail Paket
+                {{ $backText ?? 'Kembali ke Keranjang' }}
             </a>
         </div>
 
@@ -79,17 +92,17 @@
             <div>
                 <div class="flex items-center gap-2.5 mb-1">
                     <span class="px-2.5 py-0.5 rounded-full bg-gold-500/10 text-gold-600 dark:text-gold-400 border border-gold-500/20 text-[10px] font-black uppercase tracking-widest">
-                        BetaPay • Aktivasi Membership
+                        {{ !empty($isDirect) ? 'BetaPay • Beli Langsung' : 'BetaPay Gateway' }}
                     </span>
                     <span class="text-xs font-mono text-text-muted">
                         No. Pesanan: <strong class="text-text-main">{{ $orderId }}</strong>
                     </span>
                 </div>
                 <h1 class="text-2xl sm:text-3xl font-display font-black text-text-main uppercase tracking-tight">
-                    Laman Pembayaran Membership
+                    Laman Pembayaran
                 </h1>
                 <p class="text-xs sm:text-sm text-text-muted mt-0.5">
-                    Pilih metode pembayaran (Transfer Bank atau QRIS) dan selesaikan transaksi untuk mengaktifkan keanggotaan gym Anda.
+                    Pilih metode pembayaran (Transfer Bank atau QRIS) dan selesaikan transaksi sebelum batas waktu berakhir.
                 </p>
             </div>
 
@@ -107,7 +120,7 @@
             </div>
         </div>
 
-        {{-- Main Grid: Payment Gateway (Left) & Package Summary (Right) --}}
+        {{-- Main Grid: Payment Gateway (Left) & Order Summary (Right) --}}
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
             {{-- LEFT: Payment Gateway Section --}}
@@ -152,7 +165,7 @@
                                 Rp {{ $fmt($totalTagihan) }}
                             </div>
                             <span class="text-[10px] text-text-muted mt-0.5 block">
-                                Aktivasi Instan &bull; Tanpa biaya admin tambahan
+                                Estimasi bersih &bull; Tanpa biaya admin tambahan
                             </span>
                         </div>
 
@@ -284,15 +297,15 @@
                                 <div class="p-4 rounded-2xl bg-brand-surface-50/70 dark:bg-white/5 border border-brand-borderSoft/60">
                                     <h5 class="text-xs font-bold text-text-main uppercase tracking-wider mb-2">Petunjuk Pembayaran Transfer:</h5>
                                     <ol class="text-xs text-text-muted space-y-1.5 list-decimal pl-4 leading-relaxed">
-                                        <li>Buka aplikasi m-Banking atau kunjungi mesin ATM bank Anda.</li>
+                                        <li>Buka m-Banking atau kunjungi ATM bank Anda.</li>
                                         <li>Pilih menu transfer, masukkan nomor rekening tujuan di atas.</li>
-                                        <li>Masukkan nominal <strong>tepat Rp {{ $fmt($totalTagihan) }}</strong> untuk mempercepat proses verifikasi.</li>
-                                        <li>Simpan bukti transfer Anda, lalu klik tombol konfirmasi WhatsApp di bawah.</li>
+                                        <li>Masukkan nominal <strong>tepat Rp {{ $fmt($totalTagihan) }}</strong> (agar verifikasi instan).</li>
+                                        <li>Simpan bukti transfer Anda, lalu klik tombol konfirmasi hijau di bawah.</li>
                                     </ol>
                                 </div>
                             @else
                                 <div class="p-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs">
-                                    Rekening bank belum diatur oleh admin gym. Silakan gunakan metode QRIS.
+                                    Rekening bank belum diatur oleh admin. Silakan gunakan metode QRIS.
                                 </div>
                             @endif
                         </div>
@@ -308,11 +321,11 @@
 
                                         <p class="mt-4 text-sm font-black text-brand-nav dark:text-white uppercase tracking-wider" x-text="qris.nama || 'BETA GYM'"></p>
                                         <p class="text-xs text-text-muted mt-1 max-w-sm mx-auto">
-                                            Scan kode QRIS ini menggunakan aplikasi m-Banking (BCA, Mandiri, BRI, BNI) atau E-Wallet (GoPay, OVO, DANA, ShopeePay, LinkAja).
+                                            Scan kode QRIS ini menggunakan aplikasi m-Banking (BCA Mobile, Livin Mandiri, BRImo, dll) atau E-Wallet (GoPay, OVO, DANA, ShopeePay, LinkAja).
                                         </p>
 
                                         <div class="mt-4 flex justify-center gap-3">
-                                            <a :href="qris.img" download="QRIS-BETAGYM-MEMBERSHIP.png" target="_blank"
+                                            <a :href="qris.img" download="QRIS-BETAGYM.png" target="_blank"
                                                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gold-500/40 bg-gold-500/10 hover:bg-gold-500/20 text-gold-700 dark:text-gold-400 font-bold text-xs uppercase tracking-wider transition-all">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>
@@ -328,7 +341,7 @@
                                         <svg class="w-10 h-10 mx-auto mb-2 text-text-muted/50" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <rect width="7" height="7" x="3" y="3"/><rect width="7" height="7" x="14" y="3"/><rect width="7" height="7" x="14" y="14"/><rect width="7" height="7" x="3" y="14"/>
                                         </svg>
-                                        Gambar QRIS belum diatur oleh staf gym. Silakan gunakan metode Transfer Bank.
+                                        Gambar QRIS belum diatur oleh staf gym. Silakan gunakan Transfer Bank.
                                     </div>
                                 </template>
                             </div>
@@ -339,8 +352,8 @@
                                     <li>Buka aplikasi m-Banking atau E-Wallet pilihan Anda.</li>
                                     <li>Pilih menu scan QRIS dan arahkan ke kode di atas.</li>
                                     <li>Pastikan nama merchant tertera <strong>{{ $merchantName }}</strong>.</li>
-                                    <li>Masukkan nominal tepat <strong>Rp {{ $fmt($totalTagihan) }}</strong> lalu konfirmasi PIN transaksi Anda.</li>
-                                    <li>Simpan bukti sukses transfer, lalu klik tombol konfirmasi di bawah.</li>
+                                    <li>Masukkan nominal <strong>Rp {{ $fmt($totalTagihan) }}</strong> lalu konfirmasi PIN Anda.</li>
+                                    <li>Simpan bukti sukses, lalu klik tombol konfirmasi di bawah.</li>
                                 </ol>
                             </div>
                         </div>
@@ -357,7 +370,7 @@
                         </a>
 
                         <p class="text-[11px] text-center text-text-muted">
-                            Setelah melakukan transfer atau scan QRIS, klik tombol di atas untuk mengirim bukti bayar ke Admin Gym agar keanggotaan Anda segera diaktifkan.
+                            Setelah melakukan transfer atau scan QRIS, klik tombol di atas untuk mengirim bukti bayar ke Admin Gym.
                         </p>
                     </div>
 
@@ -372,64 +385,60 @@
 
             </div>
 
-            {{-- RIGHT: Package Order Summary --}}
+            {{-- RIGHT: Order Summary --}}
             <div class="lg:col-span-5 space-y-6">
 
                 <div class="surface-card rounded-3xl p-6 border border-brand-borderSoft/80 shadow-xl lg:sticky lg:top-24 space-y-6">
                     <div class="flex items-center justify-between pb-4 border-b border-brand-borderSoft/40">
                         <h3 class="font-heading font-black text-base text-text-main uppercase tracking-wider">
-                            Rincian Paket Membership
+                            {{ !empty($isDirect) ? 'Produk yang Dibeli' : 'Rincian Pesanan' }}
                         </h3>
-                        <span class="px-2.5 py-1 rounded-full bg-gold-500/10 text-gold-600 dark:text-gold-400 text-[11px] font-bold border border-gold-500/20">
-                            {{ $durasi }} Hari Aktif
+                        <span class="px-2.5 py-1 rounded-full bg-brand-surface-50 text-text-muted text-[11px] font-bold">
+                            {{ $itemsCount }} Item
                         </span>
                     </div>
 
-                    {{-- Package Card Snapshot --}}
-                    <div class="p-4 rounded-2xl bg-brand-surface-50/70 dark:bg-white/5 border border-brand-borderSoft/50 space-y-3.5">
-                        <div class="flex items-center justify-between gap-2">
-                            <span class="px-2.5 py-1 rounded-lg bg-white dark:bg-black/40 border border-brand-borderSoft/60 text-[10px] font-bold uppercase tracking-wider text-text-muted">
-                                Tipe: <strong class="text-text-main">{{ $tipeLabel }}</strong>
-                            </span>
-                            <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                                Akses Full Gym
-                            </span>
-                        </div>
-
-                        <div>
-                            <h4 class="text-base sm:text-lg font-black font-display text-text-main uppercase tracking-tight">
-                                {{ $paketNama }}
-                            </h4>
-                            <p class="text-xs text-text-muted mt-1 leading-relaxed">
-                                {{ $paketMembership->deskripsi ?: 'Akses penuh seluruh fasilitas gym dengan durasi ' . $durasi . ' hari.' }}
-                            </p>
-                        </div>
-
-                        {{-- Inclusions Checklist --}}
-                        <div class="pt-3 border-t border-brand-borderSoft/40 space-y-2 text-xs text-text-muted">
-                            <div class="flex items-center gap-2">
-                                <span class="w-4 h-4 rounded-full bg-gold-500/20 text-gold-600 dark:text-gold-400 flex items-center justify-center flex-shrink-0 text-[10px] font-black">✓</span>
-                                <span>Akses bebas ke seluruh area latihan & alat gym</span>
+                    {{-- Item List --}}
+                    <div class="space-y-3.5 max-h-80 overflow-y-auto pr-1">
+                        @foreach(($cart ?? []) as $id => $item)
+                            @php
+                                $img = $imgUrl($item['photo'] ?? '', $item['name'] ?? 'ITEM');
+                                $qty = (int) ($item['quantity'] ?? 1);
+                                $price = (float) ($item['price'] ?? 0);
+                                $line = $qty * $price;
+                            @endphp
+                            <div class="flex items-center gap-3.5 p-3 rounded-2xl bg-brand-surface-50/60 dark:bg-white/5 border border-brand-borderSoft/50">
+                                <div class="w-14 h-14 rounded-xl overflow-hidden bg-black/10 flex-shrink-0 border border-brand-borderSoft/40">
+                                    <img src="{{ $img }}" alt="{{ $item['name'] ?? 'Item' }}" class="w-full h-full object-cover">
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-[10px] text-gold-600 dark:text-gold-400 font-bold uppercase tracking-wider truncate">
+                                        {{ $item['category'] ?? 'PRODUK' }}
+                                    </p>
+                                    <h5 class="text-xs font-bold text-text-main truncate">
+                                        {{ $item['name'] ?? 'Produk' }}
+                                    </h5>
+                                    <p class="text-[11px] text-text-muted mt-0.5">
+                                        {{ $qty }} unit &times; Rp {{ $fmt($price) }}
+                                    </p>
+                                </div>
+                                <div class="text-right flex-shrink-0">
+                                    <span class="font-mono font-bold text-xs text-text-main block">
+                                        Rp {{ $fmt($line) }}
+                                    </span>
+                                </div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <span class="w-4 h-4 rounded-full bg-gold-500/20 text-gold-600 dark:text-gold-400 flex items-center justify-center flex-shrink-0 text-[10px] font-black">✓</span>
-                                <span>Loker penyimpanan pribadi & fasilitas ruang bilas</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="w-4 h-4 rounded-full bg-gold-500/20 text-gold-600 dark:text-gold-400 flex items-center justify-center flex-shrink-0 text-[10px] font-black">✓</span>
-                                <span>Kartu absensi digital member terintegrasi</span>
-                            </div>
-                        </div>
+                        @endforeach
                     </div>
 
-                    {{-- Cost Calculation Breakdown --}}
+                    {{-- Cost Calculation --}}
                     <div class="space-y-2.5 pt-4 border-t border-brand-borderSoft/40 text-xs">
                         <div class="flex justify-between text-text-muted">
-                            <span>Harga Paket Membership</span>
-                            <span class="font-mono text-text-main font-semibold">Rp {{ $fmt($totalTagihan) }}</span>
+                            <span>Subtotal Produk</span>
+                            <span class="font-mono text-text-main font-semibold">Rp {{ $fmt($subtotalVal) }}</span>
                         </div>
                         <div class="flex justify-between text-text-muted">
-                            <span>Biaya Registrasi & Layanan</span>
+                            <span>Biaya Layanan</span>
                             <span class="text-green-600 dark:text-green-400 font-semibold">Gratis (Rp 0)</span>
                         </div>
                         <div class="flex justify-between items-baseline pt-3 border-t border-brand-borderSoft/60">
@@ -440,26 +449,21 @@
                         </div>
                     </div>
 
-                    {{-- Reassurance & Membership Perks Highlights --}}
+                    {{-- Reassurance & Pickup Highlights --}}
                     <div class="p-4 rounded-2xl bg-brand-surface-50/80 dark:bg-white/5 border border-brand-borderSoft/60 space-y-3 text-[11px] text-text-muted">
                         <div class="flex items-start gap-2.5">
-                            <svg class="w-4 h-4 text-gold-500 flex-shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="m12 15 2 2 4-4"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/>
-                            </svg>
+                            <svg class="w-4 h-4 text-gold-500 flex-shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
                             <div>
-                                <strong class="text-text-main block">Aktivasi Instan Tanpa Antre</strong>
-                                <span>Keanggotaan Anda akan segera aktif begitu bukti bayar diverifikasi oleh staf kasir gym.</span>
+                                <strong class="text-text-main block">Ambil di Kasir Gym</strong>
+                                <span>Tunjukkan bukti pembayaran ke resepsionis BETA GYM saat mengambil produk.</span>
                             </div>
                         </div>
 
                         <div class="flex items-start gap-2.5">
-                            <svg class="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                                <path d="m9 12 2 2 4-4"/>
-                            </svg>
+                            <svg class="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
                             <div>
-                                <strong class="text-text-main block">Fasilitas Standar Internasional</strong>
-                                <span>Peralatan fitness terawat, higienis, dan nyaman untuk mendukung target kebugaran Anda.</span>
+                                <strong class="text-text-main block">Jaminan 100% Asli</strong>
+                                <span>Seluruh suplemen dan perlengkapan dijamin orisinalitas dan kualitasnya.</span>
                             </div>
                         </div>
                     </div>
@@ -484,15 +488,13 @@
     </div>
 
     <script>
-        function membershipPaymentGatewayPage(config) {
+        function paymentGatewayPage(config) {
             return {
                 total: config.total || 0,
                 orderId: config.orderId || '',
                 memberName: config.memberName || 'Member',
-                paketNama: config.paketNama || 'Paket Membership',
-                paketDurasi: config.paketDurasi || 30,
-                paketTipe: config.paketTipe || 'Single',
                 waAdmin: config.waAdmin || '6281234567890',
+                itemsSummary: config.itemsSummary || '',
 
                 activeMethod: 'bank', // 'bank' or 'qris'
                 selectedBank: {
@@ -563,15 +565,15 @@
 
                     const msg =
 `Halo Admin BETA GYM,
-Saya ingin konfirmasi pembayaran paket membership:
+Saya ingin konfirmasi pembayaran produk gym:
 • No. Order: ${this.orderId}
-• Nama Member: ${this.memberName}
-• Paket: ${this.paketNama} (${this.paketDurasi} Hari)
-• Kategori Tipe: ${this.paketTipe}
+• Nama: ${this.memberName}
 • Total: ${this.idr(this.total)}
 • Metode: ${methodText}
+• Rincian Item:
+${this.itemsSummary}
 
-Bukti transfer telah saya lampirkan. Mohon diverifikasi agar keanggotaan saya segera diaktifkan. Terima kasih!`;
+Bukti transfer telah saya lampirkan. Mohon diverifikasi. Terima kasih!`;
 
                     return `https://wa.me/${this.waAdmin}?text=${encodeURIComponent(msg)}`;
                 },

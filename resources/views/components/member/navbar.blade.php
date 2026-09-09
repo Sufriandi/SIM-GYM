@@ -18,6 +18,12 @@
         ->map(fn($p) => Str::upper(Str::substr($p, 0, 1)))
         ->take(2)
         ->join('');
+
+    $roleLabel = match($authUser?->role) {
+        'admin' => 'Administrator',
+        'coach' => 'Coach',
+        default => 'Member',
+    };
 @endphp
 
 <header
@@ -304,10 +310,10 @@
                     <div class="leading-tight hidden sm:block text-left">
                         <div class="text-xs font-semibold text-text-main truncate max-w-[100px]
                                    group-hover:text-gold-400 transition-colors">
-                            {{ auth()->user()->name ?? 'Admin' }}
+                            {{ $authUser->name ?? 'Member' }}
                         </div>
-                        <div class="text-[10px] text-text-muted">
-                            Administrator
+                        <div class="text-[10px] text-text-muted font-medium">
+                            {{ $roleLabel }}
                         </div>
                     </div>
                     <i data-lucide="chevron-down"
@@ -328,11 +334,16 @@
                            rounded-2xl shadow-2xl overflow-hidden z-50"
                 >
                     <div class="px-4 py-3 border-b border-brand-borderSoft bg-brand-shell/70">
-                        <p class="text-sm font-semibold text-text-main truncate">
-                            {{ auth()->user()->name ?? 'Admin' }}
-                        </p>
-                        <p class="text-xs text-text-muted truncate">
-                            {{ auth()->user()->email ?? 'admin@betagym.com' }}
+                        <div class="flex items-center justify-between gap-2">
+                            <p class="text-sm font-semibold text-text-main truncate">
+                                {{ $authUser->name ?? 'Member' }}
+                            </p>
+                            <span class="px-2 py-0.5 rounded-full bg-gold-500/15 text-gold-600 dark:text-gold-400 text-[10px] font-bold uppercase tracking-wider">
+                                {{ $roleLabel }}
+                            </span>
+                        </div>
+                        <p class="text-xs text-text-muted truncate mt-0.5">
+                            {{ $authUser->email ?? '' }}
                         </p>
                     </div>
 

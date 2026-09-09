@@ -83,37 +83,11 @@ class MarketplaceController extends Controller
 
     /**
      * CART: Halaman Keranjang
+     * Diarahkan langsung ke laman login
      */
     public function cart()
     {
-        $cart = Session::get('cart', []);
-        
-        $subtotal = 0;
-        foreach($cart as $item) {
-            $subtotal += $item['price'] * $item['quantity'];
-        }
-
-        // Simulasi Biaya Admin (Agar terlihat real seperti Gateway)
-        $adminFee = 2500; 
-        $total = $subtotal + $adminFee;
-
-        // Generate Order ID Unik (Simulasi)
-        $orderId = 'ORD-' . strtoupper(Str::random(9));
-
-        // Data Pembayaran
-        $rekenings = InfoRekening::all();
-        $qris = InfoQris::first();
-
-        return view('marketplace.cart', [
-            'pageTitle' => 'Checkout',
-            'cart'      => $cart,
-            'subtotal'  => $subtotal,
-            'adminFee'  => $adminFee,
-            'total'     => $total,
-            'orderId'   => $orderId,
-            'rekenings' => $rekenings,
-            'qris'      => $qris
-        ]);
+        return redirect()->route('login');
     }
     
     
@@ -145,6 +119,14 @@ class MarketplaceController extends Controller
     return redirect()->route('guest.marketplace.cart')
         ->with($removed ? 'success' : 'error', $removed ? 'Item dihapus.' : 'Item tidak ditemukan.');
 }
+
+    /**
+     * Alias method untuk addToCart
+     */
+    public function add(Request $request, $id)
+    {
+        return $this->addToCart($request, $id);
+    }
 
     public function addToCart(Request $request, $id)
     {

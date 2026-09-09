@@ -7,6 +7,7 @@
     // Menu Data (Bahasa Indonesia)
     $links = [
         ['label' => 'Beranda', 'href' => url('/'), 'active' => request()->is('/')],
+        ['label' => 'Membership', 'href' => url('/membership'), 'active' => request()->is('membership*')],
         ['label' => 'Marketplace', 'href' => url('/marketplace'), 'active' => request()->is('marketplace*')],
         ['label' => 'Pelatih', 'href' => url('/coaches'), 'active' => request()->is('coaches*')],
     ];

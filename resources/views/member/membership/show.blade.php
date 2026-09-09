@@ -148,12 +148,10 @@
 
                     <div class="mt-4">
                         <a href="{{ route('member.membership.checkout', $paketMembership->id) }}"
-   class="w-full inline-flex justify-center items-center gap-2
-          rounded-full px-5 py-3 bg-gold-600 text-white text-sm font-semibold
-          hover:bg-gold-500 transition">
-    Lanjut ke Checkout
-    <i data-lucide="arrow-right" class="w-4 h-4"></i>
-</a>
+                           class="w-full inline-flex justify-center items-center gap-2 rounded-2xl px-5 py-3.5 bg-gradient-to-r from-amber-400 via-gold-500 to-amber-500 hover:from-amber-300 hover:via-gold-400 hover:to-amber-400 text-brand-nav font-black text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all duration-200 active:scale-95">
+                            <span>Lanjut ke Pembayaran</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </a>
                     </div>
 
                     <hr class="my-4 border-brand-borderSoft">

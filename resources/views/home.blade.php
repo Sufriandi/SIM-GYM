@@ -91,77 +91,48 @@
             ? route('guest.coach.index')
             : url('/coaches'));
 
-    $allProductUrl = Route::has('guest.products.index')
-        ? route('guest.products.index')
-        : (Route::has('guest.produk.index')
-            ? route('guest.produk.index')
-            : url('/products'));
+    $allProductUrl = Route::has('guest.marketplace.index')
+        ? route('guest.marketplace.index')
+        : (Route::has('guest.products.index')
+            ? route('guest.products.index')
+            : url('/marketplace'));
 
     // =========================
     // HELPERS
     // =========================
     $mockupUrl = asset('images/' . rawurlencode('mockup hp.webp'));
 
-    $coachImg = function ($path) {
-        // 1. Bersihkan path
+    $coachImg = function ($path, $fallbackText = 'COACH') {
         $path = trim((string) $path);
-        $fallback = 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=2070&auto=format&fit=crop';
-
-        // 2. Jika kosong, langsung pakai gambar cadangan
         if ($path === '') {
-            return $fallback;
+            return 'https://placehold.co/900x1200/111827/FACC15?text=' . urlencode($fallbackText ?: 'COACH') . '&font=raleway';
         }
-
-        // 3. Jika sudah berupa link HTTP(S), pakai langsung
         if (Str::startsWith($path, ['http://', 'https://'])) {
             return $path;
         }
-
-        // 4. Pastikan path tidak berulang (hapus 'storage/' atau 'public/' jika sudah ada di DB)
-        $path = str_replace(['storage/', 'public/'], '', $path);
+        $path = str_replace('\\', '/', $path);
         $path = ltrim($path, '/');
-
-        // 5. Cek fisik file di storage
-        // Jika file benar-benar tidak ada di folder, kembalikan gambar cadangan
-        if (!file_exists(public_path('storage/' . $path))) {
-            return $fallback;
+        if (Str::startsWith($path, 'storage/')) {
+            return url('/' . $path);
         }
-
-        // 6. Jika semua aman, kembalikan URL yang benar
-        return asset('storage/' . $path);
+        if (Str::startsWith($path, 'public/')) {
+            $path = Str::after($path, 'public/');
+        }
+        if (file_exists(public_path('storage/' . $path))) {
+            return asset('storage/' . $path);
+        }
+        return Storage::url($path);
     };
 
     $coachDetailUrl = function ($coach) {
+        $slug = $coach->id . '-' . Str::slug($coach->nama ?? 'coach');
         if (Route::has('guest.coaches.show')) {
-            return route('guest.coaches.show', $coach->id);
+            return route('guest.coaches.show', $slug);
         }
         if (Route::has('guest.coach.show')) {
-            return route('guest.coach.show', $coach->id);
+            return route('guest.coach.show', $slug);
         }
-        return url('/coaches/' . $coach->id);
-    };
-
-    // WA link coach (JANGAN taruh di href agar tidak “terlihat” saat hover)
-    $coachWaUrl = function ($coach) {
-        $raw = (string) ($coach->no_hp ?? '');
-        $digits = preg_replace('/\D+/', '', $raw);
-
-        if ($digits !== '') {
-            if (Str::startsWith($digits, '0')) {
-                $digits = '62' . substr($digits, 1);
-            }
-            if (Str::startsWith($digits, '8')) {
-                $digits = '62' . $digits;
-            }
-        }
-
-        if ($digits === '') {
-            return null;
-        }
-
-        $name = $coach->nama ?? 'Coach';
-        $msg = "Halo $name, saya mau tanya jadwal dan layanan coaching di BETA GYM.";
-        return "https://wa.me/{$digits}?text=" . urlencode($msg);
+        return url('/coaches/' . $slug);
     };
 
     $productImg = function ($path) {
@@ -190,13 +161,14 @@
     };
 
     $productDetailUrl = function ($product) {
+        $slug = $product->id . '-' . Str::slug($product->nama ?? ($product->name ?? 'produk'));
+        if (Route::has('guest.marketplace.show')) {
+            return route('guest.marketplace.show', $slug);
+        }
         if (Route::has('guest.products.show')) {
-            return route('guest.products.show', $product->id);
+            return route('guest.products.show', $slug);
         }
-        if (Route::has('guest.produk.show')) {
-            return route('guest.produk.show', $product->id);
-        }
-        return url('/products/' . $product->id);
+        return url('/marketplace/' . $slug);
     };
 
     // copywriting highlight (lebih “masuk” untuk publik)
@@ -894,8 +866,7 @@
                                 <span class="text-transparent bg-clip-text bg-brand-gold">YANG PAS BUAT ANDA</span>
                             </h2>
                             <p class="text-brand-textSoft mt-4">
-                                Temukan coach yang sesuai gaya latihan Anda, lalu konsultasi langsung untuk jadwal dan
-                                program.
+                                Temukan coach profesional berpengalaman untuk mendampingi program dan target kebugaran Anda.
                             </p>
                         </div>
 
@@ -909,94 +880,97 @@
                     </div>
 
                     <div class="relative" data-reveal="up" data-delay="160" data-carousel data-nudge="1">
-                        {{-- edge fade kiri/kanan (indikasi ada konten di samping) --}}
-                        <div
-                            class="pointer-events-none absolute inset-y-0 left-0 w-10 sm:w-14
-                bg-gradient-to-r from-black/70 to-transparent z-10">
-                        </div>
-                        <div
-                            class="pointer-events-none absolute inset-y-0 right-0 w-10 sm:w-14
-                bg-gradient-to-l from-black/70 to-transparent z-10">
-                        </div>
-
                         {{-- track --}}
                         <div id="coachCarousel" data-carousel-track
-                            class="autoscroll-track flex gap-5 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-4
+                            class="autoscroll-track flex gap-4 sm:gap-5 overflow-x-auto snap-x snap-mandatory scroll-smooth px-1.5 sm:px-2 pt-1 pb-4
             custom-scrollbar touch-auto overscroll-x-contain soft-scroll
             select-none md:cursor-grab md:active:cursor-grabbing">
 
                             @foreach ($coaches as $cidx => $coach)
                                 @php
-                                    $foto = $coachImg($coach->foto ?? '');
+                                    $foto = $coachImg($coach->foto ?? '', $coach->nama ?? 'Coach');
                                     $detailUrl = $coachDetailUrl($coach);
-                                    $waUrl = $coachWaUrl($coach);
                                 @endphp
 
-                                <article class="snap-start flex-none w-[240px] sm:w-[270px] md:w-[290px]">
-                                    <div class="surface-card rounded-3xl overflow-hidden transition">
-                                        <a href="{{ $detailUrl }}" class="block">
-                                            <div class="relative aspect-[3/4] overflow-hidden">
-                                                <img src="{{ $foto }}" alt="{{ $coach->nama }}"
-                                                    class="w-full h-full object-cover transition duration-700 hover:scale-[1.04]"
-                                                    onerror="this.src='https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=2070&auto=format&fit=crop'">
-                                                <div
-                                                    class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent">
-                                                </div>
+                                <article class="snap-start flex-none w-[205px] sm:w-[225px] md:w-[245px]">
+                                    <div class="group rounded-2xl sm:rounded-3xl overflow-hidden surface-card flex flex-col h-full hover:border-gold-500/60 transition-all duration-300">
+                                        {{-- Image (proporsional & compact) --}}
+                                        <a href="{{ $detailUrl }}" class="block relative w-full aspect-[3/4] overflow-hidden bg-[#12141a] border-b border-white/[0.08]">
+                                            <img src="{{ $foto }}" alt="{{ $coach->nama }}"
+                                                class="w-full h-full object-cover object-top brightness-95
+                                                       group-hover:brightness-105 group-hover:scale-[1.05]
+                                                       transition duration-700 ease-out"
+                                                onerror="this.onerror=null; this.src='https://placehold.co/900x1200/111827/FACC15?text={{ urlencode($coach->nama) }}';"
+                                                loading="lazy">
 
-                                                <div class="absolute bottom-4 left-4 right-4">
-                                                    <h3
-                                                        class="text-lg sm:text-xl font-bold font-heading text-brand-text truncate">
-                                                        {{ $coach->nama }}
-                                                    </h3>
-                                                </div>
+                                            {{-- Gradients overlay --}}
+                                            <div class="absolute inset-0 bg-gradient-to-t from-[#181b22] via-black/20 to-black/30 opacity-80 group-hover:opacity-50 transition-opacity duration-300"></div>
+
+                                            {{-- Badge Pelatih Resmi --}}
+                                            <div class="absolute top-2.5 left-2.5 z-10">
+                                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/75 border border-gold-500/30 text-gold-400 text-[9px] font-bold uppercase tracking-wider backdrop-blur-md shadow-md">
+                                                    <i data-lucide="award" class="w-2.5 h-2.5 text-gold-400"></i> Coach
+                                                </span>
+                                            </div>
+
+                                            {{-- Nama Coach di atas foto --}}
+                                            <div class="absolute bottom-0 left-0 right-0 p-3 sm:p-3.5 z-10">
+                                                <h3 class="text-sm sm:text-base font-bold font-heading drop-shadow-md text-white group-hover:text-gold-400 transition-colors duration-300 line-clamp-1" title="{{ $coach->nama }}">
+                                                    {{ $coach->nama }}
+                                                </h3>
                                             </div>
                                         </a>
 
-                                        <div class="p-4 sm:p-5">
-                                            @if ($waUrl)
-                                                <button type="button"
-                                                    class="js-wa w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-pill font-heading font-bold
-                                           text-white transition"
-                                                    style="background:#25D366; box-shadow:0 18px 45px rgba(37,211,102,.18);"
-                                                    data-wa="{{ $waUrl }}">
-                                                    <svg width="18" height="18" viewBox="0 0 32 32"
-                                                        aria-hidden="true">
-                                                        <path fill="currentColor"
-                                                            d="M19.11 17.53c-.27-.14-1.6-.79-1.85-.88-.25-.09-.43-.14-.61.14-.18.27-.7.88-.86 1.06-.16.18-.31.2-.58.07-.27-.14-1.13-.42-2.16-1.33-.8-.71-1.34-1.58-1.5-1.85-.16-.27-.02-.42.12-.55.12-.12.27-.31.41-.47.14-.16.18-.27.27-.45.09-.18.05-.34-.02-.47-.07-.14-.61-1.48-.83-2.02-.22-.53-.44-.46-.61-.46h-.52c-.18 0-.47.07-.72.34-.25.27-.94.92-.94 2.24s.96 2.6 1.09 2.78c.14.18 1.9 2.9 4.61 4.07.64.28 1.14.45 1.53.57.64.2 1.23.17 1.7.1.52-.08 1.6-.65 1.82-1.28.22-.63.22-1.16.15-1.28-.07-.12-.25-.2-.52-.34z" />
-                                                        <path fill="currentColor"
-                                                            d="M16.04 3.2c-6.99 0-12.68 5.69-12.68 12.68 0 2.23.58 4.4 1.69 6.31L3.2 28.8l6.79-1.78c1.86 1.02 3.96 1.55 6.05 1.55 6.99 0 12.68-5.69 12.68-12.68S23.03 3.2 16.04 3.2zm0 23.02c-1.92 0-3.8-.52-5.44-1.5l-.39-.23-4.03 1.06 1.08-3.93-.25-.4c-1.07-1.72-1.64-3.71-1.64-5.75 0-6.01 4.89-10.9 10.9-10.9 6.01 0 10.9 4.89 10.9 10.9 0 6.01-4.89 10.9-10.9 10.9z" />
+                                        {{-- Content --}}
+                                        <div class="p-3 sm:p-3.5 flex flex-col flex-1 justify-between bg-[#15171e]/95">
+                                            <div>
+                                                <p class="text-[11px] text-brand-textSoft/85 leading-relaxed line-clamp-2 min-h-[32px]">
+                                                    {{ $coach->deskripsi ?: 'Pelatih berdedikasi siap mendampingi target fitness Anda.' }}
+                                                </p>
+
+                                                {{-- Lokasi Gym Center --}}
+                                                <div class="mt-2.5 pt-2 border-t border-white/[0.08] flex items-center justify-between text-[10px] text-brand-textSoft">
+                                                    <div class="flex items-center gap-1 text-brand-silver/80">
+                                                        <i data-lucide="map-pin" class="w-3 h-3 text-gold-500 shrink-0"></i>
+                                                        <span class="font-medium truncate">BETA GYM Center</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {{-- Tombol Lihat Profil --}}
+                                            <div class="mt-3">
+                                                <a href="{{ $detailUrl }}"
+                                                   class="w-full py-2 rounded-xl text-xs font-bold font-heading
+                                                          bg-white/5 hover:bg-gold-500 text-white hover:text-brand-nav
+                                                          border border-white/15 hover:border-gold-500 transition-all duration-200
+                                                          flex items-center justify-center gap-1.5 shadow-sm hover:shadow-gold-glow">
+                                                    <span>Lihat Profil</span>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-hover:translate-x-0.5">
+                                                        <path d="m9 18 6-6-6-6"/>
                                                     </svg>
-                                                    Hubungi Coach
-                                                </button>
-                                            @else
-                                                <button type="button"
-                                                    class="w-full py-3 rounded-pill text-center font-heading font-bold
-                                           bg-black/20 text-brand-textSoft cursor-not-allowed"
-                                                    style="border:1px solid rgba(212,167,87,.12);">
-                                                    Kontak belum tersedia
-                                                </button>
-                                            @endif
+                                                </a>
+                                            </div>
                                         </div>
                                     </div>
                                 </article>
                             @endforeach
                         </div>
 
-                        {{-- tombol desktop --}}
+                        {{-- tombol desktop di luar card agar tidak menutupi konten --}}
                         <button type="button"
-                            class="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 z-20
-                   w-11 h-11 rounded-full bg-black/40 border border-gold-500/20
-                   items-center justify-center hover:bg-black/55 transition"
+                            class="hidden md:flex absolute -left-3 lg:-left-5 top-1/2 -translate-y-1/2 z-20
+                   w-10 h-10 rounded-full bg-black/75 backdrop-blur border border-gold-500/30
+                   items-center justify-center text-gold-400 hover:bg-gold-500 hover:text-brand-nav transition shadow-xl"
                             data-carousel-prev aria-label="Sebelumnya">
-                            <i data-lucide="chevron-left" class="w-5 h-5 text-gold-500"></i>
+                            <i data-lucide="chevron-left" class="w-5 h-5"></i>
                         </button>
 
                         <button type="button"
-                            class="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 z-20
-                   w-11 h-11 rounded-full bg-black/40 border border-gold-500/20
-                   items-center justify-center hover:bg-black/55 transition"
+                            class="hidden md:flex absolute -right-3 lg:-right-5 top-1/2 -translate-y-1/2 z-20
+                   w-10 h-10 rounded-full bg-black/75 backdrop-blur border border-gold-500/30
+                   items-center justify-center text-gold-400 hover:bg-gold-500 hover:text-brand-nav transition shadow-xl"
                             data-carousel-next aria-label="Berikutnya">
-                            <i data-lucide="chevron-right" class="w-5 h-5 text-gold-500"></i>
+                            <i data-lucide="chevron-right" class="w-5 h-5"></i>
                         </button>
                     </div>
 
@@ -1044,19 +1018,9 @@
                     </div>
 
                     <div class="relative" data-reveal="up" data-delay="160" data-carousel data-nudge="1">
-                        {{-- edge fade kiri/kanan --}}
-                        <div
-                            class="pointer-events-none absolute inset-y-0 left-0 w-10 sm:w-14
-                bg-gradient-to-r from-black/70 to-transparent z-10">
-                        </div>
-                        <div
-                            class="pointer-events-none absolute inset-y-0 right-0 w-10 sm:w-14
-                bg-gradient-to-l from-black/70 to-transparent z-10">
-                        </div>
-
                         {{-- track --}}
                         <div id="productTrack" data-carousel-track
-                            class="autoscroll-track flex gap-5 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-4
+                            class="autoscroll-track flex gap-5 overflow-x-auto snap-x snap-mandatory scroll-smooth px-1.5 sm:px-2 pt-1 pb-4
             custom-scrollbar touch-auto overscroll-x-contain soft-scroll
             select-none md:cursor-grab md:active:cursor-grabbing">
 
@@ -1109,21 +1073,21 @@
                             @endforeach
                         </div>
 
-                        {{-- tombol desktop --}}
+                        {{-- tombol desktop di luar card --}}
                         <button type="button"
-                            class="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 z-20
-                   w-11 h-11 rounded-full bg-black/40 border border-gold-500/20
-                   items-center justify-center hover:bg-black/55 transition"
+                            class="hidden md:flex absolute -left-3 lg:-left-5 top-1/2 -translate-y-1/2 z-20
+                   w-10 h-10 rounded-full bg-black/75 backdrop-blur border border-gold-500/30
+                   items-center justify-center text-gold-400 hover:bg-gold-500 hover:text-brand-nav transition shadow-xl"
                             data-carousel-prev aria-label="Sebelumnya">
-                            <i data-lucide="chevron-left" class="w-5 h-5 text-gold-500"></i>
+                            <i data-lucide="chevron-left" class="w-5 h-5"></i>
                         </button>
 
                         <button type="button"
-                            class="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 z-20
-                   w-11 h-11 rounded-full bg-black/40 border border-gold-500/20
-                   items-center justify-center hover:bg-black/55 transition"
+                            class="hidden md:flex absolute -right-3 lg:-right-5 top-1/2 -translate-y-1/2 z-20
+                   w-10 h-10 rounded-full bg-black/75 backdrop-blur border border-gold-500/30
+                   items-center justify-center text-gold-400 hover:bg-gold-500 hover:text-brand-nav transition shadow-xl"
                             data-carousel-next aria-label="Berikutnya">
-                            <i data-lucide="chevron-right" class="w-5 h-5 text-gold-500"></i>
+                            <i data-lucide="chevron-right" class="w-5 h-5"></i>
                         </button>
                     </div>
 

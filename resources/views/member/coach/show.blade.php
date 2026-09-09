@@ -123,7 +123,7 @@
                                          text-[11px] font-bold uppercase tracking-widest
                                          w-full sm:w-auto max-w-full min-w-0">
                                 <i data-lucide="map-pin" class="w-3.5 h-3.5 shrink-0 text-gold-500/80"></i>
-                                <span class="truncate min-w-0">{{ $coach->alamat ?: 'BETA Gym' }}</span>
+                                <span class="truncate min-w-0">BETA GYM Center</span>
                             </span>
                         </div>
 

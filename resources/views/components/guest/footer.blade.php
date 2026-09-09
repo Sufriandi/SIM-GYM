@@ -85,6 +85,9 @@
                     <li><a href="{{ url('/') }}"
                             class="hover:text-gold-500 hover:translate-x-1 transition-all duration-300 block">Beranda</a>
                     </li>
+                    <li><a href="{{ url('/membership') }}"
+                            class="hover:text-gold-500 hover:translate-x-1 transition-all duration-300 block">Membership</a>
+                    </li>
                     <li><a href="{{ url('/marketplace') }}"
                             class="hover:text-gold-500 hover:translate-x-1 transition-all duration-300 block">Marketplace</a>
                     </li>

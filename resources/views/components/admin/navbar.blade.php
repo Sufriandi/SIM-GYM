@@ -404,7 +404,7 @@
                             {{ auth()->user()->name ?? 'Admin' }}
                         </div>
                         <div class="text-[10px] text-text-muted">
-                            Administrator
+                            {{ auth()->user()?->role ? Str::title(auth()->user()->role) : 'Administrator' }}
                         </div>
                     </div>
                     <i data-lucide="chevron-down"
