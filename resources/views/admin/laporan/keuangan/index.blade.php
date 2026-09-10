@@ -89,16 +89,16 @@
     <div class="space-y-6">
 
         {{-- 1. NAVIGATION & FILTER --}}
-        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
 
             {{-- Navigation Tabs --}}
             @include('admin.laporan.keuangan.partials.tabs')
 
             {{-- Filter & Actions (Right Side) --}}
-            <div class="flex flex-wrap items-center gap-2.5 justify-start xl:justify-end">
+            <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
                 {{-- Date Filter Form --}}
                 <form method="GET" action="{{ route('admin.laporan.keuangan.index') }}" class="flex items-center gap-2">
-                    <div class="flex items-center gap-2 bg-brand-card border border-brand-borderSoft rounded-xl px-3 py-1.5 shadow-sm">
+                    <div class="flex items-center gap-2 bg-white dark:bg-brand-card border border-brand-borderSoft rounded-xl px-3 py-1.5 shadow-xs">
                         <i data-lucide="calendar" class="w-4 h-4 text-gold-500 shrink-0"></i>
                         <input type="date" name="from" value="{{ $fromDate }}"
                             class="border-none text-xs font-medium text-text-main focus:ring-0 p-0 bg-transparent w-28 cursor-pointer">
@@ -117,29 +117,29 @@
                 <div x-data="{ open: false }" class="relative flex-shrink-0">
                     <button type="button" @click="open = !open"
                         class="inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold
-                               bg-brand-card border border-brand-borderSoft hover:bg-brand-shell/50 transition shadow-sm text-text-main">
+                               bg-white dark:bg-brand-card border border-brand-borderSoft hover:bg-gray-50 dark:hover:bg-brand-shell/50 transition shadow-xs text-text-main">
                         <i data-lucide="download" class="w-3.5 h-3.5 text-text-main"></i>
                         <span>Ekspor</span>
                         <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-text-muted"></i>
                     </button>
 
                     <div x-show="open" x-cloak @click.away="open=false"
-                        class="absolute right-0 mt-2 w-64 rounded-2xl border border-brand-borderSoft bg-brand-card shadow-2xl overflow-hidden z-30">
-                        <a class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-brand-shell/40 transition"
+                        class="absolute right-0 mt-2 w-56 rounded-xl border border-brand-borderSoft bg-white dark:bg-brand-card shadow-xl overflow-hidden z-30 py-1">
+                        <a class="flex items-center gap-2.5 px-4 py-2.5 text-xs hover:bg-brand-shell/40 transition"
                             href="{{ route('admin.laporan.keuangan.excel') . ($qs ? '?' . $qs : '') }}">
                             <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
                             <div class="min-w-0">
-                                <div class="font-semibold text-text-main">Ekspor Excel</div>
-                                <div class="text-xs text-text-muted">Rekap ringkasan keuangan.</div>
+                                <div class="font-bold text-text-main">Ekspor Excel</div>
+                                <div class="text-[11px] text-text-muted">Rekap ringkasan keuangan.</div>
                             </div>
                         </a>
 
-                        <a class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-brand-shell/40 transition"
+                        <a class="flex items-center gap-2.5 px-4 py-2.5 text-xs hover:bg-brand-shell/40 transition"
                             href="{{ route('admin.laporan.keuangan.pdf') . ($qs ? '?' . $qs : '') }}">
                             <i data-lucide="file-text" class="w-4 h-4 text-rose-600"></i>
                             <div class="min-w-0">
-                                <div class="font-semibold text-text-main">Ekspor PDF</div>
-                                <div class="text-xs text-text-muted">Siap cetak, rapi untuk laporan.</div>
+                                <div class="font-bold text-text-main">Ekspor PDF</div>
+                                <div class="text-[11px] text-text-muted">Siap cetak, rapi untuk laporan.</div>
                             </div>
                         </a>
                     </div>
@@ -148,83 +148,100 @@
         </div>
 
         {{-- 2. KPI CARDS --}}
-        <div class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {{-- Total Pendapatan (Dark Card Style) --}}
-            <div class="relative overflow-hidden rounded-2xl bg-[#1A1A1A] p-5 shadow-lg lg:col-span-1">
-                <div class="relative z-10 flex h-full flex-col justify-between">
-                    <div>
-                        <p class="text-[11px] font-bold uppercase tracking-widest text-gray-400">Total Pendapatan Bersih
-                        </p>
-                        <h3 class="mt-2 text-3xl font-bold text-white stat-number">{{ $rupiah($grandTotal) }}</h3>
+            <div class="relative overflow-hidden rounded-2xl bg-[#1A1A1A] p-5 shadow-xs border border-gray-800 flex flex-col justify-between min-h-[135px]">
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Total Pendapatan Bersih</p>
+                        <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-gold-500/20 text-gold-400">
+                            <i data-lucide="wallet" class="w-3.5 h-3.5"></i>
+                        </span>
                     </div>
-                    <div class="mt-4 flex items-center gap-2">
-                        <div class="h-1.5 w-full rounded-full bg-gray-700">
-                            <div class="h-1.5 rounded-full bg-gold-500 w-full"></div>
-                        </div>
-                    </div>
-                    <p class="mt-2 text-[10px] text-gray-400">Gabungan Produk, Membership & Harian</p>
+                    <h3 class="mt-2 text-xl xl:text-2xl font-extrabold text-white stat-number whitespace-nowrap tracking-tight">
+                        {{ $rupiah($grandTotal) }}
+                    </h3>
                 </div>
-                {{-- Decorative Blob --}}
-                <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-gold-500/10 blur-3xl"></div>
+                <div class="relative z-10 mt-3">
+                    <div class="h-1.5 w-full rounded-full bg-gray-800 overflow-hidden">
+                        <div class="h-full rounded-full bg-gold-500 w-full"></div>
+                    </div>
+                    <p class="mt-1.5 text-[10px] text-gray-400 truncate">Gabungan Produk, Membership & Harian</p>
+                </div>
+                <div class="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-gold-500/10 blur-2xl pointer-events-none"></div>
             </div>
 
             {{-- Membership --}}
-            <x-ui.card class="p-5 border-brand-borderSoft hover:border-blue-200 transition-colors">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <p class="text-[11px] font-bold uppercase tracking-widest text-text-muted">Membership</p>
-                        <p class="mt-1 text-2xl font-bold text-text-main stat-number">{{ $rupiah($totalMembership) }}
-                        </p>
+            <div class="bg-white dark:bg-brand-card border border-brand-borderSoft rounded-2xl p-5 shadow-xs flex flex-col justify-between min-h-[135px] hover:border-blue-300 transition-colors">
+                <div>
+                    <div class="flex items-center justify-between">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-text-muted">Membership</p>
+                        <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
+                            <i data-lucide="users" class="w-3.5 h-3.5"></i>
+                        </span>
                     </div>
-                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600">
-                        <i data-lucide="users" class="w-4 h-4"></i>
-                    </span>
+                    <h3 class="mt-2 text-xl xl:text-2xl font-extrabold text-text-main stat-number whitespace-nowrap tracking-tight">
+                        {{ $rupiah($totalMembership) }}
+                    </h3>
                 </div>
-                <div class="mt-4 h-1.5 w-full rounded-full bg-gray-100">
-                    <div class="h-1.5 rounded-full bg-blue-500"
-                        style="width: {{ $grandTotal > 0 ? ($totalMembership / $grandTotal) * 100 : 0 }}%"></div>
+                <div class="mt-3">
+                    <div class="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                        <div class="h-full rounded-full bg-blue-500" style="width: {{ $grandTotal > 0 ? ($totalMembership / $grandTotal) * 100 : 0 }}%"></div>
+                    </div>
+                    <div class="mt-1.5 flex items-center justify-between text-[10px] text-text-muted">
+                        <span>Porsi Pendapatan</span>
+                        <span class="font-bold text-blue-600 dark:text-blue-400">{{ $grandTotal > 0 ? round(($totalMembership / $grandTotal) * 100, 1) : 0 }}%</span>
+                    </div>
                 </div>
-                <p class="mt-2 text-[10px] text-text-muted text-right">
-                    {{ $grandTotal > 0 ? round(($totalMembership / $grandTotal) * 100, 1) : 0 }}%</p>
-            </x-ui.card>
+            </div>
 
             {{-- Produk --}}
-            <x-ui.card class="p-5 border-brand-borderSoft hover:border-emerald-200 transition-colors">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <p class="text-[11px] font-bold uppercase tracking-widest text-text-muted">Produk Retail</p>
-                        <p class="mt-1 text-2xl font-bold text-text-main stat-number">{{ $rupiah($totalProduk) }}</p>
+            <div class="bg-white dark:bg-brand-card border border-brand-borderSoft rounded-2xl p-5 shadow-xs flex flex-col justify-between min-h-[135px] hover:border-emerald-300 transition-colors">
+                <div>
+                    <div class="flex items-center justify-between">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-text-muted">Produk Retail</p>
+                        <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+                            <i data-lucide="shopping-bag" class="w-3.5 h-3.5"></i>
+                        </span>
                     </div>
-                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 text-emerald-600">
-                        <i data-lucide="shopping-bag" class="w-4 h-4"></i>
-                    </span>
+                    <h3 class="mt-2 text-xl xl:text-2xl font-extrabold text-text-main stat-number whitespace-nowrap tracking-tight">
+                        {{ $rupiah($totalProduk) }}
+                    </h3>
                 </div>
-                <div class="mt-4 h-1.5 w-full rounded-full bg-gray-100">
-                    <div class="h-1.5 rounded-full bg-emerald-500"
-                        style="width: {{ $grandTotal > 0 ? ($totalProduk / $grandTotal) * 100 : 0 }}%"></div>
+                <div class="mt-3">
+                    <div class="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                        <div class="h-full rounded-full bg-emerald-500" style="width: {{ $grandTotal > 0 ? ($totalProduk / $grandTotal) * 100 : 0 }}%"></div>
+                    </div>
+                    <div class="mt-1.5 flex items-center justify-between text-[10px] text-text-muted">
+                        <span>Porsi Pendapatan</span>
+                        <span class="font-bold text-emerald-600 dark:text-emerald-400">{{ $grandTotal > 0 ? round(($totalProduk / $grandTotal) * 100, 1) : 0 }}%</span>
+                    </div>
                 </div>
-                <p class="mt-2 text-[10px] text-text-muted text-right">
-                    {{ $grandTotal > 0 ? round(($totalProduk / $grandTotal) * 100, 1) : 0 }}%</p>
-            </x-ui.card>
+            </div>
 
             {{-- Harian --}}
-            <x-ui.card class="p-5 border-brand-borderSoft hover:border-amber-200 transition-colors">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <p class="text-[11px] font-bold uppercase tracking-widest text-text-muted">Visit Harian</p>
-                        <p class="mt-1 text-2xl font-bold text-text-main stat-number">{{ $rupiah($totalHarian) }}</p>
+            <div class="bg-white dark:bg-brand-card border border-brand-borderSoft rounded-2xl p-5 shadow-xs flex flex-col justify-between min-h-[135px] hover:border-amber-300 transition-colors">
+                <div>
+                    <div class="flex items-center justify-between">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-text-muted">Visit Harian</p>
+                        <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400">
+                            <i data-lucide="ticket" class="w-3.5 h-3.5"></i>
+                        </span>
                     </div>
-                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-amber-50 text-amber-600">
-                        <i data-lucide="ticket" class="w-4 h-4"></i>
-                    </span>
+                    <h3 class="mt-2 text-xl xl:text-2xl font-extrabold text-text-main stat-number whitespace-nowrap tracking-tight">
+                        {{ $rupiah($totalHarian) }}
+                    </h3>
                 </div>
-                <div class="mt-4 h-1.5 w-full rounded-full bg-gray-100">
-                    <div class="h-1.5 rounded-full bg-amber-500"
-                        style="width: {{ $grandTotal > 0 ? ($totalHarian / $grandTotal) * 100 : 0 }}%"></div>
+                <div class="mt-3">
+                    <div class="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                        <div class="h-full rounded-full bg-amber-500" style="width: {{ $grandTotal > 0 ? ($totalHarian / $grandTotal) * 100 : 0 }}%"></div>
+                    </div>
+                    <div class="mt-1.5 flex items-center justify-between text-[10px] text-text-muted">
+                        <span>Porsi Pendapatan</span>
+                        <span class="font-bold text-amber-600 dark:text-amber-400">{{ $grandTotal > 0 ? round(($totalHarian / $grandTotal) * 100, 1) : 0 }}%</span>
+                    </div>
                 </div>
-                <p class="mt-2 text-[10px] text-text-muted text-right">
-                    {{ $grandTotal > 0 ? round(($totalHarian / $grandTotal) * 100, 1) : 0 }}%</p>
-            </x-ui.card>
+            </div>
         </div>
 
         {{-- 3. CHARTS AREA --}}

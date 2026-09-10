@@ -31,7 +31,7 @@
     ];
 @endphp
 
-<div class="inline-flex bg-brand-card border border-brand-borderSoft rounded-xl p-1 shadow-sm shrink-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+<div class="inline-flex w-fit self-start bg-white dark:bg-brand-card border border-brand-borderSoft rounded-xl p-1 shadow-xs shrink-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
     <div class="flex items-center gap-1">
         @foreach ($tabs as $tab)
             @if ($tab['active'])
@@ -40,7 +40,7 @@
                 </span>
             @else
                 <a href="{{ route($tab['route'], $query) }}"
-                   class="px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs font-medium rounded-lg text-text-muted hover:text-text-main hover:bg-brand-shell/50 transition-all whitespace-nowrap">
+                   class="px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs font-medium rounded-lg text-text-muted hover:text-text-main hover:bg-gray-100 dark:hover:bg-brand-shell/50 transition-all whitespace-nowrap">
                     {{ $tab['label'] }}
                 </a>
             @endif

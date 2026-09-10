@@ -13,16 +13,16 @@
     <div class="space-y-6 font-sans text-text-main">
 
         {{-- 1. NAVIGATION & FILTER --}}
-        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
 
             {{-- Navigation Tabs --}}
             @include('admin.laporan.keuangan.partials.tabs')
 
             {{-- Filter & Actions (Right Side) --}}
-            <div class="flex flex-wrap items-center gap-2.5 justify-start xl:justify-end">
+            <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
                 <form method="GET" action="{{ route('admin.laporan.keuangan.gabungan') }}" class="flex flex-wrap items-center gap-2">
                     {{-- Date Range --}}
-                    <div class="flex items-center gap-2 bg-brand-card border border-brand-borderSoft rounded-xl px-3 py-1.5 shadow-sm">
+                    <div class="flex items-center gap-2 bg-white dark:bg-brand-card border border-brand-borderSoft rounded-xl px-3 py-1.5 shadow-xs">
                         <i data-lucide="calendar" class="w-4 h-4 text-gold-500 shrink-0"></i>
                         <input type="date" name="from" value="{{ $fromDate }}"
                             class="border-none text-xs font-medium text-text-main focus:ring-0 p-0 bg-transparent w-28 cursor-pointer">
@@ -34,7 +34,7 @@
                     {{-- Sumber --}}
                     <div class="relative">
                         <select name="sumber"
-                            class="appearance-none bg-brand-card border border-brand-borderSoft text-xs font-medium text-text-main rounded-xl pl-3 pr-8 py-2 focus:ring-1 focus:ring-gold-500 shadow-sm cursor-pointer">
+                            class="appearance-none bg-white dark:bg-brand-card border border-brand-borderSoft text-xs font-medium text-text-main rounded-xl pl-3 pr-8 py-2 focus:ring-1 focus:ring-gold-500 shadow-xs cursor-pointer">
                             <option value="">Semua Sumber</option>
                             <option value="produk" @selected($sumber === 'produk')>Produk Retail</option>
                             <option value="membership" @selected($sumber === 'membership')>Membership</option>
@@ -45,12 +45,12 @@
 
                     {{-- Buttons --}}
                     <button type="submit"
-                        class="px-3.5 py-2 bg-black dark:bg-gold-500 text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gold-400 text-xs font-bold rounded-xl transition shadow-sm">
+                        class="px-3.5 py-2 bg-black dark:bg-gold-500 text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gold-400 text-xs font-bold rounded-xl transition shadow-xs">
                         Terapkan
                     </button>
                     @if (request()->anyFilled(['from', 'to', 'sumber']))
                         <a href="{{ route('admin.laporan.keuangan.gabungan') }}"
-                            class="px-3 py-2 border border-brand-borderSoft bg-brand-card text-text-muted hover:text-text-main text-xs font-medium rounded-xl hover:bg-brand-shell/50 transition shadow-sm">
+                            class="px-3 py-2 border border-brand-borderSoft bg-white dark:bg-brand-card text-text-muted hover:text-text-main text-xs font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-brand-shell/50 transition shadow-xs">
                             Reset
                         </a>
                     @endif
@@ -60,29 +60,49 @@
 
         {{-- 2. KPI SUMMARY ROW --}}
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div class="bg-brand-card border border-brand-borderSoft rounded-2xl p-4 shadow-sm">
-                <p class="text-[11px] font-bold uppercase tracking-wider text-text-muted">Total Nilai Audit</p>
-                <h3 class="mt-1 text-2xl font-bold text-text-main">
-                    Rp {{ number_format($total, 0, ',', '.') }}
-                </h3>
-                <p class="mt-0.5 text-xs text-text-muted">Akumulasi sesuai filter terpasang</p>
+            <div class="bg-white dark:bg-brand-card border border-brand-borderSoft rounded-2xl p-5 shadow-xs flex flex-col justify-between min-h-[135px]">
+                <div>
+                    <div class="flex items-center justify-between">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-text-muted">Total Nilai Audit</p>
+                        <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-gold-50 text-gold-600 dark:bg-gold-950/50 dark:text-gold-400">
+                            <i data-lucide="scale" class="w-3.5 h-3.5"></i>
+                        </span>
+                    </div>
+                    <h3 class="mt-2 text-xl xl:text-2xl font-extrabold text-text-main stat-number whitespace-nowrap tracking-tight">
+                        Rp {{ number_format($total, 0, ',', '.') }}
+                    </h3>
+                </div>
+                <p class="mt-3 text-[10px] text-text-muted">Akumulasi seluruh transaksi sesuai filter aktif.</p>
             </div>
 
-            <div class="bg-brand-card border border-brand-borderSoft rounded-2xl p-4 shadow-sm">
-                <p class="text-[11px] font-bold uppercase tracking-wider text-text-muted">Jumlah Transaksi</p>
-                <h3 class="mt-1 text-2xl font-bold text-text-main">
-                    {{ number_format($rows->total(), 0, ',', '.') }} <span class="text-xs font-normal text-text-muted">baris</span>
-                </h3>
-                <p class="mt-0.5 text-xs text-text-muted">Seluruh entri transaksi terdaftar</p>
+            <div class="bg-white dark:bg-brand-card border border-brand-borderSoft rounded-2xl p-5 shadow-xs flex flex-col justify-between min-h-[135px]">
+                <div>
+                    <div class="flex items-center justify-between">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-text-muted">Jumlah Transaksi</p>
+                        <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
+                            <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+                        </span>
+                    </div>
+                    <h3 class="mt-2 text-xl xl:text-2xl font-extrabold text-text-main stat-number whitespace-nowrap tracking-tight">
+                        {{ number_format($rows->total(), 0, ',', '.') }} <span class="text-xs font-normal text-text-muted">baris</span>
+                    </h3>
+                </div>
+                <p class="mt-3 text-[10px] text-text-muted">Seluruh entri transaksi terdaftar dalam database.</p>
             </div>
 
-            <div class="bg-brand-card border border-brand-borderSoft rounded-2xl p-4 shadow-sm">
-                <p class="text-[11px] font-bold uppercase tracking-wider text-text-muted">Rentang Waktu</p>
-                <h3 class="mt-1 text-sm font-bold text-gold-600 dark:text-gold-400 flex items-center gap-1.5 pt-1">
-                    <i data-lucide="calendar" class="w-4 h-4"></i>
-                    <span>{{ Carbon::parse($fromDate)->format('d M Y') }} – {{ Carbon::parse($toDate)->format('d M Y') }}</span>
-                </h3>
-                <p class="mt-1 text-xs text-text-muted">Mode: {{ $sumber ? ucfirst($sumber) : 'Semua Sumber' }}</p>
+            <div class="bg-white dark:bg-brand-card border border-brand-borderSoft rounded-2xl p-5 shadow-xs flex flex-col justify-between min-h-[135px]">
+                <div>
+                    <div class="flex items-center justify-between">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-text-muted">Rentang Waktu</p>
+                        <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+                            <i data-lucide="calendar-check" class="w-3.5 h-3.5"></i>
+                        </span>
+                    </div>
+                    <h3 class="mt-2 text-sm font-bold text-gold-600 dark:text-gold-400 flex items-center gap-1.5 pt-1">
+                        <span>{{ Carbon::parse($fromDate)->format('d M Y') }} – {{ Carbon::parse($toDate)->format('d M Y') }}</span>
+                    </h3>
+                </div>
+                <p class="mt-3 text-[10px] text-text-muted">Sumber: {{ $sumber ? ucfirst($sumber) : 'Semua Sumber (Produk, Member, Harian)' }}</p>
             </div>
         </div>
 

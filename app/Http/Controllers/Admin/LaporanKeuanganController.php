@@ -257,6 +257,7 @@ class LaporanKeuanganController extends Controller
 
         $total = (int) (clone $base)->sum('total');
         $count = (int) (clone $base)->count();
+        $avg   = $count > 0 ? (int) round($total / $count) : 0;
 
         $topProduk = DB::table('transaksi_produk_items as tpi')
             ->join('transaksi_produks as tp', 'tp.id', '=', 'tpi.transaksi_produk_id')
@@ -270,7 +271,7 @@ class LaporanKeuanganController extends Controller
             ->get();
 
         $rows = (clone $base)
-            ->with(['buyer.user'])
+            ->with(['buyer.user', 'creator'])
             ->orderByDesc('tanggal_transaksi')
             ->get();
 
@@ -279,6 +280,7 @@ class LaporanKeuanganController extends Controller
             'toDate'    => $to->format('Y-m-d'),
             'total'     => $total,
             'count'     => $count,
+            'avg'       => $avg,
             'topProduk' => $topProduk,
             'rows'      => $rows,
         ];
@@ -308,6 +310,7 @@ class LaporanKeuanganController extends Controller
 
         $total = (int) (clone $base)->sum('total');
         $count = (int) (clone $base)->count();
+        $avg   = $count > 0 ? (int) round($total / $count) : 0;
 
         $topPaket = DB::table('transaksi_memberships as tm')
             ->join('paket_memberships as p', 'p.id', '=', 'tm.paket_id')
@@ -321,7 +324,7 @@ class LaporanKeuanganController extends Controller
             ->get();
 
         $rows = (clone $base)
-            ->with(['buyer.user', 'paket'])
+            ->with(['buyer.user', 'paket', 'creator'])
             ->orderByDesc('tanggal_transaksi')
             ->get();
 
@@ -330,6 +333,7 @@ class LaporanKeuanganController extends Controller
             'toDate'   => $to->format('Y-m-d'),
             'total'    => $total,
             'count'    => $count,
+            'avg'      => $avg,
             'topPaket' => $topPaket,
             'rows'     => $rows,
         ];
@@ -358,6 +362,7 @@ class LaporanKeuanganController extends Controller
 
         $total = (int) (clone $base)->sum('total');
         $count = (int) (clone $base)->count();
+        $avg   = $count > 0 ? (int) round($total / $count) : 0;
 
         $byKategori = (clone $base)
             ->selectRaw("COALESCE(NULLIF(TRIM(kategori), ''), 'unknown') as kategori, SUM(total) as total, COUNT(*) as jumlah")
@@ -366,6 +371,7 @@ class LaporanKeuanganController extends Controller
             ->get();
 
         $rows = (clone $base)
+            ->with(['creator'])
             ->orderByDesc('tanggal')
             ->get();
 
@@ -374,6 +380,7 @@ class LaporanKeuanganController extends Controller
             'toDate'     => $to->format('Y-m-d'),
             'total'      => $total,
             'count'      => $count,
+            'avg'        => $avg,
             'byKategori' => $byKategori,
             'rows'       => $rows,
         ];

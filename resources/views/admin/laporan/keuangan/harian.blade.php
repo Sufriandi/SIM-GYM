@@ -89,16 +89,16 @@
     <div class="space-y-6 font-sans text-text-main">
 
         {{-- 1. NAVIGATION & FILTER --}}
-        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
 
             {{-- Navigation Tabs --}}
             @include('admin.laporan.keuangan.partials.tabs')
 
             {{-- Filter & Actions (Right Side) --}}
-            <div class="flex flex-wrap items-center gap-2.5 justify-start xl:justify-end">
+            <div class="flex flex-wrap items-center gap-2 justify-start lg:justify-end">
                 <form method="GET" action="{{ route('admin.laporan.keuangan.harian') }}" class="flex flex-wrap items-center gap-2">
                     {{-- Date Range --}}
-                    <div class="flex items-center gap-2 bg-brand-card border border-brand-borderSoft rounded-xl px-3 py-1.5 shadow-sm">
+                    <div class="flex items-center gap-2 bg-white dark:bg-brand-card border border-brand-borderSoft rounded-xl px-3 py-1.5 shadow-xs">
                         <i data-lucide="calendar" class="w-4 h-4 text-gold-500 shrink-0"></i>
                         <input type="date" name="from" value="{{ $fromDate }}"
                             class="border-none text-xs font-medium text-text-main focus:ring-0 p-0 bg-transparent w-28 cursor-pointer">
@@ -110,7 +110,7 @@
                     {{-- Metode --}}
                     <div class="relative">
                         <select name="metode"
-                            class="appearance-none bg-brand-card border border-brand-borderSoft text-xs font-medium text-text-main rounded-xl pl-3 pr-8 py-2 focus:ring-1 focus:ring-gold-500 shadow-sm cursor-pointer">
+                            class="appearance-none bg-white dark:bg-brand-card border border-brand-borderSoft text-xs font-medium text-text-main rounded-xl pl-3 pr-8 py-2 focus:ring-1 focus:ring-gold-500 shadow-xs cursor-pointer">
                             <option value="">Semua Metode</option>
                             <option value="cash" @selected($metode === 'cash')>Cash</option>
                             <option value="transfer" @selected($metode === 'transfer')>Transfer</option>
@@ -122,7 +122,7 @@
                     {{-- Kategori --}}
                     <div class="relative">
                         <select name="kategori"
-                            class="appearance-none bg-brand-card border border-brand-borderSoft text-xs font-medium text-text-main rounded-xl pl-3 pr-8 py-2 focus:ring-1 focus:ring-gold-500 shadow-sm cursor-pointer">
+                            class="appearance-none bg-white dark:bg-brand-card border border-brand-borderSoft text-xs font-medium text-text-main rounded-xl pl-3 pr-8 py-2 focus:ring-1 focus:ring-gold-500 shadow-xs cursor-pointer">
                             <option value="">Semua Kategori</option>
                             <option value="umum" @selected($kategori === 'umum')>Umum</option>
                             <option value="pelajar" @selected($kategori === 'pelajar')>Pelajar</option>
@@ -134,17 +134,17 @@
                     <div class="relative">
                         <i data-lucide="search" class="w-3.5 h-3.5 text-text-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
                         <input type="text" name="q" value="{{ $q }}" placeholder="Cari nama pengunjung..."
-                            class="bg-brand-card border border-brand-borderSoft text-xs text-text-main rounded-xl pl-8 pr-3 py-2 focus:ring-1 focus:ring-gold-500 placeholder:text-text-muted/60 shadow-sm w-40">
+                            class="bg-white dark:bg-brand-card border border-brand-borderSoft text-xs text-text-main rounded-xl pl-8 pr-3 py-2 focus:ring-1 focus:ring-gold-500 placeholder:text-text-muted/60 shadow-xs w-40">
                     </div>
 
                     {{-- Buttons --}}
                     <button type="submit"
-                        class="px-3.5 py-2 bg-black dark:bg-gold-500 text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gold-400 text-xs font-bold rounded-xl transition shadow-sm">
+                        class="px-3.5 py-2 bg-black dark:bg-gold-500 text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gold-400 text-xs font-bold rounded-xl transition shadow-xs">
                         Terapkan
                     </button>
                     @if (request()->anyFilled(['from', 'to', 'metode', 'kategori', 'q']))
                         <a href="{{ route('admin.laporan.keuangan.harian') }}"
-                            class="px-3 py-2 border border-brand-borderSoft bg-brand-card text-text-muted hover:text-text-main text-xs font-medium rounded-xl hover:bg-brand-shell/50 transition shadow-sm">
+                            class="px-3 py-2 border border-brand-borderSoft bg-white dark:bg-brand-card text-text-muted hover:text-text-main text-xs font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-brand-shell/50 transition shadow-xs">
                             Reset
                         </a>
                     @endif
@@ -154,29 +154,29 @@
                 <div x-data="{ open: false }" class="relative flex-shrink-0">
                     <button type="button" @click="open = !open"
                         class="inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold
-                               bg-brand-card border border-brand-borderSoft hover:bg-brand-shell/50 transition shadow-sm text-text-main">
+                               bg-white dark:bg-brand-card border border-brand-borderSoft hover:bg-gray-50 dark:hover:bg-brand-shell/50 transition shadow-xs text-text-main">
                         <i data-lucide="download" class="w-3.5 h-3.5 text-text-main"></i>
                         <span>Ekspor</span>
                         <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-text-muted"></i>
                     </button>
 
                     <div x-show="open" x-cloak @click.away="open=false"
-                        class="absolute right-0 mt-2 w-64 rounded-2xl border border-brand-borderSoft bg-brand-card shadow-2xl overflow-hidden z-30">
-                        <a class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-brand-shell/40 transition"
+                        class="absolute right-0 mt-2 w-56 rounded-xl border border-brand-borderSoft bg-white dark:bg-brand-card shadow-xl overflow-hidden z-30 py-1">
+                        <a class="flex items-center gap-2.5 px-4 py-2.5 text-xs hover:bg-brand-shell/40 transition"
                             href="{{ route('admin.laporan.keuangan.harian.excel') . ($qs ? '?' . $qs : '') }}">
                             <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
                             <div class="min-w-0">
-                                <div class="font-semibold text-text-main">Ekspor Excel</div>
-                                <div class="text-xs text-text-muted">Rekap laporan latihan harian.</div>
+                                <div class="font-bold text-text-main">Ekspor Excel</div>
+                                <div class="text-[11px] text-text-muted">Rekap laporan latihan harian.</div>
                             </div>
                         </a>
 
-                        <a class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-brand-shell/40 transition"
+                        <a class="flex items-center gap-2.5 px-4 py-2.5 text-xs hover:bg-brand-shell/40 transition"
                             href="{{ route('admin.laporan.keuangan.harian.pdf') . ($qs ? '?' . $qs : '') }}">
                             <i data-lucide="file-text" class="w-4 h-4 text-rose-600"></i>
                             <div class="min-w-0">
-                                <div class="font-semibold text-text-main">Ekspor PDF</div>
-                                <div class="text-xs text-text-muted">Siap cetak, khusus laporan latihan harian.</div>
+                                <div class="font-bold text-text-main">Ekspor PDF</div>
+                                <div class="text-[11px] text-text-muted">Siap cetak, khusus laporan latihan harian.</div>
                             </div>
                         </a>
                     </div>
@@ -184,52 +184,61 @@
             </div>
         </div>
 
-        {{-- 2) KPI --}}
-        <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
-            <div class="relative overflow-hidden rounded-2xl bg-[#064e3b] p-5 shadow-lg">
-                <div class="relative z-10 flex h-full flex-col justify-between">
-                    <div>
-                        <p class="text-[11px] font-bold uppercase tracking-widest text-emerald-200/80">Omzet Latihan
-                            Harian</p>
-                        <h3 class="mt-2 text-3xl font-bold text-white stat-number">{{ $rupiah($total) }}</h3>
+        {{-- 2) KPI CARDS --}}
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {{-- Total Harian (Hero Dark Card - Emerald/Dark Theme) --}}
+            <div class="relative overflow-hidden rounded-2xl bg-[#064e3b] p-5 shadow-xs border border-emerald-900/60 flex flex-col justify-between min-h-[135px]">
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-emerald-200/80">Omzet Latihan Harian</p>
+                        <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-400/20 text-emerald-300">
+                            <i data-lucide="ticket" class="w-3.5 h-3.5"></i>
+                        </span>
                     </div>
-                    <div class="mt-4 flex items-center gap-2">
-                        <div class="h-1.5 w-full rounded-full bg-emerald-900/50">
-                            <div class="h-1.5 rounded-full bg-emerald-400 w-full"></div>
-                        </div>
-                    </div>
-                    <p class="mt-2 text-[10px] text-emerald-200/70">Pendapatan dari kunjungan harian (umum/pelajar).</p>
+                    <h3 class="mt-2 text-xl xl:text-2xl font-extrabold text-white stat-number whitespace-nowrap tracking-tight">
+                        {{ $rupiah($total) }}
+                    </h3>
                 </div>
-                <div class="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-emerald-400/10 blur-3xl"></div>
+                <div class="relative z-10 mt-3">
+                    <div class="h-1.5 w-full rounded-full bg-emerald-900/60 overflow-hidden">
+                        <div class="h-full rounded-full bg-emerald-400 w-full"></div>
+                    </div>
+                    <p class="mt-1.5 text-[10px] text-emerald-200/70 truncate">Pendapatan dari kunjungan harian (umum/pelajar)</p>
+                </div>
+                <div class="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-emerald-400/10 blur-2xl pointer-events-none"></div>
             </div>
 
-            <x-ui.card class="p-5 border-brand-borderSoft hover:border-emerald-200 transition-colors">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <p class="text-[11px] font-bold uppercase tracking-widest text-text-muted">Volume Transaksi</p>
-                        <p class="mt-1 text-2xl font-bold text-text-main stat-number">
-                            {{ number_format($count, 0, ',', '.') }}</p>
+            {{-- Volume --}}
+            <div class="bg-white dark:bg-brand-card border border-brand-borderSoft rounded-2xl p-5 shadow-xs flex flex-col justify-between min-h-[135px] hover:border-emerald-300 transition-colors">
+                <div>
+                    <div class="flex items-center justify-between">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-text-muted">Volume Transaksi</p>
+                        <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+                            <i data-lucide="users" class="w-3.5 h-3.5"></i>
+                        </span>
                     </div>
-                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 text-emerald-600">
-                        <i data-lucide="users" class="w-4 h-4"></i>
-                    </span>
+                    <h3 class="mt-2 text-xl xl:text-2xl font-extrabold text-text-main stat-number whitespace-nowrap tracking-tight">
+                        {{ number_format($count, 0, ',', '.') }}
+                    </h3>
                 </div>
-                <p class="mt-4 text-[11px] text-text-muted">Jumlah entri kunjungan/struk harian.</p>
-            </x-ui.card>
+                <p class="mt-3 text-[10px] text-text-muted">Jumlah entri kunjungan/struk harian.</p>
+            </div>
 
-            <x-ui.card class="p-5 border-brand-borderSoft hover:border-emerald-200 transition-colors">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <p class="text-[11px] font-bold uppercase tracking-widest text-text-muted">Rata-rata Transaksi
-                            (AOV)</p>
-                        <p class="mt-1 text-2xl font-bold text-text-main stat-number">{{ $rupiah($avg) }}</p>
+            {{-- AOV --}}
+            <div class="bg-white dark:bg-brand-card border border-brand-borderSoft rounded-2xl p-5 shadow-xs flex flex-col justify-between min-h-[135px] hover:border-emerald-300 transition-colors">
+                <div>
+                    <div class="flex items-center justify-between">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-text-muted">Rata-rata Transaksi (AOV)</p>
+                        <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+                            <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i>
+                        </span>
                     </div>
-                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 text-emerald-600">
-                        <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
-                    </span>
+                    <h3 class="mt-2 text-xl xl:text-2xl font-extrabold text-text-main stat-number whitespace-nowrap tracking-tight">
+                        {{ $rupiah($avg) }}
+                    </h3>
                 </div>
-                <p class="mt-4 text-[11px] text-text-muted">Rata-rata tarif per kunjungan.</p>
-            </x-ui.card>
+                <p class="mt-3 text-[10px] text-text-muted">Rata-rata tarif per kunjungan harian.</p>
+            </div>
         </div>
 
         {{-- 3) CHART + BREAKDOWN --}}
