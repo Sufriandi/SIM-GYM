@@ -1,0 +1,38 @@
+{
+  "resources/css/app.css": {
+    "file": "assets/app-Bg28LRII.css",
+    "src": "resources/css/app.css",
+    "isEntry": true,
+    "name": "app",
+    "names": [
+      "app.css"
+    ]
+  },
+  "resources/js/admin/dashboard.jsx": {
+    "file": "assets/dashboard-Dw-E8CT8.js",
+    "name": "dashboard",
+    "src": "resources/js/admin/dashboard.jsx",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-CQ7E3x7b.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "css": [
+      "assets/app-Bg28LRII.css"
+    ]
+  },
+  "resources/js/member/dashboard.jsx": {
+    "file": "assets/dashboard-DodYP0i5.js",
+    "name": "dashboard",
+    "src": "resources/js/member/dashboard.jsx",
+    "isEntry": true
+  },
+  "resources/js/member/membership_history.jsx": {
+    "file": "assets/membership_history-CjLDPhMq.js",
+    "name": "membership_history",
+    "src": "resources/js/member/membership_history.jsx",
+    "isEntry": true
+  }
+}

@@ -447,25 +447,7 @@
                         <span>Laporan Keuangan</span>
                     </a>
 
-                    {{-- Placeholder laporan lain (tetap terkunci) --}}
-                    @php
-                        $placeholder = [
-                            ['Laporan Membership', 'badge-check'],
-                            ['Laporan Produk', 'shopping-cart'],
-                            ['Laporan Stok', 'box'],
-                            ['Laporan Member', 'users'],
-                        ];
-                    @endphp
 
-                    @foreach ($placeholder as [$label, $icon])
-                        <a href="#" @click.prevent
-                            class="group flex items-center gap-3 pl-12 pr-4 py-2.5 text-sm transition-all duration-200 rounded-lg
-                       text-brand-silver opacity-60 cursor-not-allowed"
-                            role="menuitem">
-                            <i data-lucide="{{ $icon }}" class="w-4 h-4 text-brand-silver/70"></i>
-                            <span>{{ $label }}</span>
-                        </a>
-                    @endforeach
                 </div>
             </div>
 
