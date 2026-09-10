@@ -83,112 +83,81 @@
 
     <div class="space-y-6 font-sans text-text-main">
 
-        {{-- 1) NAV + FILTER --}}
-        <div class="flex flex-col lg:flex-row lg:items-start gap-4 justify-between">
+        {{-- 1. NAVIGATION & FILTER --}}
+        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
 
-            {{-- Tabs --}}
-            <div
-                class="inline-flex bg-white border border-brand-borderSoft rounded-lg p-1 shadow-sm overflow-x-auto custom-scrollbar">
-                <div class="flex items-center gap-1">
-                    <a href="{{ route('admin.laporan.keuangan.index') }}?{{ $qs }}"
-                        class="px-4 py-2 text-xs font-medium rounded-md text-text-muted hover:text-text-main hover:bg-gray-50 transition-all whitespace-nowrap">
-                        Ringkasan
-                    </a>
+            {{-- Navigation Tabs --}}
+            @include('admin.laporan.keuangan.partials.tabs')
 
-                    <a href="{{ route('admin.laporan.keuangan.produk') }}?{{ $qs }}"
-                        class="px-4 py-2 text-xs font-medium rounded-md text-text-muted hover:text-text-main hover:bg-gray-50 transition-all whitespace-nowrap">
-                        Produk
-                    </a>
-
-                    <span
-                        class="px-4 py-2 text-xs font-bold rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-default whitespace-nowrap">
-                        Membership
-                    </span>
-
-                    <a href="{{ route('admin.laporan.keuangan.harian') }}?{{ $qs }}"
-                        class="px-4 py-2 text-xs font-medium rounded-md text-text-muted hover:text-text-main hover:bg-gray-50 transition-all whitespace-nowrap">
-                        Harian
-                    </a>
-
-                    <a href="{{ route('admin.laporan.keuangan.gabungan') }}?{{ $qs }}"
-                        class="px-4 py-2 text-xs font-medium rounded-md text-text-muted hover:text-text-main hover:bg-gray-50 transition-all whitespace-nowrap">
-                        Audit Data
-                    </a>
-                </div>
-            </div>
-
-            {{-- Filter --}}
-            <div
-                class="flex-shrink-0 bg-white border border-brand-borderSoft rounded-lg p-3 shadow-sm w-full lg:w-auto">
-                <form method="GET" action="{{ url()->current() }}" class="flex flex-col gap-3">
-                    <div class="flex flex-wrap items-center gap-2">
-                        {{-- Date range --}}
-                        <div class="flex items-center gap-2 bg-gray-50 rounded-md p-1 px-2 border border-gray-100">
-                            <i data-lucide="calendar" class="w-3.5 h-3.5 text-emerald-500"></i>
-                            <input type="date" name="from" value="{{ $fromDate }}"
-                                class="border-none text-xs font-medium text-text-main focus:ring-0 p-0 bg-transparent w-24 cursor-pointer">
-                            <span class="text-text-muted text-xs">➜</span>
-                            <input type="date" name="to" value="{{ $toDate }}"
-                                class="border-none text-xs font-medium text-text-main focus:ring-0 p-0 bg-transparent w-24 cursor-pointer">
-                        </div>
-
-                        {{-- Metode --}}
-                        <div class="relative">
-                            <select name="metode"
-                                class="appearance-none border-none bg-gray-50 text-xs font-medium text-text-main rounded-md py-1.5 pl-3 pr-8 focus:ring-0 cursor-pointer border border-gray-100">
-                                <option value="">Semua Metode</option>
-                                <option value="cash" @selected($metode === 'cash')>Cash</option>
-                                <option value="transfer" @selected($metode === 'transfer')>Transfer</option>
-                                <option value="qris" @selected($metode === 'qris')>QRIS</option>
-                            </select>
-                            <i data-lucide="chevron-down"
-                                class="w-3 h-3 text-text-muted absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"></i>
-                        </div>
+            {{-- Filter & Actions (Right Side) --}}
+            <div class="flex flex-wrap items-center gap-2.5 justify-start xl:justify-end">
+                <form method="GET" action="{{ route('admin.laporan.keuangan.membership') }}" class="flex flex-wrap items-center gap-2">
+                    {{-- Date Range --}}
+                    <div class="flex items-center gap-2 bg-brand-card border border-brand-borderSoft rounded-xl px-3 py-1.5 shadow-sm">
+                        <i data-lucide="calendar" class="w-4 h-4 text-gold-500 shrink-0"></i>
+                        <input type="date" name="from" value="{{ $fromDate }}"
+                            class="border-none text-xs font-medium text-text-main focus:ring-0 p-0 bg-transparent w-28 cursor-pointer">
+                        <span class="text-text-muted text-xs">➜</span>
+                        <input type="date" name="to" value="{{ $toDate }}"
+                            class="border-none text-xs font-medium text-text-main focus:ring-0 p-0 bg-transparent w-28 cursor-pointer">
                     </div>
 
-                    <div class="flex items-center gap-2">
-                        {{-- Search --}}
-                        <div class="relative flex-grow">
-                            <i data-lucide="search"
-                                class="w-3.5 h-3.5 text-text-muted absolute left-3 top-1/2 -translate-y-1/2"></i>
-                            <input type="text" name="q" value="{{ $q }}"
-                                placeholder="Cari nota / member / paket..."
-                                class="w-full border-none bg-gray-50 text-xs text-text-main rounded-md py-1.5 pl-9 pr-3 focus:ring-1 focus:ring-emerald-500 placeholder:text-text-muted/70">
-                        </div>
+                    {{-- Metode --}}
+                    <div class="relative">
+                        <select name="metode"
+                            class="appearance-none bg-brand-card border border-brand-borderSoft text-xs font-medium text-text-main rounded-xl pl-3 pr-8 py-2 focus:ring-1 focus:ring-gold-500 shadow-sm cursor-pointer">
+                            <option value="">Semua Metode</option>
+                            <option value="cash" @selected($metode === 'cash')>Cash</option>
+                            <option value="transfer" @selected($metode === 'transfer')>Transfer</option>
+                            <option value="qris" @selected($metode === 'qris')>QRIS</option>
+                        </select>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-text-muted absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                    </div>
 
-                        <button type="submit"
-                            class="px-4 py-1.5 bg-black text-white text-xs font-bold rounded hover:bg-gray-800 transition shadow-sm">
-                            Terapkan
-                        </button>
-                        <a href="{{ url()->current() }}"
-                            class="px-3 py-1.5 border border-gray-200 text-text-muted text-xs font-medium rounded hover:bg-gray-50 transition">
+                    {{-- Search --}}
+                    <div class="relative">
+                        <i data-lucide="search" class="w-3.5 h-3.5 text-text-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                        <input type="text" name="q" value="{{ $q }}" placeholder="Cari nota / member / paket..."
+                            class="bg-brand-card border border-brand-borderSoft text-xs text-text-main rounded-xl pl-8 pr-3 py-2 focus:ring-1 focus:ring-gold-500 placeholder:text-text-muted/60 shadow-sm w-44">
+                    </div>
+
+                    {{-- Buttons --}}
+                    <button type="submit"
+                        class="px-3.5 py-2 bg-black dark:bg-gold-500 text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gold-400 text-xs font-bold rounded-xl transition shadow-sm">
+                        Terapkan
+                    </button>
+                    @if (request()->anyFilled(['from', 'to', 'metode', 'q']))
+                        <a href="{{ route('admin.laporan.keuangan.membership') }}"
+                            class="px-3 py-2 border border-brand-borderSoft bg-brand-card text-text-muted hover:text-text-main text-xs font-medium rounded-xl hover:bg-brand-shell/50 transition shadow-sm">
                             Reset
                         </a>
-                    </div>
+                    @endif
                 </form>
 
                 {{-- Export Dropdown --}}
                 <div x-data="{ open: false }" class="relative flex-shrink-0">
                     <button type="button" @click="open = !open"
-                        class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold
-                               bg-white border border-brand-borderSoft hover:bg-gray-50 transition shadow-sm">
-                        <i data-lucide="download" class="w-4 h-4 text-text-main"></i>
+                        class="inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold
+                               bg-brand-card border border-brand-borderSoft hover:bg-brand-shell/50 transition shadow-sm text-text-main">
+                        <i data-lucide="download" class="w-3.5 h-3.5 text-text-main"></i>
                         <span>Ekspor</span>
-                        <i data-lucide="chevron-down" class="w-4 h-4 text-text-muted"></i>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-text-muted"></i>
                     </button>
+
                     <div x-show="open" x-cloak @click.away="open=false"
-                        class="absolute right-0 mt-2 w-64 rounded-2xl border border-brand-borderSoft bg-white shadow-2xl overflow-hidden z-30">
-                        <a class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50"
+                        class="absolute right-0 mt-2 w-64 rounded-2xl border border-brand-borderSoft bg-brand-card shadow-2xl overflow-hidden z-30">
+                        <a class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-brand-shell/40 transition"
                             href="{{ route('admin.laporan.keuangan.membership.excel') . ($qs ? '?' . $qs : '') }}">
-                            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
                             <div class="min-w-0">
                                 <div class="font-semibold text-text-main">Ekspor Excel</div>
                                 <div class="text-xs text-text-muted">Rekap laporan membership.</div>
                             </div>
                         </a>
-                        <a class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50"
+
+                        <a class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-brand-shell/40 transition"
                             href="{{ route('admin.laporan.keuangan.membership.pdf') . ($qs ? '?' . $qs : '') }}">
-                            <i data-lucide="file-text" class="w-4 h-4"></i>
+                            <i data-lucide="file-text" class="w-4 h-4 text-rose-600"></i>
                             <div class="min-w-0">
                                 <div class="font-semibold text-text-main">Ekspor PDF</div>
                                 <div class="text-xs text-text-muted">Siap cetak, khusus laporan membership.</div>
